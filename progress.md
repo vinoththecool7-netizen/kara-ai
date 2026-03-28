@@ -22,11 +22,11 @@
 | Phase | Days | Status | Progress |
 |-------|------|--------|----------|
 | 1 — Rule Engine | 1–20 | ✅ Complete | 20/20 days done |
-| 2 — Backend + AI Agent | 21–40 | 🔄 In Progress | 12/20 days done |
+| 2 — Backend + AI Agent | 21–40 | 🔄 In Progress | 14/20 days done |
 | 3 — Frontend | 41–55 | ⬜ Not Started | 0/15 days done |
 | 4 — Advanced Features | 56–70 | ⬜ Not Started | 0/15 days done |
 | 5 — Polish + Launch | 71–80 | ⬜ Not Started | 0/10 days done |
-| **Total** | **1–80** | | **32/80 days done (40%)** |
+| **Total** | **1–80** | | **34/80 days done (43%)** |
 
 ### Test Count Tracker
 
@@ -41,10 +41,11 @@
 | Knowledge base / search | 20+ | 24 | ✅ |
 | LLM client + providers | 30+ | 54 | ✅ |
 | Tool schemas + executor | 30+ | 55 | ✅ |
+| Agent prompts + profile | 20+ | 50 | ✅ |
 | Agent loop | 30+ | 0 | ⬜ |
 | Frontend components | 20+ | 0 | ⬜ |
 | E2E journeys | 10+ | 0 | ⬜ |
-| **Total** | **350+** | **474** | **135%+** |
+| **Total** | **350+** | **524** | **150%** |
 
 ---
 
@@ -674,35 +675,47 @@
 
 ---
 
-### Days 33–35: System Prompt + Intent Taxonomy ⬜
+### Days 33–34: System Prompt + Intent Taxonomy + Profile Builder ✅
 
-**Status:** ⬜ TODO
+**Status:** ✅ COMPLETE (2026-03-28)
 
 **Tasks:**
-- [ ] Create `apps/api/src/kara_api/agent/prompts.py` — system prompt with:
+- [x] Create `apps/api/src/kara_api/agent/prompts.py` — system prompt with:
   - Role definition: Indian tax advisor, conversational, asks before computing
-  - Intent taxonomy: COMPUTE_TAX, COMPARE_REGIMES, CAPITAL_GAINS, DEDUCTION_ADVICE, TAX_PLANNING, WITHDRAWAL, INVESTMENT, COMPLIANCE, GENERAL_QUERY
-  - Slot requirements per intent (what info to ask for)
-  - Tool usage guide — when to call which tool
-  - Response format: structured cards + proactive tips
-  - Citation format: always cite section numbers
-- [ ] Create `apps/api/src/kara_api/agent/profile_builder.py`:
-  - Accumulate TaxProfile across conversation turns
-  - Track which slots are filled vs missing
-  - Determine when enough info to compute vs need to ask more
-- [ ] Write profile builder tests — 10+ tests
-  - [ ] Test slot accumulation across turns
-  - [ ] Test missing slot detection
-  - [ ] Test profile completion check
+  - Intent taxonomy (9 intents): COMPUTE_TAX, COMPARE_REGIMES, CAPITAL_GAINS, DEDUCTION_ADVICE, TAX_PLANNING, WITHDRAWAL, INVESTMENT, COMPLIANCE, GENERAL_QUERY
+  - SlotDefinition model + ALL_SLOTS registry (29 slots across 5 categories)
+  - IntentSpec model + INTENT_SPECS dict (required/optional slots per intent, primary tool, example queries)
+  - Enhanced system prompt (~714 tokens) with tool usage guide, response format, citation rules
+  - 3 helper functions: get_intent_spec, get_required_slots, get_slot_definition
+- [x] Create `apps/api/src/kara_api/agent/profile_builder.py`:
+  - ProfileBuilder class tracking slot accumulation across turns
+  - Slot management: add/get/remove/clear with copy safety
+  - Intent readiness: get_missing_slots, is_intent_ready, get_ready_intents
+  - TaxProfile conversion: to_tax_profile() with deduction mapping (10 deduction fields)
+  - Serialization: to_dict/from_dict for session persistence
+- [x] Update `apps/api/src/kara_api/agent/__init__.py` with all public exports
+- [x] Write tests — 50 total (21 prompts + 29 profile builder)
+  - [x] Intent enum validation (count, values, spec coverage)
+  - [x] Slot definitions (count, types, descriptions)
+  - [x] Intent specs (required slots, tools, examples)
+  - [x] System prompt structure (mentions Kara, tools, citations)
+  - [x] Slot management (add/get/remove/clear/overwrite/copy safety)
+  - [x] Intent readiness (compute_tax, capital_gains, compliance, general_query)
+  - [x] TaxProfile conversion (salary, regime, deductions, all income types, HRA)
+  - [x] Serialization round-trip
 
-**Files to Create:**
-- `apps/api/src/kara_api/agent/prompts.py`
-- `apps/api/src/kara_api/agent/profile_builder.py`
-- `apps/api/tests/test_profile_builder.py`
+**Files Created:**
+- `apps/api/src/kara_api/agent/prompts.py` (~300 lines)
+- `apps/api/src/kara_api/agent/profile_builder.py` (~145 lines)
+- `apps/api/tests/test_prompts.py` (21 tests)
+- `apps/api/tests/test_profile_builder.py` (29 tests)
 
-**Tests Target:** 10+ profile builder tests
+**Files Modified:**
+- `apps/api/src/kara_api/agent/__init__.py` (added 10 exports)
 
-**Definition of Done:** System prompt captures full intent taxonomy. Profile builder tracks slots across turns. Tests verify accumulation logic.
+**Tests:** 50 new tests (234 total API tests passing)
+
+**Definition of Done:** ✅ System prompt captures full intent taxonomy with 9 intents. 29 slots defined across income, demographics, deductions, capital gains, compliance. Profile builder tracks slots, checks readiness, converts to TaxProfile. All 50 tests green.
 
 ---
 

@@ -121,6 +121,7 @@ class ProfileBuilder:
             "section_80g": "section_80g",
             "section_80tta": "section_80tta",
             "section_24b": "section_24b",
+            "hra_exemption": "hra_exemption",
         }
 
         ded = Deductions()

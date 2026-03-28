@@ -170,6 +170,14 @@ class TestTaxProfileConversion:
         assert profile.deductions.section_80c == 150000
         assert profile.deductions.section_80d == 25000
 
+    def test_profile_with_hra_exemption(self):
+        pb = ProfileBuilder(initial_slots={
+            "gross_salary": 1500000,
+            "hra_exemption": 120000,
+        })
+        profile = pb.to_tax_profile()
+        assert profile.deductions.hra_exemption == 120000
+
     def test_profile_with_all_income_types(self):
         pb = ProfileBuilder(initial_slots={
             "gross_salary": 1500000,
