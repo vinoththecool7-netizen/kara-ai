@@ -284,6 +284,18 @@ async def seed(dry_run: bool = False) -> None:
                 )
             logger.info("Inserted %d relationships", inserted)
 
+        # Verify search_vector was populated (relies on PostgreSQL GENERATED ALWAYS AS)
+        result = await conn.execute(
+            text("SELECT COUNT(*) FROM tax_sections WHERE search_vector IS NULL")
+        )
+        null_count = result.scalar()
+        if null_count:
+            logger.warning(
+                "%d sections have NULL search_vector — keyword search will miss them", null_count
+            )
+        else:
+            logger.info("All sections have populated search_vector (generated column OK)")
+
         logger.info("Seed complete.")
 
     finally:

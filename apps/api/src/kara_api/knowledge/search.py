@@ -206,29 +206,33 @@ async def hybrid_search(
             result_map[r.id] = r
 
     # Apply graph boost to top candidates
-    top_ids = sorted(rrf_scores, key=rrf_scores.get, reverse=True)[:k]  # type: ignore[arg-type]
+    top_ids = sorted(rrf_scores, key=lambda x: rrf_scores[x], reverse=True)[:k]
     boost_map = await graph_boost(top_ids, session)
 
     for sid, boost in boost_map.items():
         rrf_scores[sid] = rrf_scores.get(sid, 0.0) + boost / (RRF_K + 1)
-        # Fetch boosted section metadata if not already cached
-        if sid not in result_map:
-            row_result = await session.execute(
-                text("SELECT id, section_number, title, summary FROM tax_sections WHERE id = :id"),
-                {"id": sid},
+
+    # Batch-fetch metadata for graph-boosted sections not already cached
+    missing_ids = [sid for sid in boost_map if sid not in result_map]
+    if missing_ids:
+        row_result = await session.execute(
+            text(
+                "SELECT id, section_number, title, summary "
+                "FROM tax_sections WHERE id = ANY(:ids)"
+            ),
+            {"ids": missing_ids},
+        )
+        for r in row_result.fetchall():
+            result_map[r.id] = SearchResult(
+                id=r.id,
+                section_number=r.section_number,
+                title=r.title,
+                summary=r.summary,
+                score=0.0,
             )
-            r = row_result.fetchone()
-            if r:
-                result_map[sid] = SearchResult(
-                    id=r.id,
-                    section_number=r.section_number,
-                    title=r.title,
-                    summary=r.summary,
-                    score=0.0,
-                )
 
     # Sort by final RRF score and return top k
-    final_ids = sorted(rrf_scores, key=rrf_scores.get, reverse=True)[:k]  # type: ignore[arg-type]
+    final_ids = sorted(rrf_scores, key=lambda x: rrf_scores[x], reverse=True)[:k]
     results = []
     for sid in final_ids:
         if sid in result_map:
