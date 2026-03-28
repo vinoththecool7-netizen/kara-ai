@@ -1,0 +1,9 @@
+section: "80E"
+title: "Interest on education loan"
+financial_year: "2025-26"
+regime: old_only
+cap: null  # No monetary cap
+duration_years: 8  # From year of first repayment
+eligible_for:
+  - Higher education of self, spouse, or children
+note: "Deduction for interest component only, not principal. Available for up to 8 assessment years starting from the year repayment begins."

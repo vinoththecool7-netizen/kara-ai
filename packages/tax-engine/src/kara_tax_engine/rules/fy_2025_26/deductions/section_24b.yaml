@@ -1,0 +1,18 @@
+section: "24(b)"
+title: "Deduction for interest on home loan"
+financial_year: "2025-26"
+regime: old_only
+limits:
+  self_occupied:
+    cap: 200000
+    note: "Maximum ₹2L interest deduction for self-occupied property"
+  let_out:
+    cap: null  # No limit — full interest deductible against rental income
+    note: "Interest fully deductible against rental income. Net loss from house property capped at ₹2L for set-off against other income."
+  under_construction:
+    cap: 200000
+    note: "Interest during construction allowed in 5 equal installments after completion, within ₹2L cap"
+conditions:
+  - "Loan must be for purchase, construction, repair, renovation, or reconstruction"
+  - "Construction must be completed within 5 years from end of FY in which loan was taken"
+note: "Engine currently applies self-occupied cap (₹2L). Let-out property interest flows through house_property_income."

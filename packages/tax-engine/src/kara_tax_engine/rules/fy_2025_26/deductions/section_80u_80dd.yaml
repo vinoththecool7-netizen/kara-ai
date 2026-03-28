@@ -1,0 +1,20 @@
+section_80u:
+  title: "Person with disability (self)"
+  financial_year: "2025-26"
+  regime: old_only
+  deduction_type: fixed  # Not based on actual expenditure
+  limits:
+    normal_disability: 75000  # 40% to 79% disability
+    severe_disability: 125000  # 80% or more disability
+  note: "Fixed deduction regardless of actual expenditure. Requires disability certificate from medical authority."
+
+section_80dd:
+  title: "Maintenance of dependent with disability"
+  financial_year: "2025-26"
+  regime: old_only
+  deduction_type: fixed
+  limits:
+    normal_disability: 75000
+    severe_disability: 125000
+  eligible_dependents: ["Spouse", "Children", "Parents", "Brothers", "Sisters"]
+  note: "Fixed deduction for maintenance including medical treatment, training, rehabilitation. Requires disability certificate."

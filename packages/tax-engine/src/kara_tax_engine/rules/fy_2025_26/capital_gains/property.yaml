@@ -1,0 +1,20 @@
+asset_classes:
+  property:
+    holding_period_months: 24
+    stcg:
+      section: "slab"
+      rate: null
+    ltcg:
+      section: "112"
+      rate: 0.125
+      exemption: 0
+    grandfathering: null
+    exemptions:
+      section_54:
+        cap: 100000000
+        note: "Reinvestment in one residential house in India within 2 years"
+        lock_in_years: 3
+      section_54ec:
+        cap: 5000000
+        note: "Investment in specified bonds (NHAI/REC) within 6 months"
+        lock_in_years: 5

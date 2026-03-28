@@ -1,0 +1,12 @@
+asset_classes:
+  debt_mf:
+    holding_period_months: 24
+    stcg:
+      section: "slab"
+      rate: null
+    ltcg:
+      section: "slab"
+      rate: null
+      exemption: 0
+      note: "Post-2023 amendment: debt MF gains taxed at slab rate irrespective of holding period"
+    grandfathering: null

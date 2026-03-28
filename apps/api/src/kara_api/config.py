@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     LLM_API_KEY: str = ""
     LLM_MODEL: str = "gpt-4o"
     LLM_PROVIDER: str = "openai"
+    LLM_BASE_URL: str = ""
+    LLM_MAX_TOKENS: int = 4096
+    LLM_TEMPERATURE: float = 0.3
     CORS_ORIGINS: list[str] = ["http://localhost:3000"]
     DEBUG: bool = False
     API_V1_PREFIX: str = "/api/v1"

@@ -1,0 +1,14 @@
+section: "80G"
+title: "Donations to charitable organizations"
+financial_year: "2025-26"
+regime: old_only
+categories:
+  - type: "100% without limit"
+    examples: ["PM National Relief Fund", "National Defence Fund", "PM CARES Fund"]
+  - type: "100% with 10% of ATI limit"
+    examples: ["Approved charitable institutions"]
+  - type: "50% without limit"
+    examples: ["PM Drought Relief Fund", "National Children's Fund"]
+  - type: "50% with 10% of ATI limit"
+    examples: ["Other approved charities", "Temples, mosques, churches, gurudwaras"]
+note: "Engine accepts qualifying amount directly. The 50%/100% classification is the user's responsibility."

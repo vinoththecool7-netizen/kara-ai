@@ -1,0 +1,65 @@
+regime: old
+financial_year: "2025-26"
+applies_to: [individual, huf]
+default: false
+
+slabs:
+  below_60:
+    - lower: 0
+      upper: 250000
+      rate: 0.00
+    - lower: 250000
+      upper: 500000
+      rate: 0.05
+    - lower: 500000
+      upper: 1000000
+      rate: 0.20
+    - lower: 1000000
+      upper: null
+      rate: 0.30
+
+  senior:
+    - lower: 0
+      upper: 300000
+      rate: 0.00
+    - lower: 300000
+      upper: 500000
+      rate: 0.05
+    - lower: 500000
+      upper: 1000000
+      rate: 0.20
+    - lower: 1000000
+      upper: null
+      rate: 0.30
+
+  super_senior:
+    - lower: 0
+      upper: 500000
+      rate: 0.00
+    - lower: 500000
+      upper: 1000000
+      rate: 0.20
+    - lower: 1000000
+      upper: null
+      rate: 0.30
+
+standard_deduction: 50000
+
+rebate_87a:
+  max_taxable_income: 500000
+  max_rebate: 12500
+  note: "Section 87A: Rebate of ₹12,500 if taxable income <= ₹5L under old regime"
+
+surcharge:
+  tiers:
+    - threshold: 5000000
+      rate: 0.10
+    - threshold: 10000000
+      rate: 0.15
+    - threshold: 20000000
+      rate: 0.25
+    - threshold: 50000000
+      rate: 0.37
+  max_surcharge_rate: 0.37
+
+allowed_deductions: all

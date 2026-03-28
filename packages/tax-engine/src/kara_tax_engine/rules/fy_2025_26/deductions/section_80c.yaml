@@ -1,0 +1,86 @@
+section: "80C"
+title: "Deduction for specified investments and payments"
+financial_year: "2025-26"
+regime: old_only
+combined_cap: 150000
+note: "Combined cap of ₹1,50,000 with 80CCC and 80CCD(1)"
+
+instruments:
+  - name: EPF (Employee Provident Fund)
+    code: epf
+    cap: null  # within overall 80C cap
+    lock_in_years: null  # until retirement/withdrawal
+    returns_indicative: "8.25%"
+    tax_on_maturity: exempt
+
+  - name: PPF (Public Provident Fund)
+    code: ppf
+    cap: 150000  # per year
+    lock_in_years: 15
+    returns_indicative: "7.1%"
+    tax_on_maturity: exempt
+
+  - name: ELSS (Equity-Linked Savings Scheme)
+    code: elss
+    cap: null
+    lock_in_years: 3
+    returns_indicative: "12-15%"
+    tax_on_maturity: "LTCG @12.5% above ₹1.25L"
+
+  - name: NSC (National Savings Certificate)
+    code: nsc
+    cap: null
+    lock_in_years: 5
+    returns_indicative: "7.7%"
+    tax_on_maturity: taxable
+
+  - name: SSY (Sukanya Samriddhi Yojana)
+    code: ssy
+    cap: 150000
+    lock_in_years: 21
+    returns_indicative: "8.2%"
+    tax_on_maturity: exempt
+
+  - name: Life Insurance Premium
+    code: lip
+    cap: null
+    lock_in_years: null
+    returns_indicative: varies
+    tax_on_maturity: "exempt if premium < 10% of sum assured"
+
+  - name: Tuition Fees
+    code: tuition
+    cap: null
+    lock_in_years: null
+    note: "Max 2 children, full-time education in India"
+
+  - name: 5-Year Tax Saving FD
+    code: fd_5yr
+    cap: null
+    lock_in_years: 5
+    returns_indicative: "7.0%"
+    tax_on_maturity: taxable
+
+  - name: NHB (National Housing Bank) Deposits
+    code: nhb
+    cap: null
+    lock_in_years: null
+
+  - name: SCSS (Senior Citizens Savings Scheme)
+    code: scss
+    cap: 3000000  # ₹30L max deposit
+    lock_in_years: 5
+    returns_indicative: "8.2%"
+    tax_on_maturity: taxable
+
+  - name: Stamp Duty / Registration Charges
+    code: stamp_duty
+    cap: null
+    lock_in_years: null
+    note: "On purchase of residential property"
+
+  - name: ULIP (Unit Linked Insurance Plan)
+    code: ulip
+    cap: null
+    lock_in_years: 5
+    note: "Premium < ₹2.5L per year for tax exemption"

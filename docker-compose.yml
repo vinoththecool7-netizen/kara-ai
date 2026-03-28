@@ -1,0 +1,35 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: kara
+      POSTGRES_PASSWORD: kara
+      POSTGRES_DB: kara
+    ports:
+      - "5432:5432"
+    volumes:
+      - kara-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kara -d kara"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    ports:
+      - "8000:8000"
+    env_file:
+      - apps/api/.env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://kara:kara@db:5432/kara
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  kara-db-data:

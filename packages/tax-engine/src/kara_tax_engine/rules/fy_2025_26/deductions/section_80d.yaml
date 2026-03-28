@@ -1,0 +1,27 @@
+section: "80D"
+title: "Health insurance premium deduction"
+financial_year: "2025-26"
+regime: old_only
+
+limits:
+  self_family:
+    below_60: 25000
+    senior: 50000
+    super_senior: 50000
+    note: "Self, spouse, and dependent children"
+
+  parents:
+    below_60: 25000
+    senior: 50000
+    note: "Additional deduction for parents' health insurance"
+
+  preventive_health_checkup:
+    limit: 5000
+    note: "Within overall 80D limit, not additional"
+
+max_combined:
+  self_below60_parents_below60: 50000   # 25K + 25K
+  self_below60_parents_senior: 75000    # 25K + 50K
+  self_senior_parents_senior: 100000    # 50K + 50K
+
+note: "No health insurance needed for super-senior — ₹50K deduction allowed for medical expenditure"

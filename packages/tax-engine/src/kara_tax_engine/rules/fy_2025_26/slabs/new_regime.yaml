@@ -1,0 +1,51 @@
+regime: new
+financial_year: "2025-26"
+applies_to: [individual, huf]
+default: true
+
+slabs:
+  - lower: 0
+    upper: 400000
+    rate: 0.00
+  - lower: 400000
+    upper: 800000
+    rate: 0.05
+  - lower: 800000
+    upper: 1200000
+    rate: 0.10
+  - lower: 1200000
+    upper: 1600000
+    rate: 0.15
+  - lower: 1600000
+    upper: 2000000
+    rate: 0.20
+  - lower: 2000000
+    upper: 2400000
+    rate: 0.25
+  - lower: 2400000
+    upper: null
+    rate: 0.30
+
+standard_deduction: 75000
+
+rebate_87a:
+  max_taxable_income: 1200000
+  max_rebate: 60000
+  note: "Section 87A: No tax if taxable income <= 12L under new regime. Marginal relief applies at boundary."
+
+surcharge:
+  tiers:
+    - threshold: 5000000
+      rate: 0.10
+    - threshold: 10000000
+      rate: 0.15
+    - threshold: 20000000
+      rate: 0.25
+  max_surcharge_rate: 0.25
+  note: "Surcharge capped at 25% under new regime (not 37%)"
+
+allowed_deductions:
+  - standard_deduction
+  - section_80ccd_2
+  - section_80jjaa
+  - family_pension_deduction

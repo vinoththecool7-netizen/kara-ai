@@ -1,0 +1,25 @@
+financial_year: "2025-26"
+assessment_year: "2026-27"
+cess_rate: 0.04
+cess_name: "Health & Education Cess"
+default_regime: new
+standard_deduction:
+  old: 50000
+  new: 75000
+filing_due_dates:
+  non_audit: "2026-07-31"
+  audit: "2026-10-31"
+  transfer_pricing: "2026-11-30"
+advance_tax_schedule:
+  - quarter: 1
+    due_date: "2025-06-15"
+    cumulative_percent: 15
+  - quarter: 2
+    due_date: "2025-09-15"
+    cumulative_percent: 45
+  - quarter: 3
+    due_date: "2025-12-15"
+    cumulative_percent: 75
+  - quarter: 4
+    due_date: "2026-03-15"
+    cumulative_percent: 100

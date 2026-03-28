@@ -1,0 +1,1855 @@
+sections:
+  # ── Tax Regime ──────────────────────────────────────────────
+  - section_number: "NEW_REGIME"
+    ltree_path: "income_tax.regime.new"
+    title: "New Tax Regime (Default from FY 2023-24)"
+    content: >
+      The new tax regime under Section 115BAC is the default regime from FY 2023-24 onwards.
+      Taxpayers are automatically placed under this regime unless they explicitly opt out.
+      It offers lower slab rates but disallows most deductions and exemptions available under the old regime.
+      For FY 2025-26, the new regime provides a standard deduction of Rs 75,000 for salaried individuals.
+      Section 80CCD(2) employer NPS contribution is one of the few deductions allowed under this regime.
+      The rebate under Section 87A makes income up to Rs 12 lakh effectively tax-free under this regime.
+    summary: "The new tax regime is the default option with lower slab rates but fewer deductions."
+    common_questions:
+      - "Should I choose the new or old tax regime?"
+      - "What deductions are allowed in the new regime?"
+      - "Is the new regime the default?"
+
+  - section_number: "OLD_REGIME"
+    ltree_path: "income_tax.regime.old"
+    title: "Old Tax Regime (Optional)"
+    content: >
+      The old tax regime allows taxpayers to claim various deductions and exemptions such as 80C, 80D, HRA, LTA, and more.
+      However, the slab rates are higher compared to the new regime.
+      Salaried individuals must opt in to the old regime each year; business/professional taxpayers who switch out cannot return.
+      The standard deduction under the old regime is Rs 50,000.
+      Taxpayers with significant deductions (home loan, 80C, 80D, HRA) may benefit more from the old regime.
+      The choice between old and new regime depends on individual deduction levels — typically, if total deductions exceed Rs 3.75 lakh, the old regime may be better.
+    summary: "The old tax regime offers more deductions and exemptions but at higher slab rates."
+    common_questions:
+      - "When is the old regime better than the new regime?"
+      - "How do I opt for the old tax regime?"
+      - "Can I switch between old and new regime every year?"
+
+  # ── Slab Rates ──────────────────────────────────────────────
+  - section_number: "SLABS_NEW"
+    ltree_path: "income_tax.slabs.new_regime"
+    title: "Income Tax Slabs — New Regime (FY 2025-26)"
+    content: >
+      Under the new regime for FY 2025-26, the slabs are: up to Rs 4 lakh — nil;
+      Rs 4-8 lakh — 5%; Rs 8-12 lakh — 10%; Rs 12-16 lakh — 15%; Rs 16-20 lakh — 20%;
+      Rs 20-24 lakh — 25%; above Rs 24 lakh — 30%.
+      These rates apply to all individuals and HUFs regardless of age.
+      A standard deduction of Rs 75,000 is available for salaried taxpayers.
+      With the Section 87A rebate, taxable income up to Rs 12 lakh results in zero tax.
+    summary: "New regime slabs for FY 2025-26 range from 0% (up to 4L) to 30% (above 24L)."
+    common_questions:
+      - "What are the new regime tax slabs for FY 2025-26?"
+      - "How much tax do I pay on 15 lakh income in the new regime?"
+
+  - section_number: "SLABS_OLD"
+    ltree_path: "income_tax.slabs.old_regime"
+    title: "Income Tax Slabs — Old Regime (Below 60 years)"
+    content: >
+      Under the old regime for individuals below 60, the slabs for FY 2025-26 are:
+      up to Rs 2.5 lakh — nil; Rs 2.5-5 lakh — 5%; Rs 5-10 lakh — 20%; above Rs 10 lakh — 30%.
+      These slabs have remained unchanged for several years.
+      Taxpayers can claim deductions under 80C, 80D, 24(b), HRA, LTA, etc. to reduce taxable income.
+      The effective tax rate can be significantly lowered through smart use of deductions.
+    summary: "Old regime slabs for under-60s: 0% up to 2.5L, 5% (2.5-5L), 20% (5-10L), 30% (10L+)."
+    common_questions:
+      - "What are the old regime tax slabs?"
+      - "What is the tax rate on 8 lakh income in the old regime?"
+
+  - section_number: "SLABS_OLD_SENIOR"
+    ltree_path: "income_tax.slabs.old_regime_senior"
+    title: "Income Tax Slabs — Old Regime (Senior Citizens, 60-79 years)"
+    content: >
+      Senior citizens aged 60 to 79 years get a higher basic exemption limit of Rs 3 lakh under the old regime.
+      The slabs are: up to Rs 3 lakh — nil; Rs 3-5 lakh — 5%; Rs 5-10 lakh — 20%; above Rs 10 lakh — 30%.
+      This benefit is only available under the old regime; the new regime has uniform slabs for all ages.
+      Senior citizens also get higher limits under Section 80D (Rs 50,000) and Section 80TTB (Rs 50,000).
+    summary: "Senior citizens (60-79) get a higher exemption limit of Rs 3 lakh in the old regime."
+    common_questions:
+      - "What are the tax slabs for senior citizens?"
+      - "At what age do I qualify as a senior citizen for tax purposes?"
+
+  - section_number: "SLABS_OLD_SUPER_SENIOR"
+    ltree_path: "income_tax.slabs.old_regime_super_senior"
+    title: "Income Tax Slabs — Old Regime (Super Senior Citizens, 80+ years)"
+    content: >
+      Super senior citizens aged 80 years and above enjoy the highest basic exemption of Rs 5 lakh under the old regime.
+      The slabs are: up to Rs 5 lakh — nil; Rs 5-10 lakh — 20%; above Rs 10 lakh — 30%.
+      There is no 5% slab for super senior citizens as the entire income up to 5 lakh is exempt.
+      This benefit applies only under the old regime. Super senior citizens cannot file returns online using ITR-1 if they have certain types of income.
+    summary: "Super senior citizens (80+) get Rs 5 lakh basic exemption and no 5% slab in the old regime."
+    common_questions:
+      - "What are the tax slabs for super senior citizens?"
+      - "Do super senior citizens pay any tax below 5 lakh?"
+
+  # ── Standard Deduction ──────────────────────────────────────
+  - section_number: "STD_DEDUCTION_NEW"
+    ltree_path: "income_tax.standard_deduction.new_regime"
+    title: "Standard Deduction — New Regime"
+    content: >
+      Under the new tax regime for FY 2025-26, salaried individuals and pensioners can claim a standard deduction of Rs 75,000.
+      This was increased from Rs 50,000 in the Union Budget 2024.
+      The deduction is available from gross salary or pension income without any documentation or proof.
+      This is one of the few deductions permitted under the new regime.
+    summary: "Standard deduction of Rs 75,000 is available for salaried/pensioners in the new regime for FY 2025-26."
+    common_questions:
+      - "What is the standard deduction in the new regime?"
+      - "Is standard deduction available in the new regime?"
+
+  - section_number: "STD_DEDUCTION_OLD"
+    ltree_path: "income_tax.standard_deduction.old_regime"
+    title: "Standard Deduction — Old Regime"
+    content: >
+      Under the old tax regime, salaried individuals and pensioners can claim a standard deduction of Rs 50,000.
+      This flat deduction is available from gross salary or pension income without requiring bills or receipts.
+      It replaced the earlier transport allowance and medical reimbursement exemptions.
+      The standard deduction is in addition to other deductions like 80C and 80D that are available under the old regime.
+    summary: "Standard deduction of Rs 50,000 is available for salaried/pensioners under the old regime."
+    common_questions:
+      - "What is the standard deduction in the old regime?"
+      - "Is the standard deduction automatic or do I need to claim it?"
+
+  # ── Section 80C and Sub-sections ────────────────────────────
+  - section_number: "80C"
+    ltree_path: "income_tax.deductions.s80c"
+    title: "Section 80C — Investment Deductions"
+    content: >
+      Section 80C allows deductions up to Rs 1.5 lakh per financial year for specified investments and expenses.
+      Eligible instruments include EPF, PPF, ELSS mutual funds, NSC, 5-year FD, SCSS, life insurance premiums,
+      tuition fees for children, home loan principal repayment, Sukanya Samriddhi Yojana, and stamp duty on property.
+      The Rs 1.5 lakh limit is a combined cap shared with Section 80CCC and Section 80CCD(1).
+      This deduction is available only under the old tax regime.
+      It is the most widely used deduction section and often the first step in tax planning.
+    summary: "Section 80C offers up to Rs 1.5 lakh deduction for investments in EPF, PPF, ELSS, NSC, life insurance, etc."
+    common_questions:
+      - "How much can I save under 80C?"
+      - "What investments qualify for 80C deduction?"
+      - "Is 80C available in the new regime?"
+
+  - section_number: "80C_EPF"
+    ltree_path: "income_tax.deductions.s80c.epf"
+    title: "Section 80C — Employee Provident Fund (EPF)"
+    content: >
+      The employee's contribution to EPF (12% of basic + DA) qualifies for deduction under Section 80C.
+      This is automatically deducted from salary for most salaried employees in organizations with 20+ employees.
+      The employer's contribution is not taxable up to certain limits and does not count towards the 80C cap.
+      EPF earns around 8.15% interest (FY 2024-25 rate) and has a lock-in until retirement or resignation.
+      Interest on EPF contributions above Rs 2.5 lakh per year is now taxable.
+    summary: "Employee EPF contributions qualify for 80C deduction; automatically deducted from salary."
+    common_questions:
+      - "Does EPF count under 80C?"
+      - "Is employer's EPF contribution taxable?"
+
+  - section_number: "80C_PPF"
+    ltree_path: "income_tax.deductions.s80c.ppf"
+    title: "Section 80C — Public Provident Fund (PPF)"
+    content: >
+      PPF contributions up to Rs 1.5 lakh per year qualify for deduction under Section 80C.
+      PPF has a lock-in period of 15 years, extendable in blocks of 5 years.
+      It enjoys EEE (Exempt-Exempt-Exempt) status — contribution, interest, and maturity are all tax-free.
+      The current PPF interest rate is set quarterly by the government (around 7.1%).
+      Partial withdrawals are allowed from the 7th year. Loans can be taken from the 3rd to 6th year.
+    summary: "PPF offers 80C deduction with EEE tax status and a 15-year lock-in."
+    common_questions:
+      - "How much can I invest in PPF for tax saving?"
+      - "Is PPF interest taxable?"
+
+  - section_number: "80C_ELSS"
+    ltree_path: "income_tax.deductions.s80c.elss"
+    title: "Section 80C — Equity Linked Savings Scheme (ELSS)"
+    content: >
+      ELSS mutual funds qualify for 80C deduction and have the shortest lock-in period among 80C instruments at just 3 years.
+      They invest primarily in equities, offering potential for higher returns compared to other 80C options.
+      LTCG on ELSS above Rs 1.25 lakh is taxed at 12.5% after the lock-in period.
+      ELSS can be invested via SIP or lump sum. Each SIP installment has its own 3-year lock-in.
+      They are considered suitable for investors with moderate to high risk appetite seeking tax-saving with growth.
+    summary: "ELSS funds offer 80C deduction with the shortest 3-year lock-in and equity market returns."
+    common_questions:
+      - "What is the lock-in period for ELSS?"
+      - "Is ELSS better than PPF for tax saving?"
+
+  - section_number: "80C_NSC"
+    ltree_path: "income_tax.deductions.s80c.nsc"
+    title: "Section 80C — National Savings Certificate (NSC)"
+    content: >
+      NSC is a government-backed savings instrument with a 5-year lock-in that qualifies for 80C deduction.
+      The interest rate is set quarterly by the government (currently around 7.7%).
+      Interest earned is deemed to be reinvested and qualifies for 80C deduction in subsequent years, except the final year.
+      In the final year, the accumulated interest becomes taxable as income from other sources.
+      NSC can be purchased from any post office and has no upper investment limit, though 80C deduction is capped at Rs 1.5 lakh.
+    summary: "NSC offers guaranteed returns with 80C deduction and a 5-year lock-in period."
+    common_questions:
+      - "Is NSC interest taxable?"
+      - "What is the current NSC interest rate?"
+
+  - section_number: "80C_SSY"
+    ltree_path: "income_tax.deductions.s80c.ssy"
+    title: "Section 80C — Sukanya Samriddhi Yojana (SSY)"
+    content: >
+      SSY is a government savings scheme for the girl child, offering one of the highest interest rates among small savings schemes.
+      Deposits qualify for 80C deduction. The scheme has EEE tax status — contribution, interest, and maturity are all tax-free.
+      The account can be opened for a girl child below 10 years, with a maximum of two accounts for two daughters.
+      Minimum deposit is Rs 250 per year and maximum is Rs 1.5 lakh. Deposits are required for the first 15 years.
+      The account matures after 21 years from opening or upon marriage of the girl after age 18.
+    summary: "SSY offers highest small savings interest with EEE tax status for the girl child, qualifying under 80C."
+    common_questions:
+      - "What is Sukanya Samriddhi Yojana interest rate?"
+      - "Can I open SSY for two daughters?"
+
+  - section_number: "80C_LIP"
+    ltree_path: "income_tax.deductions.s80c.lip"
+    title: "Section 80C — Life Insurance Premium"
+    content: >
+      Premiums paid for life insurance policies for self, spouse, or children qualify for deduction under Section 80C.
+      For policies issued after 1 April 2012, the premium must not exceed 10% of the sum assured to qualify.
+      For policies issued before that date, the limit is 20% of the sum assured.
+      Endowment plans, term plans, and ULIPs all qualify, subject to the premium-to-sum-assured ratio.
+      If the policy is surrendered before 2 years, the deduction claimed earlier may be reversed and taxed.
+    summary: "Life insurance premiums qualify for 80C deduction if premium does not exceed 10% of sum assured."
+    common_questions:
+      - "Does term insurance qualify for 80C?"
+      - "What is the premium limit for 80C on life insurance?"
+
+  - section_number: "80C_TUITION"
+    ltree_path: "income_tax.deductions.s80c.tuition"
+    title: "Section 80C — Tuition Fees"
+    content: >
+      Tuition fees paid for up to two children for full-time education in India qualify for deduction under Section 80C.
+      Only the tuition fee component is eligible — development fees, transport, hostel, and donation do not qualify.
+      Both school and college (including professional courses) tuition fees are eligible.
+      The deduction is available to the parent who makes the payment. Both parents can claim for different children.
+      This is within the overall Rs 1.5 lakh limit of Section 80C.
+    summary: "Tuition fees for up to 2 children in India qualify for 80C deduction."
+    common_questions:
+      - "Can I claim tuition fees under 80C?"
+      - "Does hostel fee qualify for 80C?"
+
+  - section_number: "80C_FD_5YR"
+    ltree_path: "income_tax.deductions.s80c.fd_5yr"
+    title: "Section 80C — 5-Year Tax-Saving Fixed Deposit"
+    content: >
+      Fixed deposits with a lock-in of 5 years in scheduled banks or post offices qualify for 80C deduction.
+      The interest earned on tax-saving FDs is fully taxable as income from other sources.
+      Premature withdrawal is not allowed during the 5-year lock-in period.
+      The interest rate varies by bank but is generally between 6.5% and 7.5%.
+      TDS is deducted on interest exceeding Rs 40,000 per year (Rs 50,000 for senior citizens).
+    summary: "5-year tax-saving FDs qualify for 80C deduction but interest is fully taxable."
+    common_questions:
+      - "Is the interest on tax-saving FD taxable?"
+      - "Can I break a tax-saving FD before 5 years?"
+
+  - section_number: "80C_SCSS"
+    ltree_path: "income_tax.deductions.s80c.scss"
+    title: "Section 80C — Senior Citizens Savings Scheme (SCSS)"
+    content: >
+      SCSS is available to individuals aged 60+ (or 55+ for retired defence/VRS employees) and qualifies for 80C deduction.
+      It offers one of the highest interest rates among government schemes, paid quarterly.
+      Maximum investment is Rs 30 lakh per individual. The maturity period is 5 years, extendable by 3 years.
+      Interest is taxable as income from other sources. TDS is deducted if interest exceeds Rs 50,000 per year.
+      SCSS can be opened at post offices or authorized banks.
+    summary: "SCSS offers high interest for senior citizens with 80C deduction and a 5-year tenure."
+    common_questions:
+      - "What is the maximum investment in SCSS?"
+      - "Is SCSS interest taxable?"
+
+  - section_number: "80C_ULIP"
+    ltree_path: "income_tax.deductions.s80c.ulip"
+    title: "Section 80C — Unit Linked Insurance Plan (ULIP)"
+    content: >
+      ULIP premiums qualify for 80C deduction provided the premium does not exceed 10% of the sum assured.
+      ULIPs combine insurance with investment in equity and debt funds.
+      They have a minimum lock-in of 5 years. Maturity proceeds are tax-free if the annual premium is up to Rs 2.5 lakh.
+      For policies with annual premium exceeding Rs 2.5 lakh (issued after 1 Feb 2021), gains are taxed as capital gains.
+      Charges in ULIPs (mortality, fund management, allocation) can be higher than separate term + mutual fund investments.
+    summary: "ULIP premiums qualify for 80C; maturity is tax-free if annual premium is within Rs 2.5 lakh."
+    common_questions:
+      - "Are ULIPs good for tax saving?"
+      - "Is ULIP maturity taxable?"
+
+  - section_number: "80C_STAMP_DUTY"
+    ltree_path: "income_tax.deductions.s80c.stamp_duty"
+    title: "Section 80C — Stamp Duty and Registration Charges"
+    content: >
+      Stamp duty and registration charges paid on purchase of a residential property qualify for deduction under Section 80C.
+      This deduction is available in the year of payment, even if the property purchase is funded by a home loan.
+      The home loan principal repayment also qualifies under 80C, subject to the combined Rs 1.5 lakh limit.
+      If the property is sold within 5 years, the 80C deduction claimed on stamp duty will be reversed and added back to income.
+      This is a one-time benefit available in the year of property purchase.
+    summary: "Stamp duty and registration charges on property purchase qualify for 80C in the year of payment."
+    common_questions:
+      - "Can I claim stamp duty under 80C?"
+      - "Is home loan principal eligible under 80C along with stamp duty?"
+
+  # ── Section 80CCC ───────────────────────────────────────────
+  - section_number: "80CCC"
+    ltree_path: "income_tax.deductions.s80ccc"
+    title: "Section 80CCC — Pension Fund Contribution"
+    content: >
+      Section 80CCC allows deduction for contributions to certain pension funds offered by life insurance companies.
+      The deduction is subject to the combined Rs 1.5 lakh limit shared with Section 80C and 80CCD(1).
+      Plans like Jeevan Suraksha, LIC Pension plans, and similar annuity products from insurers qualify.
+      The pension received from these plans is taxable in the year of receipt.
+      If the plan is surrendered, the surrender value is taxable in the year of receipt.
+      This deduction is available only under the old tax regime.
+    summary: "Section 80CCC allows deduction for pension fund contributions, within the combined 80C/80CCC/80CCD(1) limit of Rs 1.5 lakh."
+    common_questions:
+      - "What is Section 80CCC?"
+      - "Is 80CCC separate from 80C?"
+
+  # ── Section 80CCD ───────────────────────────────────────────
+  - section_number: "80CCD_OVERVIEW"
+    ltree_path: "income_tax.deductions.s80ccd.overview"
+    title: "Section 80CCD — National Pension System (NPS) Deductions"
+    content: >
+      Section 80CCD provides tax deductions for contributions to the National Pension System (NPS) and Atal Pension Yojana (APY).
+      It has three sub-sections: 80CCD(1) for employee contribution within the 80C cap, 80CCD(1B) for additional Rs 50,000,
+      and 80CCD(2) for employer contribution.
+      NPS is a long-term retirement savings vehicle regulated by PFRDA.
+      At retirement, 60% of the corpus can be withdrawn tax-free, and 40% must be used to purchase an annuity.
+      The annuity income is taxable in the year of receipt.
+    summary: "Section 80CCD covers NPS deductions through sub-sections for employee, additional, and employer contributions."
+    common_questions:
+      - "What are the tax benefits of NPS?"
+      - "How much total deduction can I get from NPS?"
+
+  - section_number: "80CCD_1"
+    ltree_path: "income_tax.deductions.s80ccd.s80ccd_1"
+    title: "Section 80CCD(1) — Employee NPS Contribution"
+    content: >
+      Section 80CCD(1) allows deduction for an employee's own contribution to NPS, up to 10% of salary (basic + DA).
+      For self-employed individuals, the limit is 20% of gross total income.
+      This deduction falls within the combined Rs 1.5 lakh ceiling of Sections 80C, 80CCC, and 80CCD(1).
+      If you have already exhausted Rs 1.5 lakh through other 80C investments, no additional benefit comes from 80CCD(1).
+      To get benefit beyond 80C, use Section 80CCD(1B) for an additional Rs 50,000.
+    summary: "80CCD(1) covers employee NPS contribution up to 10% of salary, within the combined 80C/CCC/CCD(1) cap of Rs 1.5 lakh."
+    common_questions:
+      - "Does NPS contribution come under 80C?"
+      - "What is the limit of 80CCD(1)?"
+
+  - section_number: "80CCD_1B"
+    ltree_path: "income_tax.deductions.s80ccd.s80ccd_1b"
+    title: "Section 80CCD(1B) — Additional NPS Deduction"
+    content: >
+      Section 80CCD(1B) provides an additional deduction of up to Rs 50,000 for contributions to NPS.
+      This is over and above the Rs 1.5 lakh limit of Section 80C/80CCC/80CCD(1).
+      This means a taxpayer can claim up to Rs 2 lakh total (1.5L under 80C + 50K under 80CCD(1B)) by investing in NPS.
+      This deduction is available only under the old tax regime.
+      It is one of the most popular additional deductions for tax planning beyond the basic 80C limit.
+    summary: "80CCD(1B) provides an additional Rs 50,000 deduction for NPS over the 80C limit, available only in the old regime."
+    common_questions:
+      - "How to get extra 50,000 deduction for NPS?"
+      - "Is 80CCD(1B) available in the new regime?"
+
+  - section_number: "80CCD_2"
+    ltree_path: "income_tax.deductions.s80ccd.s80ccd_2"
+    title: "Section 80CCD(2) — Employer NPS Contribution"
+    content: >
+      Section 80CCD(2) allows deduction for the employer's contribution to an employee's NPS account.
+      The limit is 14% of salary (basic + DA) for central/state government employees and 10% for private sector employees.
+      This deduction has no upper cap beyond the percentage limit and is over and above the Section 80C ceiling.
+      Crucially, this deduction is available in both the old and new tax regimes — making it one of the few deductions
+      available under the new regime.
+      The employer's contribution first gets added to the employee's salary and then claimed as a deduction.
+    summary: "80CCD(2) covers employer NPS contribution (14% govt / 10% private) — available in both tax regimes."
+    common_questions:
+      - "Is employer NPS deduction available in the new regime?"
+      - "What is the limit for employer NPS contribution deduction?"
+
+  # ── Section 80D ─────────────────────────────────────────────
+  - section_number: "80D_OVERVIEW"
+    ltree_path: "income_tax.deductions.s80d.overview"
+    title: "Section 80D — Health Insurance Premium Deduction"
+    content: >
+      Section 80D allows deduction for health insurance premiums and preventive health check-ups.
+      The deduction covers premiums paid for self, spouse, dependent children, and parents.
+      For individuals below 60, the limit is Rs 25,000 for self/family and Rs 25,000 for parents.
+      For senior citizen parents (60+), the parent limit increases to Rs 50,000.
+      If the taxpayer is also a senior citizen, both limits are Rs 50,000 each, allowing a maximum of Rs 1 lakh.
+      This deduction is available only under the old tax regime.
+      Payment must be made by any mode other than cash (except for preventive health check-up).
+    summary: "Section 80D allows Rs 25,000-50,000 deduction for health insurance premiums for self, family, and parents."
+    common_questions:
+      - "How much deduction can I claim under 80D?"
+      - "Can I claim 80D for parents' health insurance?"
+      - "Is 80D available in the new regime?"
+
+  - section_number: "80D_SELF"
+    ltree_path: "income_tax.deductions.s80d.self_family"
+    title: "Section 80D — Self and Family Health Insurance"
+    content: >
+      Under Section 80D, premiums paid for health insurance of self, spouse, and dependent children qualify for deduction.
+      The limit is Rs 25,000 per year if the taxpayer is below 60 years.
+      If the taxpayer is a senior citizen (60+), the limit increases to Rs 50,000.
+      This covers mediclaim policies, critical illness plans, and top-up health insurance plans.
+      For individuals without health insurance who are senior citizens, medical expenditure up to Rs 50,000 also qualifies.
+    summary: "80D allows Rs 25,000 (below 60) or Rs 50,000 (60+) for self and family health insurance premiums."
+    common_questions:
+      - "What is the 80D limit for self and family?"
+      - "Does 80D cover critical illness insurance?"
+
+  - section_number: "80D_PARENTS"
+    ltree_path: "income_tax.deductions.s80d.parents"
+    title: "Section 80D — Parents' Health Insurance"
+    content: >
+      Premiums paid for health insurance of parents qualify for a separate deduction under Section 80D.
+      If parents are below 60 years, the limit is Rs 25,000.
+      If either parent is 60 years or above, the limit is Rs 50,000.
+      This deduction is in addition to the self/family deduction, allowing a combined maximum of Rs 1 lakh
+      (Rs 50,000 self + Rs 50,000 parents) if both taxpayer and parents are senior citizens.
+      Only the person paying the premium can claim the deduction — parents cannot claim if the child pays.
+    summary: "80D allows Rs 25,000 (parents below 60) or Rs 50,000 (parents 60+) for parents' health insurance."
+    common_questions:
+      - "Can I claim both self and parents under 80D?"
+      - "What if my parents are senior citizens — what is the 80D limit?"
+
+  - section_number: "80D_PREVENTIVE"
+    ltree_path: "income_tax.deductions.s80d.preventive_checkup"
+    title: "Section 80D — Preventive Health Check-up"
+    content: >
+      Section 80D allows deduction of up to Rs 5,000 per year for preventive health check-up expenses.
+      This amount is included within (not in addition to) the overall Section 80D limits.
+      Unlike regular health insurance premium, preventive check-up can be paid in cash.
+      The deduction covers check-ups for self, spouse, dependent children, and parents.
+      Preventive check-ups include annual health screenings, diagnostic tests, and full-body check-ups.
+    summary: "Preventive health check-up expenses up to Rs 5,000 qualify under 80D, within the overall limit."
+    common_questions:
+      - "Can I claim health check-up expenses under 80D?"
+      - "Is the 5,000 preventive check-up limit separate from 80D?"
+
+  # ── Section 80E ─────────────────────────────────────────────
+  - section_number: "80E"
+    ltree_path: "income_tax.deductions.s80e"
+    title: "Section 80E — Education Loan Interest Deduction"
+    content: >
+      Section 80E allows deduction for interest paid on education loans taken for higher education.
+      There is no upper limit on the amount of interest that can be claimed — the entire interest component is deductible.
+      The deduction is available for 8 years from the year in which interest repayment begins, or until the interest is fully repaid.
+      The loan must be from a recognized financial institution or approved charitable institution.
+      It covers higher education for self, spouse, children, or a student for whom the taxpayer is the legal guardian.
+      Only the interest component is deductible; principal repayment qualifies under Section 80C instead.
+      This deduction is available only under the old tax regime.
+    summary: "Section 80E provides unlimited deduction on education loan interest for up to 8 years."
+    common_questions:
+      - "Is there a limit on 80E deduction?"
+      - "Can I claim 80E for my child's education loan?"
+      - "Does 80E cover foreign education loans?"
+
+  # ── Section 80G ─────────────────────────────────────────────
+  - section_number: "80G_OVERVIEW"
+    ltree_path: "income_tax.deductions.s80g.overview"
+    title: "Section 80G — Donations to Charitable Institutions"
+    content: >
+      Section 80G provides deduction for donations made to specified charitable funds and institutions.
+      The deduction varies based on the category of the fund or institution — it can be 100% or 50% of the donation amount.
+      Some donations have a qualifying limit of 10% of adjusted gross total income, while others have no limit.
+      This results in four categories: 100% without limit, 100% with limit, 50% without limit, and 50% with limit.
+      Donations must be made to institutions with valid 80G registration. Cash donations above Rs 2,000 are not eligible.
+      Donations in kind (goods, services) do not qualify for deduction under Section 80G.
+      This deduction is available only under the old tax regime.
+    summary: "Section 80G allows 50-100% deduction on donations to approved charitable institutions."
+    common_questions:
+      - "How much tax benefit do I get for donations?"
+      - "Which donations qualify for 100% deduction?"
+
+  - section_number: "80G_FULL_NO_LIMIT"
+    ltree_path: "income_tax.deductions.s80g.full_no_limit"
+    title: "Section 80G — 100% Deduction Without Limit"
+    content: >
+      Certain donations qualify for 100% deduction with no upper limit under Section 80G.
+      These include donations to the Prime Minister's National Relief Fund, National Defence Fund,
+      National Foundation for Communal Harmony, and approved university/educational institutions for research.
+      The Africa Fund and the National Illness Assistance Fund also fall in this category.
+      These donations provide the maximum tax benefit as the entire amount is deductible without any cap.
+    summary: "Donations to PM National Relief Fund and similar qualify for 100% deduction without any limit."
+    common_questions:
+      - "Which donations give 100% deduction without limit?"
+      - "Is donation to PM Relief Fund fully deductible?"
+
+  - section_number: "80G_FULL_WITH_LIMIT"
+    ltree_path: "income_tax.deductions.s80g.full_with_limit"
+    title: "Section 80G — 100% Deduction With 10% Limit"
+    content: >
+      Some donations qualify for 100% deduction but are subject to a qualifying limit of 10% of adjusted gross total income.
+      This means you can claim 100% of the donated amount as deduction, but the qualifying donation cannot exceed 10% of your income.
+      Donations to local government bodies for family planning and approved notified temples fall in this category.
+      This category provides full deduction per rupee donated but caps the total eligible amount.
+    summary: "Certain donations qualify for 100% deduction capped at 10% of adjusted gross total income."
+    common_questions:
+      - "What donations give 100% deduction with a limit?"
+
+  - section_number: "80G_HALF_NO_LIMIT"
+    ltree_path: "income_tax.deductions.s80g.half_no_limit"
+    title: "Section 80G — 50% Deduction Without Limit"
+    content: >
+      Some donations qualify for 50% deduction with no upper limit under Section 80G.
+      Donations to the Jawaharlal Nehru Memorial Fund and the Prime Minister's Drought Relief Fund fall in this category.
+      For every Rs 100 donated, Rs 50 is allowed as deduction with no cap on total amount.
+      These donations are less common but offer uncapped tax benefit proportional to the donation.
+    summary: "Certain fund donations qualify for 50% deduction without any upper limit."
+    common_questions:
+      - "Which donations get 50% deduction with no limit?"
+
+  - section_number: "80G_HALF_WITH_LIMIT"
+    ltree_path: "income_tax.deductions.s80g.half_with_limit"
+    title: "Section 80G — 50% Deduction With 10% Limit"
+    content: >
+      Most donations to registered charitable trusts and NGOs fall in this category — 50% deduction subject to 10% of adjusted gross total income.
+      This is the most commonly used category of 80G deductions.
+      The qualifying donation is first capped at 10% of your adjusted gross total income, and then 50% of that is allowed as deduction.
+      For example, if your income is Rs 10 lakh, qualifying donation is capped at Rs 1 lakh, and deduction is Rs 50,000.
+      Ensure the charity has a valid 80G registration number and provide their PAN on your tax return.
+    summary: "Most NGO/trust donations qualify for 50% deduction, subject to 10% of income qualifying limit."
+    common_questions:
+      - "How much deduction do I get for donating to an NGO?"
+      - "What is the 10% limit in 80G?"
+
+  # ── Section 80TTA and 80TTB ─────────────────────────────────
+  - section_number: "80TTA"
+    ltree_path: "income_tax.deductions.s80tta"
+    title: "Section 80TTA — Savings Account Interest Deduction"
+    content: >
+      Section 80TTA allows individuals (below 60 years) and HUFs to claim deduction of up to Rs 10,000
+      on interest earned from savings accounts in banks, post offices, and cooperative societies.
+      This deduction does not apply to interest from fixed deposits, recurring deposits, or time deposits.
+      If total savings interest exceeds Rs 10,000, only Rs 10,000 is deductible and the rest is taxable.
+      Senior citizens (60+) should claim under Section 80TTB instead, which offers a higher limit.
+      This deduction is available only under the old tax regime.
+    summary: "Section 80TTA provides Rs 10,000 deduction on savings account interest for non-senior citizens."
+    common_questions:
+      - "Is savings account interest taxable?"
+      - "What is the limit of 80TTA deduction?"
+
+  - section_number: "80TTB"
+    ltree_path: "income_tax.deductions.s80ttb"
+    title: "Section 80TTB — Interest Income Deduction for Senior Citizens"
+    content: >
+      Section 80TTB allows senior citizens (60+) to claim deduction of up to Rs 50,000 on interest income.
+      Unlike 80TTA, this covers interest from savings accounts, fixed deposits, recurring deposits, and post office deposits.
+      Senior citizens claiming 80TTB cannot simultaneously claim 80TTA — the two sections are mutually exclusive.
+      This is a significant benefit for senior citizens who rely on interest income from deposits.
+      This deduction is available only under the old tax regime.
+    summary: "Section 80TTB provides Rs 50,000 deduction on all interest income for senior citizens (60+)."
+    common_questions:
+      - "Can senior citizens claim deduction on FD interest?"
+      - "What is the difference between 80TTA and 80TTB?"
+
+  # ── Section 80U and 80DD ────────────────────────────────────
+  - section_number: "80U"
+    ltree_path: "income_tax.deductions.s80u"
+    title: "Section 80U — Deduction for Person with Disability"
+    content: >
+      Section 80U provides a flat deduction to resident individuals who have a certified disability.
+      The deduction is Rs 75,000 for disability of 40-79% and Rs 1,25,000 for severe disability of 80% or more.
+      A certificate from a government hospital or authorized medical authority is required.
+      Disabilities covered include blindness, locomotor disability, mental retardation, hearing impairment, and autism.
+      This is a flat deduction regardless of actual expenditure — no bills or receipts needed.
+      Available only under the old tax regime.
+    summary: "Section 80U provides flat Rs 75,000 or Rs 1,25,000 deduction for individuals with certified disability."
+    common_questions:
+      - "What deduction is available for disabled persons?"
+      - "What disabilities qualify for Section 80U?"
+
+  - section_number: "80DD"
+    ltree_path: "income_tax.deductions.s80dd"
+    title: "Section 80DD — Deduction for Disabled Dependent"
+    content: >
+      Section 80DD provides deduction for expenses incurred on medical treatment, training, and rehabilitation of a disabled dependent.
+      The dependent can be spouse, children, parents, or siblings who have a specified disability.
+      The deduction is Rs 75,000 for disability of 40-79% and Rs 1,25,000 for severe disability of 80% or more.
+      This is a flat deduction regardless of actual expenditure. A disability certificate from a government hospital is required.
+      If the disabled dependent predeceases the taxpayer, any amount deposited in a scheme for their benefit is taxed.
+      Available only under the old tax regime.
+    summary: "Section 80DD provides Rs 75,000 or Rs 1,25,000 flat deduction for expenses on a disabled dependent."
+    common_questions:
+      - "Can I claim deduction for a disabled family member?"
+      - "What is the difference between 80U and 80DD?"
+
+  # ── Section 24(b) ───────────────────────────────────────────
+  - section_number: "24B_OVERVIEW"
+    ltree_path: "income_tax.deductions.s24b.overview"
+    title: "Section 24(b) — Home Loan Interest Deduction"
+    content: >
+      Section 24(b) allows deduction for interest paid on a home loan from the income under the head 'house property'.
+      For a self-occupied property, the maximum deduction is Rs 2 lakh per year.
+      For a let-out (rented) property, there is no upper limit on interest deduction.
+      The loan must be for purchase or construction of a house property. Construction must be completed within 5 years of taking the loan.
+      Pre-construction interest can be claimed in 5 equal installments from the year of completion.
+      This deduction is available only under the old tax regime.
+    summary: "Section 24(b) allows up to Rs 2 lakh deduction on home loan interest for self-occupied property."
+    common_questions:
+      - "How much home loan interest can I deduct?"
+      - "Is there a limit on home loan interest deduction for rented property?"
+
+  - section_number: "24B_SELF_OCCUPIED"
+    ltree_path: "income_tax.deductions.s24b.self_occupied"
+    title: "Section 24(b) — Self-Occupied Property Interest"
+    content: >
+      For a self-occupied property, the deduction for home loan interest is capped at Rs 2 lakh per financial year.
+      If the construction is not completed within 5 years of taking the loan, the limit reduces to Rs 30,000.
+      The net annual value of a self-occupied property is deemed to be zero, so the Rs 2 lakh deduction creates a loss
+      from house property that can be set off against salary or other income.
+      However, the maximum loss from house property that can be set off against other income is Rs 2 lakh per year.
+      Excess loss can be carried forward for 8 years to set off against future house property income.
+    summary: "Home loan interest for self-occupied property is deductible up to Rs 2 lakh (Rs 30,000 if delayed completion)."
+    common_questions:
+      - "What is the home loan interest limit for self-occupied property?"
+      - "What happens if construction takes more than 5 years?"
+
+  - section_number: "24B_LET_OUT"
+    ltree_path: "income_tax.deductions.s24b.let_out"
+    title: "Section 24(b) — Let-Out Property Interest"
+    content: >
+      For a let-out (rented) property, the entire home loan interest can be claimed as deduction without any upper limit.
+      The rental income is first reduced by a standard deduction of 30% for repairs and maintenance.
+      After the 30% standard deduction, the home loan interest is subtracted to arrive at net income from house property.
+      If the interest exceeds the net rental income, the resulting loss can be set off against other income up to Rs 2 lakh.
+      Any remaining loss is carried forward for 8 assessment years.
+    summary: "Home loan interest for let-out property is fully deductible with no cap, but loss set-off is limited to Rs 2 lakh."
+    common_questions:
+      - "Is there a limit on home loan interest for rented property?"
+      - "How is rental income taxed after home loan interest?"
+
+  # ── Rebate under 87A ────────────────────────────────────────
+  - section_number: "S87A_NEW"
+    ltree_path: "income_tax.rebate.s87a_new"
+    title: "Section 87A Rebate — New Regime"
+    content: >
+      Under the new tax regime for FY 2025-26, a rebate under Section 87A is available if the total taxable income
+      does not exceed Rs 12 lakh (after standard deduction). The rebate effectively makes the entire tax liability nil.
+      This means a salaried person with income up to Rs 12,75,000 (12L + 75K standard deduction) pays zero tax.
+      The rebate applies to the total tax computed on income before cess and surcharge.
+      If taxable income exceeds Rs 12 lakh even by Re 1, the rebate is not available and full tax applies.
+      Marginal relief ensures the additional tax does not exceed the additional income above Rs 12 lakh.
+    summary: "Section 87A rebate in new regime makes income up to Rs 12 lakh tax-free (Rs 12.75L for salaried)."
+    common_questions:
+      - "How much income is tax-free in the new regime?"
+      - "What is the 87A rebate limit in the new regime?"
+
+  - section_number: "S87A_OLD"
+    ltree_path: "income_tax.rebate.s87a_old"
+    title: "Section 87A Rebate — Old Regime"
+    content: >
+      Under the old tax regime, Section 87A provides a rebate of up to Rs 12,500 for resident individuals
+      whose total taxable income does not exceed Rs 5 lakh.
+      This effectively makes income up to Rs 5 lakh tax-free under the old regime.
+      The rebate amount is the lower of the income tax payable or Rs 12,500.
+      If taxable income exceeds Rs 5 lakh, no rebate is available and tax is computed on the full income.
+      This rebate is available only to resident individuals, not HUFs or NRIs.
+    summary: "Section 87A rebate in old regime provides up to Rs 12,500 rebate for income up to Rs 5 lakh."
+    common_questions:
+      - "What is the 87A rebate in the old regime?"
+      - "Is income up to 5 lakh tax-free in the old regime?"
+
+  # ── Surcharge ───────────────────────────────────────────────
+  - section_number: "SURCHARGE_NEW"
+    ltree_path: "income_tax.surcharge.new_regime"
+    title: "Surcharge on Income Tax — New Regime"
+    content: >
+      Under the new tax regime, surcharge applies on total income above Rs 50 lakh.
+      The rates are: 10% for income Rs 50 lakh to Rs 1 crore; 15% for Rs 1 crore to Rs 2 crore;
+      and 25% for income exceeding Rs 2 crore. The maximum surcharge rate is capped at 25% under the new regime.
+      Surcharge is calculated on the income tax amount (not on income) and is applied before cess.
+      Marginal relief ensures that the increase in tax due to surcharge does not exceed the increase in income above the threshold.
+    summary: "New regime surcharge: 10% (50L-1Cr), 15% (1-2Cr), 25% (above 2Cr); capped at 25%."
+    common_questions:
+      - "What is the surcharge rate in the new regime?"
+      - "Is surcharge capped at 25% in the new regime?"
+
+  - section_number: "SURCHARGE_OLD"
+    ltree_path: "income_tax.surcharge.old_regime"
+    title: "Surcharge on Income Tax — Old Regime"
+    content: >
+      Under the old tax regime, surcharge rates are: 10% for income Rs 50 lakh to Rs 1 crore;
+      15% for Rs 1 crore to Rs 2 crore; 25% for Rs 2 crore to Rs 5 crore;
+      and 37% for income exceeding Rs 5 crore.
+      The old regime has a higher maximum surcharge of 37% compared to 25% in the new regime.
+      Marginal relief is available at each threshold.
+      For income from capital gains on listed equity (Section 111A and 112A), the surcharge is capped at 15%.
+    summary: "Old regime surcharge: 10% (50L-1Cr), 15% (1-2Cr), 25% (2-5Cr), 37% (above 5Cr)."
+    common_questions:
+      - "What is the surcharge in the old regime?"
+      - "Is the old regime surcharge higher than the new regime?"
+
+  - section_number: "SURCHARGE_MARGINAL"
+    ltree_path: "income_tax.surcharge.marginal_relief"
+    title: "Surcharge — Marginal Relief"
+    content: >
+      Marginal relief ensures that the additional tax (including surcharge) on income exceeding a surcharge threshold
+      does not exceed the additional income above that threshold.
+      For example, if your income is Rs 51 lakh, the surcharge on the full tax should not make you worse off
+      than someone earning Rs 50 lakh. The excess tax is limited to the excess income (Rs 1 lakh).
+      Marginal relief is automatically calculated by the income tax department and applies at each surcharge slab boundary.
+      This provision prevents a sudden jump in effective tax rate at the surcharge thresholds.
+    summary: "Marginal relief caps the additional surcharge burden to the additional income above the surcharge threshold."
+    common_questions:
+      - "What is marginal relief in income tax?"
+      - "How does marginal relief work for surcharge?"
+
+  # ── Cess ────────────────────────────────────────────────────
+  - section_number: "CESS"
+    ltree_path: "income_tax.cess.health_education"
+    title: "Health and Education Cess"
+    content: >
+      A Health and Education Cess of 4% is levied on the total income tax including surcharge.
+      This cess applies to all taxpayers irrespective of income level, regime, or residential status.
+      The cess was introduced in 2018 replacing the earlier 3% Education Cess and Secondary & Higher Education Cess.
+      Cess is not deductible as a business expense and cannot be claimed as a deduction.
+      The formula is: Total Tax Payable = (Income Tax + Surcharge) x 1.04.
+    summary: "4% Health and Education Cess applies on income tax plus surcharge for all taxpayers."
+    common_questions:
+      - "What is the cess rate on income tax?"
+      - "Is cess applicable in both old and new regime?"
+
+  # ── Capital Gains ───────────────────────────────────────────
+  - section_number: "CG_OVERVIEW"
+    ltree_path: "income_tax.capital_gains.overview"
+    title: "Capital Gains Tax — Overview"
+    content: >
+      Capital gains arise when a capital asset is sold for more than its cost of acquisition.
+      Gains are classified as Short-Term Capital Gains (STCG) or Long-Term Capital Gains (LTCG) based on the holding period.
+      For listed equity and equity mutual funds, the holding period for LTCG is 12 months.
+      For property, unlisted shares, and debt funds, the holding period for LTCG is 24 months.
+      For gold and other assets, the holding period is also 24 months.
+      Capital gains tax rates vary by asset type and holding period.
+      Losses from capital assets can be set off and carried forward under specific rules.
+    summary: "Capital gains are taxed based on holding period (short-term vs long-term) and asset type."
+    common_questions:
+      - "What is capital gains tax?"
+      - "How is the holding period determined for capital gains?"
+      - "What are STCG and LTCG?"
+
+  - section_number: "CG_LISTED_EQUITY_STCG"
+    ltree_path: "income_tax.capital_gains.listed_equity_stcg"
+    title: "STCG on Listed Equity (Section 111A)"
+    content: >
+      Short-term capital gains on listed equity shares and equity-oriented mutual funds (held less than 12 months)
+      are taxed at a flat rate of 20% under Section 111A for FY 2025-26.
+      This rate was increased from 15% in Budget 2024.
+      STT (Securities Transaction Tax) must be paid on the sale transaction for Section 111A to apply.
+      If STT is not paid, the gains are added to regular income and taxed at slab rates.
+      Surcharge on these gains is capped at 15% even under the old regime.
+    summary: "STCG on listed equity is taxed at 20% flat (Section 111A) if STT is paid."
+    common_questions:
+      - "What is the STCG tax rate on shares?"
+      - "Is STCG on mutual funds 15% or 20%?"
+
+  - section_number: "CG_LISTED_EQUITY_LTCG"
+    ltree_path: "income_tax.capital_gains.listed_equity_ltcg"
+    title: "LTCG on Listed Equity (Section 112A)"
+    content: >
+      Long-term capital gains on listed equity shares and equity mutual funds (held 12+ months) are taxed at 12.5%
+      on gains exceeding Rs 1.25 lakh per year under Section 112A.
+      The first Rs 1.25 lakh of LTCG in a financial year is exempt. This threshold was increased from Rs 1 lakh in Budget 2024.
+      The tax rate was also increased from 10% to 12.5% in Budget 2024.
+      Indexation benefit is not available for these assets.
+      STT must be paid on the sale for Section 112A to apply.
+    summary: "LTCG on listed equity above Rs 1.25 lakh is taxed at 12.5% under Section 112A."
+    common_questions:
+      - "What is the LTCG tax on shares?"
+      - "How much LTCG is exempt per year?"
+      - "Is indexation available on equity LTCG?"
+
+  - section_number: "CG_EQUITY_MF_STCG"
+    ltree_path: "income_tax.capital_gains.equity_mf_stcg"
+    title: "STCG on Equity Mutual Funds"
+    content: >
+      Short-term capital gains on equity-oriented mutual funds (holding period less than 12 months) are taxed at 20%
+      under Section 111A, same as listed equity shares.
+      Equity-oriented funds are those that invest 65% or more of their corpus in Indian equity shares.
+      This includes ELSS funds (after lock-in), large-cap, mid-cap, small-cap, multi-cap, and index funds.
+      Hybrid funds with equity allocation above 65% are also classified as equity-oriented for tax purposes.
+    summary: "STCG on equity mutual funds is taxed at 20% flat, same as listed shares."
+    common_questions:
+      - "What is STCG tax on mutual funds?"
+      - "Are index funds taxed like equity funds?"
+
+  - section_number: "CG_EQUITY_MF_LTCG"
+    ltree_path: "income_tax.capital_gains.equity_mf_ltcg"
+    title: "LTCG on Equity Mutual Funds"
+    content: >
+      Long-term capital gains on equity mutual funds (held 12+ months) are taxed at 12.5% on gains above Rs 1.25 lakh
+      per year under Section 112A.
+      This is identical to the treatment of listed equity shares.
+      The Rs 1.25 lakh exemption is combined across all Section 112A assets (shares + equity MFs).
+      No indexation benefit is available. Investors should consider tax-loss harvesting to utilize the annual exemption.
+    summary: "LTCG on equity mutual funds above Rs 1.25 lakh is taxed at 12.5%, same as listed equity."
+    common_questions:
+      - "Is LTCG on equity mutual funds taxed differently from shares?"
+      - "Can I harvest LTCG to use the 1.25 lakh exemption?"
+
+  - section_number: "CG_PROPERTY_STCG"
+    ltree_path: "income_tax.capital_gains.property_stcg"
+    title: "STCG on Property (Held Less Than 24 Months)"
+    content: >
+      Short-term capital gains on property held for less than 24 months are added to the taxpayer's total income
+      and taxed at normal slab rates.
+      The holding period was reduced from 36 months to 24 months from FY 2017-18.
+      The cost of acquisition includes purchase price, stamp duty, registration charges, and improvement costs.
+      If the property was received as gift or inheritance, the cost and holding period of the previous owner are considered.
+      TDS at 1% is deducted by the buyer if the sale consideration exceeds Rs 50 lakh.
+    summary: "STCG on property (held <24 months) is taxed at normal slab rates."
+    common_questions:
+      - "What is STCG on property?"
+      - "After how many years is property sale LTCG?"
+
+  - section_number: "CG_PROPERTY_LTCG"
+    ltree_path: "income_tax.capital_gains.property_ltcg"
+    title: "LTCG on Property (Held 24+ Months)"
+    content: >
+      Long-term capital gains on property held for 24 months or more are taxed at 12.5% without indexation
+      from FY 2024-25 onwards (Budget 2024 change).
+      Previously, LTCG on property was taxed at 20% with indexation benefit.
+      For properties bought before 23 July 2024, taxpayers can choose the lower of: 12.5% without indexation
+      or 20% with indexation (computed up to 2024-25 CII).
+      Capital gains exemptions under Sections 54, 54EC, and 54F can reduce or eliminate LTCG tax.
+      TDS at 1% is deducted by the buyer on the sale consideration if it exceeds Rs 50 lakh.
+    summary: "LTCG on property is taxed at 12.5% without indexation; exemptions under 54/54EC/54F available."
+    common_questions:
+      - "What is the LTCG tax on property sale?"
+      - "Is indexation still available on property?"
+      - "How can I save tax on property sale?"
+
+  - section_number: "CG_DEBT_MF"
+    ltree_path: "income_tax.capital_gains.debt_mf"
+    title: "Capital Gains on Debt Mutual Funds"
+    content: >
+      From FY 2023-24, gains on debt mutual funds (less than 65% equity) are always taxed at slab rates
+      regardless of the holding period, as per the Finance Act 2023 amendment.
+      There is no LTCG benefit or indexation for debt mutual funds purchased on or after 1 April 2023.
+      For units purchased before 1 April 2023 and held for 36+ months, grandfathered LTCG at 20% with indexation applies.
+      Debt funds include liquid funds, money market funds, gilt funds, and corporate bond funds.
+      This change significantly reduced the tax efficiency of debt mutual funds compared to bank FDs.
+    summary: "Debt mutual fund gains are taxed at slab rates regardless of holding period (from FY 2023-24)."
+    common_questions:
+      - "How are debt mutual funds taxed?"
+      - "Is there LTCG benefit on debt funds?"
+
+  - section_number: "CG_GOLD"
+    ltree_path: "income_tax.capital_gains.gold"
+    title: "Capital Gains on Gold"
+    content: >
+      Gold held as physical gold, gold ETFs, or sovereign gold bonds has different tax treatments.
+      Physical gold and gold ETFs: LTCG (held 24+ months) is taxed at 12.5% without indexation (from Budget 2024).
+      STCG on gold (held <24 months) is taxed at slab rates.
+      Sovereign Gold Bonds (SGBs) held to maturity (8 years) are completely exempt from capital gains tax.
+      If SGBs are sold before maturity, LTCG is taxed at 12.5% without indexation.
+      Gold mutual funds follow the debt mutual fund taxation rules (slab rates regardless of holding period).
+    summary: "Gold LTCG is 12.5% without indexation; SGB maturity gains are tax-exempt."
+    common_questions:
+      - "How is gold taxed in India?"
+      - "Are sovereign gold bonds tax-free?"
+
+  - section_number: "CG_UNLISTED"
+    ltree_path: "income_tax.capital_gains.unlisted_shares"
+    title: "Capital Gains on Unlisted Shares"
+    content: >
+      Unlisted shares have a holding period of 24 months for LTCG classification.
+      STCG on unlisted shares (held <24 months) is taxed at normal slab rates.
+      LTCG on unlisted shares is taxed at 12.5% without indexation from FY 2024-25 onwards.
+      Previously, LTCG was taxed at 20% with indexation benefit.
+      Fair Market Value (FMV) on the date of sale must be determined by a merchant banker for unlisted shares.
+      TDS may apply on the sale of unlisted shares to non-residents.
+    summary: "Unlisted shares LTCG (24+ months) is taxed at 12.5% without indexation."
+    common_questions:
+      - "How are unlisted shares taxed?"
+      - "What is the holding period for LTCG on unlisted shares?"
+
+  - section_number: "CG_CRYPTO"
+    ltree_path: "income_tax.capital_gains.crypto_vda"
+    title: "Crypto / VDA Taxation (Section 115BBH)"
+    content: >
+      Income from transfer of Virtual Digital Assets (VDAs) including cryptocurrencies and NFTs is taxed at a flat 30%
+      under Section 115BBH, regardless of holding period or income slab.
+      No deduction is allowed except the cost of acquisition — expenses like transaction fees, mining costs are not deductible.
+      Losses from VDAs cannot be set off against any other income, and cannot be carried forward.
+      TDS at 1% under Section 194S applies on the payment for transfer of VDAs exceeding Rs 10,000 per year (Rs 50,000 for specified persons).
+      4% cess and applicable surcharge are additional. The effective rate can be around 31.2% to 42.74%.
+    summary: "Crypto/VDA gains are taxed at a flat 30% with no deductions or loss set-off allowed."
+    common_questions:
+      - "How is cryptocurrency taxed in India?"
+      - "Can I deduct losses from crypto against other income?"
+      - "What is the TDS rate on crypto?"
+
+  - section_number: "CG_EXEMPT_S54"
+    ltree_path: "income_tax.capital_gains.exemption_s54"
+    title: "Section 54 — LTCG Exemption on Residential Property"
+    content: >
+      Section 54 provides exemption from LTCG tax on sale of a residential property if the gains are invested
+      in purchasing or constructing another residential property.
+      The new property must be purchased within 1 year before or 2 years after the sale, or constructed within 3 years.
+      If the full LTCG is reinvested, the entire gain is exempt. If partial reinvestment, proportionate exemption applies.
+      If the new property is sold within 3 years, the exemption is reversed and the original LTCG becomes taxable.
+      If investment is not made before the ITR filing deadline, funds must be deposited in a Capital Gains Account Scheme.
+    summary: "Section 54 exempts LTCG on property if reinvested in a new residential property within specified time."
+    common_questions:
+      - "How to save tax on property sale LTCG?"
+      - "What is the time limit for reinvesting under Section 54?"
+
+  - section_number: "CG_EXEMPT_S54EC"
+    ltree_path: "income_tax.capital_gains.exemption_s54ec"
+    title: "Section 54EC — LTCG Exemption via Capital Gains Bonds"
+    content: >
+      Section 54EC provides exemption from LTCG on any long-term capital asset (including property) if the gains
+      are invested in specified capital gains bonds within 6 months of the sale.
+      Eligible bonds include NHAI and REC bonds with a mandatory 5-year lock-in.
+      The maximum investment allowed is Rs 50 lakh per financial year.
+      The bonds earn a fixed interest (currently around 5%) which is taxable as income from other sources.
+      The bonds cannot be transferred, pledged, or used as security during the lock-in period.
+    summary: "Section 54EC exempts LTCG up to Rs 50 lakh by investing in NHAI/REC bonds within 6 months."
+    common_questions:
+      - "What are 54EC bonds?"
+      - "Can I invest in 54EC bonds to save property LTCG tax?"
+
+  - section_number: "CG_EXEMPT_S54F"
+    ltree_path: "income_tax.capital_gains.exemption_s54f"
+    title: "Section 54F — LTCG Exemption on Non-Property Capital Assets"
+    content: >
+      Section 54F provides LTCG exemption on sale of any long-term capital asset other than a house property,
+      if the net sale consideration (not just the gain) is invested in a residential property.
+      If the entire net consideration is invested, the full LTCG is exempt.
+      The taxpayer must not own more than one residential house (other than the new one) on the date of sale.
+      The new property must not be sold within 3 years. The taxpayer must not purchase another house within 2 years
+      or construct one within 3 years (other than the new house).
+    summary: "Section 54F exempts LTCG from non-property assets if net sale proceeds are reinvested in a house."
+    common_questions:
+      - "Can I save tax on share sale by buying a house?"
+      - "What is Section 54F?"
+
+  - section_number: "CG_LOSS_INTRA"
+    ltree_path: "income_tax.capital_gains.loss_setoff_intra"
+    title: "Capital Loss Set-Off — Within Capital Gains"
+    content: >
+      Capital losses can be set off against capital gains in the same financial year under specific rules.
+      STCL (short-term capital loss) can be set off against both STCG and LTCG.
+      LTCL (long-term capital loss) can only be set off against LTCG, not against STCG.
+      Losses from Section 111A (listed equity STCG) can be set off against any capital gains.
+      Losses from Section 112A (listed equity LTCG) can only be set off against LTCG.
+      Intra-head set-off happens before inter-head set-off.
+    summary: "STCL offsets both STCG and LTCG; LTCL offsets only LTCG within the capital gains head."
+    common_questions:
+      - "Can I set off short-term loss against long-term gain?"
+      - "Can LTCL be set off against STCG?"
+
+  - section_number: "CG_LOSS_INTER"
+    ltree_path: "income_tax.capital_gains.loss_setoff_inter"
+    title: "Capital Loss Set-Off — Against Other Income Heads"
+    content: >
+      Capital losses (both STCL and LTCL) cannot be set off against income from any other head (salary, house property,
+      business, or other sources). Capital losses can only be set off within the capital gains head.
+      However, loss from house property (up to Rs 2 lakh) can be set off against capital gains.
+      Speculative business loss can only be set off against speculative business income.
+      Losses from VDA/crypto cannot be set off against any income at all, including other capital gains.
+    summary: "Capital losses cannot be set off against salary or other income — only against capital gains."
+    common_questions:
+      - "Can I set off stock market losses against salary?"
+      - "Can capital loss be adjusted against business income?"
+
+  - section_number: "CG_LOSS_CARRY"
+    ltree_path: "income_tax.capital_gains.loss_carry_forward"
+    title: "Capital Loss — Carry Forward"
+    content: >
+      Unabsorbed capital losses can be carried forward for 8 assessment years.
+      STCL carried forward can be set off against both STCG and LTCG in future years.
+      LTCL carried forward can only be set off against LTCG in future years.
+      To carry forward capital losses, the income tax return must be filed on time (before the due date).
+      Losses from speculative business can be carried forward for 4 years.
+      VDA/crypto losses cannot be carried forward at all.
+    summary: "Capital losses can be carried forward for 8 years; timely filing of ITR is mandatory."
+    common_questions:
+      - "How long can I carry forward capital losses?"
+      - "Do I need to file ITR on time to carry forward losses?"
+
+  - section_number: "CG_GRANDFATHER"
+    ltree_path: "income_tax.capital_gains.grandfathering"
+    title: "Grandfathering of Listed Equity (Pre-31 Jan 2018)"
+    content: >
+      For listed equity shares and equity mutual funds acquired before 1 February 2018, a grandfathering provision applies.
+      The cost of acquisition is deemed to be the higher of: actual cost of acquisition, or the lower of
+      Fair Market Value (FMV) as on 31 January 2018 and the actual sale price.
+      This means gains accrued until 31 January 2018 are effectively exempt from LTCG tax.
+      FMV on 31 January 2018 is the highest price on the stock exchange on that date (or last traded price if not traded).
+      This provision applies only for computing LTCG under Section 112A.
+    summary: "Pre-31-Jan-2018 equity cost = higher of actual cost or lower of FMV and sale price, exempting pre-2018 gains."
+    common_questions:
+      - "How is grandfathering calculated for shares bought before 2018?"
+      - "Are gains before 31 Jan 2018 tax-free?"
+
+  # ── HRA ─────────────────────────────────────────────────────
+  - section_number: "HRA_OVERVIEW"
+    ltree_path: "income_tax.hra.overview"
+    title: "House Rent Allowance (HRA) — Overview"
+    content: >
+      HRA is an allowance provided by employers to salaried employees to meet rental expenses.
+      HRA exemption is available under Section 10(13A) only under the old tax regime.
+      To claim HRA, the employee must actually pay rent for a residential accommodation.
+      HRA exemption is not available if the employee lives in their own house or does not pay any rent.
+      The exemption requires rent receipts (mandatory if rent exceeds Rs 3,000/month) and landlord PAN if rent exceeds Rs 1 lakh/year.
+      HRA is one of the most significant exemptions under the old regime for metro-city employees.
+    summary: "HRA exemption under Section 10(13A) allows salaried employees to save tax on rent paid, only in the old regime."
+    common_questions:
+      - "What is HRA exemption?"
+      - "Is HRA available in the new regime?"
+
+  - section_number: "HRA_CALCULATION"
+    ltree_path: "income_tax.hra.calculation"
+    title: "HRA — Calculation Method"
+    content: >
+      HRA exemption is the minimum of three amounts: (1) Actual HRA received from employer,
+      (2) 50% of basic salary if living in metro city (Delhi, Mumbai, Chennai, Kolkata) or 40% for other cities,
+      (3) Rent paid minus 10% of basic salary.
+      Basic salary here means basic + DA (if DA forms part of retirement benefits).
+      If rent paid is less than 10% of salary, no HRA exemption is available.
+      HRA is calculated on a monthly basis if salary or rent changes during the year.
+    summary: "HRA exemption = minimum of actual HRA, 50%/40% of salary, or rent minus 10% of salary."
+    common_questions:
+      - "How is HRA exemption calculated?"
+      - "What is the HRA formula?"
+
+  - section_number: "HRA_EXEMPTION"
+    ltree_path: "income_tax.hra.exemption"
+    title: "HRA — Exemption Rules and Documentation"
+    content: >
+      To claim HRA exemption, rent receipts are required for rent exceeding Rs 3,000 per month.
+      If annual rent exceeds Rs 1 lakh, the landlord's PAN must be provided.
+      HRA can be claimed even if the landlord is a family member (e.g., parents), provided actual rent is paid.
+      If paying rent to parents, the parent must show the rental income in their tax return.
+      Employees who do not receive HRA but pay rent can claim deduction under Section 80GG instead (up to Rs 5,000/month).
+      HRA exemption is available only if the employee does not own a house in the city of employment.
+    summary: "HRA exemption requires rent receipts and landlord PAN (if rent > Rs 1L); can be claimed even for rent paid to parents."
+    common_questions:
+      - "Can I claim HRA if I pay rent to my parents?"
+      - "What documents are needed for HRA exemption?"
+
+  # ── Residential Status ──────────────────────────────────────
+  - section_number: "RES_RESIDENT"
+    ltree_path: "income_tax.residential_status.resident"
+    title: "Residential Status — Resident and Ordinarily Resident (ROR)"
+    content: >
+      A person is a Resident if they are in India for 182+ days in the financial year, or 60+ days in the FY
+      and 365+ days in the preceding 4 years. Indian citizens and PIOs returning from abroad have a 182-day threshold.
+      An ROR (Resident and Ordinarily Resident) is a resident who has been resident in 2 of the 10 preceding years
+      and has been in India for 730+ days in the preceding 7 years.
+      ROR individuals are taxed on their global income — Indian and foreign income are both taxable.
+      Most salaried individuals working in India qualify as ROR.
+    summary: "ROR individuals are taxed on worldwide income; must be in India 182+ days or meet the 60/365 rule."
+    common_questions:
+      - "How is residential status determined for tax?"
+      - "Am I a tax resident of India?"
+
+  - section_number: "RES_NRI"
+    ltree_path: "income_tax.residential_status.nri"
+    title: "Residential Status — Non-Resident Indian (NRI)"
+    content: >
+      An NRI for tax purposes is an Indian citizen or PIO who does not meet the residential criteria (less than 182 days in India).
+      NRIs are taxed only on income earned or received in India — foreign income is not taxable.
+      Indian income sources for NRIs include salary received in India, rental income from Indian property,
+      capital gains on Indian assets, and interest on Indian bank accounts (NRO accounts).
+      NRI-specific TDS rates apply to certain income types. NRIs cannot claim Section 87A rebate.
+      NRIs should file ITR-2 or ITR-3 (not ITR-1) for Indian income.
+    summary: "NRIs are taxed only on Indian income; foreign income is exempt from Indian tax."
+    common_questions:
+      - "Do NRIs need to pay tax in India?"
+      - "Is my foreign salary taxable in India if I am an NRI?"
+
+  - section_number: "RES_RNOR"
+    ltree_path: "income_tax.residential_status.rnor"
+    title: "Residential Status — Resident but Not Ordinarily Resident (RNOR)"
+    content: >
+      RNOR status applies to residents who have been non-resident in 9 out of the 10 preceding years
+      or have been in India for 729 or fewer days in the preceding 7 years.
+      RNORs are taxed like NRIs — only on Indian income and income derived from a business controlled in India.
+      RNOR status typically applies to NRIs who have recently returned to India.
+      It provides a transitional benefit for 2-3 years, allowing returned NRIs to plan their foreign income tax efficiently.
+      After qualifying as ROR, global income becomes fully taxable in India.
+    summary: "RNOR status gives returned NRIs a transitional period where only Indian income is taxed."
+    common_questions:
+      - "What is RNOR status?"
+      - "How long does RNOR status last after returning to India?"
+
+  # ── TDS ─────────────────────────────────────────────────────
+  - section_number: "TDS_SALARY"
+    ltree_path: "income_tax.tds.salary_s192"
+    title: "TDS on Salary — Section 192"
+    content: >
+      Employers are required to deduct TDS on salary under Section 192 based on the estimated total income of the employee.
+      TDS is calculated on the net taxable salary after accounting for standard deduction, HRA, and declared investments.
+      The employer applies the applicable slab rates (new or old regime as chosen by the employee).
+      Employees must submit their investment declarations (Form 12BB) to the employer for proper TDS computation.
+      Form 16 is issued by the employer as a TDS certificate showing the tax deducted and deposited.
+    summary: "Employers deduct TDS on salary at slab rates based on estimated annual income and declared deductions."
+    common_questions:
+      - "How is TDS on salary calculated?"
+      - "What if my employer deducts excess TDS?"
+
+  - section_number: "TDS_INTEREST"
+    ltree_path: "income_tax.tds.interest_s194a"
+    title: "TDS on Interest — Section 194A"
+    content: >
+      Banks and financial institutions deduct TDS at 10% on interest income exceeding Rs 40,000 per year
+      (Rs 50,000 for senior citizens) under Section 194A.
+      This applies to interest on fixed deposits, recurring deposits, and other time deposits.
+      If PAN is not provided, TDS is deducted at 20%.
+      Form 15G (for individuals below 60) or Form 15H (for senior citizens) can be submitted to avoid TDS
+      if total income is below the taxable limit.
+      Interest from savings accounts is not subject to TDS under Section 194A.
+    summary: "TDS at 10% applies on bank interest exceeding Rs 40,000 (Rs 50,000 for seniors); Form 15G/H can avoid it."
+    common_questions:
+      - "What is the TDS rate on FD interest?"
+      - "How to avoid TDS on bank interest?"
+
+  - section_number: "TDS_RENT"
+    ltree_path: "income_tax.tds.rent_s194i"
+    title: "TDS on Rent — Section 194I"
+    content: >
+      TDS on rent under Section 194I applies when the annual rent paid exceeds Rs 2.4 lakh.
+      For plant and machinery rent, TDS is at 2%. For land, building, or furniture, TDS is at 10%.
+      The payer (tenant) is responsible for deducting and depositing TDS.
+      Individuals/HUFs not subject to audit must deduct TDS under Section 194IB at 5% if monthly rent exceeds Rs 50,000.
+      TDS must be deposited by the 7th of the following month. Failure attracts interest and penalties.
+    summary: "TDS at 10% on rent for land/building above Rs 2.4 lakh/year; individuals deduct 5% under 194IB if rent > Rs 50,000/month."
+    common_questions:
+      - "Do I need to deduct TDS on rent?"
+      - "What is the TDS rate on commercial rent?"
+
+  - section_number: "TDS_PROFESSIONAL"
+    ltree_path: "income_tax.tds.professional_s194j"
+    title: "TDS on Professional Fees — Section 194J"
+    content: >
+      TDS under Section 194J applies on professional and technical service fees at 10%.
+      For fees paid to call centres, the rate is 2%.
+      The threshold for TDS deduction is Rs 30,000 per year per payee.
+      This covers payments to doctors, lawyers, architects, consultants, chartered accountants, and other professionals.
+      Non-deduction or late deduction attracts interest at 1% per month and disallowance of 30% of the expense.
+    summary: "TDS at 10% applies on professional/technical fees exceeding Rs 30,000 per year."
+    common_questions:
+      - "What is the TDS rate on professional fees?"
+      - "When should I deduct TDS under 194J?"
+
+  - section_number: "TDS_PROPERTY_SALE"
+    ltree_path: "income_tax.tds.property_sale_s194ia"
+    title: "TDS on Property Sale — Section 194-IA"
+    content: >
+      The buyer of immovable property must deduct TDS at 1% of the sale consideration if it exceeds Rs 50 lakh.
+      This applies to all buyers, including individuals, regardless of whether they are subject to tax audit.
+      TDS is deposited using Form 26QB within 30 days of the end of the month in which TDS is deducted.
+      The buyer issues Form 16B as TDS certificate to the seller.
+      For property with multiple buyers/sellers, each buyer deducts TDS on their proportionate share.
+    summary: "Buyers must deduct 1% TDS on property purchases exceeding Rs 50 lakh, filed via Form 26QB."
+    common_questions:
+      - "Do I need to deduct TDS when buying property?"
+      - "What is Form 26QB?"
+
+  - section_number: "TDS_SHARES"
+    ltree_path: "income_tax.tds.tds_on_sale_of_shares"
+    title: "TDS on Sale of Shares"
+    content: >
+      Sale of listed shares through recognized stock exchanges is exempt from TDS as STT is already levied.
+      For unlisted shares, TDS at 10% applies on LTCG if the sale consideration exceeds Rs 50 lakh (for residents).
+      For NRIs, TDS applies at 20% on STCG and 12.5% on LTCG on all share sales.
+      NRIs can apply for a lower TDS certificate under Section 197 if actual tax liability is lower.
+      Mutual fund redemptions for residents do not attract TDS, but NRI redemptions do.
+    summary: "Listed share sales have no TDS (STT applies); NRI share sales attract TDS at specified rates."
+    common_questions:
+      - "Is TDS deducted on mutual fund redemption?"
+      - "What is the TDS rate for NRI on share sale?"
+
+  - section_number: "TDS_RATES"
+    ltree_path: "income_tax.tds.tds_rates_overview"
+    title: "TDS Rates — Overview"
+    content: >
+      TDS rates vary by the nature of payment: salary (slab rates), interest (10%), rent for building (10%),
+      professional fees (10%), property sale (1%), contract payments (1-2%), commission (5%), and lottery (30%).
+      If the payee does not provide PAN, TDS is deducted at 20% or the prescribed rate, whichever is higher.
+      Non-resident TDS rates are generally higher and governed by the Income Tax Act or DTAA, whichever is beneficial.
+      TDS returns are filed quarterly: Q1 by 31 July, Q2 by 31 October, Q3 by 31 January, Q4 by 31 May.
+      Form 26AS and AIS reflect all TDS deducted against a PAN.
+    summary: "TDS rates range from 1% to 30% depending on payment type; 20% applies if PAN is not provided."
+    common_questions:
+      - "What are the common TDS rates?"
+      - "What happens if PAN is not provided for TDS?"
+
+  # ── Advance Tax ─────────────────────────────────────────────
+  - section_number: "ADVANCE_TAX_OVERVIEW"
+    ltree_path: "income_tax.advance_tax.overview"
+    title: "Advance Tax — Overview"
+    content: >
+      Advance tax must be paid by taxpayers whose estimated tax liability for the year exceeds Rs 10,000.
+      Salaried individuals with only salary income (TDS already deducted) generally do not need to pay advance tax.
+      Advance tax is applicable when there is significant non-salary income like capital gains, rental income,
+      freelance income, or business income where TDS is not deducted.
+      Senior citizens (60+) without business/professional income are exempt from advance tax.
+      Failure to pay advance tax attracts interest under Sections 234B and 234C.
+    summary: "Advance tax is required if annual tax liability exceeds Rs 10,000 after TDS; paid in quarterly installments."
+    common_questions:
+      - "Do I need to pay advance tax?"
+      - "What is the penalty for not paying advance tax?"
+
+  - section_number: "ADVANCE_TAX_SCHEDULE"
+    ltree_path: "income_tax.advance_tax.schedule"
+    title: "Advance Tax — Payment Schedule"
+    content: >
+      Advance tax is paid in four quarterly installments: 15% by 15 June, 45% by 15 September,
+      75% by 15 December, and 100% by 15 March.
+      For taxpayers opting for presumptive taxation (Section 44AD/44ADA), the entire advance tax can be paid
+      in a single installment by 15 March.
+      Capital gains that arise after a due date can be paid in the remaining installments.
+      Payment is made through the income tax portal using Challan No. 280.
+      Shortfall in any installment attracts interest under Section 234C.
+    summary: "Advance tax is due: 15% by Jun 15, 45% by Sep 15, 75% by Dec 15, 100% by Mar 15."
+    common_questions:
+      - "When is advance tax due?"
+      - "Can I pay all advance tax in March?"
+
+  - section_number: "INTEREST_234A"
+    ltree_path: "income_tax.advance_tax.interest_234a"
+    title: "Section 234A — Interest for Late Filing of Return"
+    content: >
+      Section 234A levies interest at 1% per month (or part of a month) on the unpaid tax amount
+      for the period from the due date of filing until the actual date of filing.
+      The interest is calculated on the tax payable after reducing advance tax and TDS.
+      For example, if the due date is 31 July and the return is filed on 15 October, interest is charged for 3 months.
+      Even if the tax is paid on time but the return is filed late, Section 234A interest may still apply.
+      Filing a belated return also attracts a late filing fee under Section 234F.
+    summary: "Section 234A charges 1% per month interest on unpaid tax from the filing due date to actual filing date."
+    common_questions:
+      - "What is the interest for late filing of IT return?"
+      - "How is 234A interest calculated?"
+
+  - section_number: "INTEREST_234B"
+    ltree_path: "income_tax.advance_tax.interest_234b"
+    title: "Section 234B — Interest for Default in Advance Tax"
+    content: >
+      Section 234B applies when the advance tax paid is less than 90% of the assessed tax liability.
+      Interest is charged at 1% per month from April of the assessment year until the date of payment/assessment.
+      The interest is on the shortfall: assessed tax minus advance tax paid.
+      If no advance tax is paid at all, interest applies on the entire tax amount.
+      This interest is in addition to any Section 234C interest for installment defaults.
+    summary: "Section 234B charges 1% per month on advance tax shortfall (below 90% of assessed tax)."
+    common_questions:
+      - "What is 234B interest?"
+      - "When does Section 234B apply?"
+
+  - section_number: "INTEREST_234C"
+    ltree_path: "income_tax.advance_tax.interest_234c"
+    title: "Section 234C — Interest for Deferment of Advance Tax Installments"
+    content: >
+      Section 234C applies when advance tax installments are not paid on time or are short of the required percentage.
+      Interest is charged at 1% per month for 3 months for each quarterly shortfall.
+      The required cumulative percentages are: 15% by June 15, 45% by September 15, 75% by December 15, 100% by March 15.
+      If the shortfall in any quarter is less than the required cumulative amount, simple interest is charged on the deficit.
+      Capital gains arising during a quarter can be paid in the remaining installments without 234C interest.
+    summary: "Section 234C charges 1% per month interest for shortfall in quarterly advance tax installments."
+    common_questions:
+      - "How is 234C interest calculated?"
+      - "Is there interest if I miss one advance tax installment?"
+
+  # ── Filing ──────────────────────────────────────────────────
+  - section_number: "FILING_DEADLINES"
+    ltree_path: "income_tax.filing.deadlines"
+    title: "Income Tax Filing Deadlines"
+    content: >
+      The due date for filing ITR for individuals (non-audit) is 31 July of the assessment year.
+      For FY 2025-26, the assessment year is 2026-27, so the due date is 31 July 2026.
+      Taxpayers requiring audit (business turnover above Rs 1 crore) must file by 31 October.
+      Transfer pricing cases have a deadline of 30 November.
+      Belated returns can be filed until 31 December of the assessment year.
+      Revised returns can be filed until 31 December of the assessment year.
+      Late filing after 31 July attracts a fee of Rs 5,000 (Rs 1,000 if income is below Rs 5 lakh) under Section 234F.
+    summary: "ITR due date is 31 July (individuals); late filing attracts Rs 5,000 fee under 234F."
+    common_questions:
+      - "When is the last date to file income tax return?"
+      - "What is the penalty for late filing?"
+
+  - section_number: "ITR1_SAHAJ"
+    ltree_path: "income_tax.filing.itr1_sahaj"
+    title: "ITR-1 (Sahaj) — Simple Return for Salaried Individuals"
+    content: >
+      ITR-1 (Sahaj) is the simplest return form for resident individuals with income up to Rs 50 lakh.
+      It covers salary/pension income, one house property, other sources (interest, dividends), and agricultural income up to Rs 5,000.
+      ITR-1 cannot be used if you have capital gains, foreign income, multiple house properties, or business income.
+      NRIs, directors of companies, and individuals with unlisted equity shares cannot use ITR-1.
+      Pre-filled ITR-1 is available on the e-filing portal, making it easy to verify and file.
+    summary: "ITR-1 is for residents with salary, one house property, and other income up to Rs 50 lakh."
+    common_questions:
+      - "Which ITR form should I file?"
+      - "Can I use ITR-1 if I have mutual fund gains?"
+
+  - section_number: "ITR2"
+    ltree_path: "income_tax.filing.itr2"
+    title: "ITR-2 — Return for Individuals with Capital Gains"
+    content: >
+      ITR-2 is for individuals and HUFs who have income from salary, house property, capital gains, and other sources
+      but do not have business or professional income.
+      It must be used if you have capital gains from shares, mutual funds, or property sale.
+      ITR-2 is also required for NRIs, individuals with foreign assets/income, and directors of companies.
+      It is more detailed than ITR-1 and requires disclosure of all capital transactions, foreign assets, and bank accounts.
+      Most investors with a demat account will need to file ITR-2.
+    summary: "ITR-2 is for individuals with capital gains, foreign income/assets, or NRI status."
+    common_questions:
+      - "Do I need ITR-2 if I sold mutual funds?"
+      - "Can NRIs file ITR-1?"
+
+  - section_number: "ITR3"
+    ltree_path: "income_tax.filing.itr3"
+    title: "ITR-3 — Return for Business/Professional Income"
+    content: >
+      ITR-3 is for individuals and HUFs who have income from business or profession along with salary, capital gains, etc.
+      Freelancers, consultants, proprietors, and partners in a firm must use ITR-3.
+      It requires preparation of profit and loss account and balance sheet for the business.
+      If you opt for presumptive taxation under Section 44AD or 44ADA, you can use the simpler ITR-4 instead.
+      ITR-3 is the most comprehensive individual return form with schedules for business income, capital gains,
+      foreign assets, and GST details.
+    summary: "ITR-3 is for individuals with business/professional income requiring full financial statements."
+    common_questions:
+      - "Which ITR form for freelancers?"
+      - "Do I need ITR-3 if I have side income from consulting?"
+
+  - section_number: "ITR4_SUGAM"
+    ltree_path: "income_tax.filing.itr4_sugam"
+    title: "ITR-4 (Sugam) — Presumptive Taxation Return"
+    content: >
+      ITR-4 (Sugam) is for individuals, HUFs, and partnership firms opting for presumptive taxation under
+      Section 44AD (business) or 44ADA (profession).
+      Under 44AD, income is presumed at 8% of gross receipts (6% for digital transactions) for businesses
+      with turnover up to Rs 3 crore (if digital receipts exceed 95%).
+      Under 44ADA, income is presumed at 50% of gross receipts for specified professionals with receipts up to Rs 75 lakh.
+      ITR-4 cannot be used if total income exceeds Rs 50 lakh or if there are capital gains or foreign assets.
+    summary: "ITR-4 is the simplified return for presumptive taxation under 44AD/44ADA for small businesses and professionals."
+    common_questions:
+      - "What is presumptive taxation?"
+      - "Can I use ITR-4 if my business turnover is 1 crore?"
+
+  - section_number: "FILING_PENALTIES"
+    ltree_path: "income_tax.filing.penalties"
+    title: "Penalties for Non-Filing and Late Filing"
+    content: >
+      Late filing fee under Section 234F: Rs 5,000 if filed after due date but before 31 December;
+      reduced to Rs 1,000 if total income is below Rs 5 lakh.
+      Interest under Section 234A at 1% per month applies on unpaid tax from the due date.
+      Non-filing can lead to prosecution under Section 276CC for tax dues exceeding Rs 25,000, with imprisonment up to 7 years.
+      The income tax department can issue notices under Section 142(1) and 148 for non-filers.
+      Filing within the due date is essential for carrying forward losses and claiming certain deductions.
+    summary: "Late filing attracts Rs 5,000 fee and 1% monthly interest; non-filing may lead to prosecution."
+    common_questions:
+      - "What happens if I don't file my income tax return?"
+      - "Is there a penalty for filing ITR after July 31?"
+
+  - section_number: "BELATED_RETURN"
+    ltree_path: "income_tax.filing.belated_return"
+    title: "Belated Return — Filing After Due Date"
+    content: >
+      A belated return under Section 139(4) can be filed after the due date but before 31 December of the assessment year.
+      Belated filing attracts a late fee of Rs 5,000 under Section 234F (Rs 1,000 if income < Rs 5 lakh).
+      Interest under Section 234A at 1% per month applies on any tax due.
+      Key drawback: losses (except house property loss) cannot be carried forward if the return is belated.
+      The belated return can be revised before the 31 December deadline.
+      Condonation of delay may be sought for returns beyond the belated deadline in exceptional circumstances.
+    summary: "Belated returns can be filed until 31 December with a late fee, but losses cannot be carried forward."
+    common_questions:
+      - "Can I file ITR after the due date?"
+      - "What are the disadvantages of filing a belated return?"
+
+  - section_number: "REVISED_RETURN"
+    ltree_path: "income_tax.filing.revised_return"
+    title: "Revised Return — Correcting a Filed Return"
+    content: >
+      A revised return under Section 139(5) can be filed to correct mistakes in the original return.
+      The revised return can be filed before 31 December of the assessment year or before assessment, whichever is earlier.
+      There is no limit on the number of revisions — multiple revised returns can be filed.
+      The revised return completely replaces the original return.
+      Common reasons for revision: missing income, incorrect deduction claims, wrong bank account, or regime selection.
+      No additional fee or penalty applies for filing a revised return.
+    summary: "Revised returns can be filed before 31 December to correct errors, with no penalty or limit on revisions."
+    common_questions:
+      - "Can I revise my ITR after filing?"
+      - "How many times can I revise my return?"
+
+  # ── Income Heads ────────────────────────────────────────────
+  - section_number: "HEAD_SALARY"
+    ltree_path: "income_tax.income_heads.salary"
+    title: "Income from Salary"
+    content: >
+      Income from salary includes basic salary, allowances (HRA, DA, LTA, etc.), perquisites, and retirement benefits.
+      Salary is taxable on due or receipt basis, whichever is earlier.
+      Standard deduction, professional tax, and entertainment allowance are deducted to arrive at taxable salary.
+      Form 16 provided by the employer summarizes the salary income and TDS.
+      Salary income is always taxed at slab rates — there is no special rate for salary.
+      Employer contributions to EPF, NPS, and superannuation beyond specified limits are taxable as perquisites.
+    summary: "Salary income includes basic, allowances, and perquisites; taxed at slab rates after standard deduction."
+    common_questions:
+      - "What components of salary are taxable?"
+      - "How is salary income calculated for tax?"
+
+  - section_number: "HEAD_HP"
+    ltree_path: "income_tax.income_heads.house_property"
+    title: "Income from House Property"
+    content: >
+      Income from house property is computed based on the annual value of property owned by the taxpayer.
+      Self-occupied property: annual value is nil, but home loan interest up to Rs 2 lakh is deductible.
+      Let-out property: annual value is actual rent or fair market rent (whichever is higher), minus municipal taxes.
+      A standard deduction of 30% of net annual value is allowed for repairs and maintenance (no bills needed).
+      Home loan interest is deductible without limit for let-out property.
+      Deemed let-out applies if a taxpayer owns more than 2 properties — the additional ones are treated as let out.
+    summary: "House property income is computed from rent/deemed rent, with 30% standard deduction and home loan interest."
+    common_questions:
+      - "How is rental income taxed?"
+      - "What if I have two self-occupied houses?"
+
+  - section_number: "HEAD_BUSINESS"
+    ltree_path: "income_tax.income_heads.business_profession"
+    title: "Income from Business or Profession"
+    content: >
+      Business income is computed as gross receipts minus allowable business expenses.
+      Allowable expenses include rent, salaries, depreciation, interest on business loans, travel, and other operational costs.
+      Personal expenses, capital expenditure (except depreciation), and fines/penalties are not deductible.
+      Professionals (doctors, lawyers, CAs, etc.) compute income similarly under 'Profits from Profession'.
+      Presumptive taxation under Section 44AD (businesses) and 44ADA (professionals) simplifies computation.
+      Books of accounts must be maintained if turnover exceeds Rs 25 lakh (business) or Rs 25 lakh (profession)
+      for those not opting for presumptive taxation.
+    summary: "Business/professional income = gross receipts minus allowable expenses; presumptive schemes available for small taxpayers."
+    common_questions:
+      - "What expenses can I deduct from business income?"
+      - "Do I need to maintain books of accounts?"
+
+  - section_number: "HEAD_CG"
+    ltree_path: "income_tax.income_heads.capital_gains_head"
+    title: "Income from Capital Gains (Head)"
+    content: >
+      Capital gains is one of the five heads of income under Indian income tax.
+      It covers gains from transfer of capital assets: shares, mutual funds, property, gold, bonds, and other assets.
+      Capital gains are classified as short-term or long-term based on holding period.
+      Each type of capital gain has specific tax rates — they are not added to other income for slab calculation
+      (except STCG on non-111A assets which is at slab rates).
+      Specific exemptions (54, 54EC, 54F) and set-off rules apply.
+      Capital gains must be reported in ITR-2 or ITR-3.
+    summary: "Capital gains is a separate income head covering profits from sale of capital assets like shares, property, and gold."
+    common_questions:
+      - "Do I need to report all share transactions in ITR?"
+      - "Are capital gains added to salary for tax calculation?"
+
+  - section_number: "HEAD_OTHER"
+    ltree_path: "income_tax.income_heads.other_sources"
+    title: "Income from Other Sources"
+    content: >
+      Income from Other Sources is a residual head that covers income not classified under the other four heads.
+      Common examples: savings/FD interest, dividends, lottery/game show winnings, gifts, family pension, and royalty.
+      Dividend income is taxed at slab rates (no more DDT from FY 2020-21).
+      Lottery and game show winnings are taxed at a flat 30% under Section 115BB.
+      Gifts exceeding Rs 50,000 from non-relatives are taxable as income from other sources.
+      Interest on income tax refund is also taxable under this head.
+    summary: "Other sources income includes interest, dividends, lottery winnings, and gifts — taxed at slab or special rates."
+    common_questions:
+      - "Is dividend income taxable?"
+      - "Are gifts from friends taxable?"
+
+  # ── Salary Components ───────────────────────────────────────
+  - section_number: "SAL_BASIC"
+    ltree_path: "income_tax.salary_components.basic"
+    title: "Basic Salary"
+    content: >
+      Basic salary is the core component of the salary structure and is fully taxable.
+      It typically constitutes 40-50% of the CTC (Cost to Company).
+      Basic salary is the basis for calculating HRA, PF, and gratuity contributions.
+      A higher basic salary means higher PF contribution and higher HRA exemption, but also higher taxable salary.
+      Basic salary is shown in Part B of Form 16 and is the starting point for salary income computation.
+    summary: "Basic salary is fully taxable and forms the basis for HRA, PF, and gratuity calculations."
+    common_questions:
+      - "Is basic salary fully taxable?"
+      - "What percentage of CTC should basic salary be?"
+
+  - section_number: "SAL_DA"
+    ltree_path: "income_tax.salary_components.da"
+    title: "Dearness Allowance (DA)"
+    content: >
+      Dearness Allowance is paid to government employees and some private sector employees to offset inflation.
+      DA is fully taxable as part of salary income.
+      If DA forms part of retirement benefits (as in government employment), it is included in basic salary
+      for computing HRA exemption and PF contributions.
+      DA is revised periodically based on the Consumer Price Index.
+      For central government employees, DA is a significant component and is revised every January and July.
+    summary: "DA is fully taxable and included in basic salary for PF/HRA calculations if it forms part of retirement benefits."
+    common_questions:
+      - "Is DA taxable?"
+      - "Is DA included in basic for PF calculation?"
+
+  - section_number: "SAL_SPECIAL"
+    ltree_path: "income_tax.salary_components.special_allowance"
+    title: "Special Allowance"
+    content: >
+      Special allowance is a common salary component in the private sector that is fully taxable.
+      It is often used to fill the gap between CTC and other defined components (basic, HRA, etc.).
+      Unlike HRA or LTA, special allowance has no exemption or deduction provisions.
+      Some companies label it as 'flexible benefit plan' or 'supplementary allowance'.
+      Special allowance does not form part of the base for PF or gratuity calculation in most companies.
+    summary: "Special allowance is fully taxable with no exemption, used to bridge CTC and defined salary components."
+    common_questions:
+      - "Is special allowance taxable?"
+      - "Can I claim any exemption on special allowance?"
+
+  - section_number: "SAL_LTA"
+    ltree_path: "income_tax.salary_components.lta"
+    title: "Leave Travel Allowance (LTA)"
+    content: >
+      LTA exemption under Section 10(5) covers actual travel expenses for domestic travel during leave.
+      The exemption is limited to economy class airfare or first-class rail fare for the shortest route.
+      LTA can be claimed for two journeys in a block of four calendar years (current block: 2022-2025).
+      Only travel costs are exempt — hotel, food, and local transport are not covered.
+      Travel must be within India. The exemption is available for self and family (spouse, children, dependent parents/siblings).
+      LTA exemption is available only under the old tax regime.
+    summary: "LTA provides tax exemption on domestic travel costs for two trips in a four-year block, old regime only."
+    common_questions:
+      - "How to claim LTA exemption?"
+      - "Can LTA be claimed without actual travel?"
+
+  - section_number: "SAL_PT"
+    ltree_path: "income_tax.salary_components.professional_tax"
+    title: "Professional Tax"
+    content: >
+      Professional tax is a state-level tax deducted from salary, capped at Rs 2,500 per year.
+      It is levied in most Indian states (Maharashtra, Karnataka, West Bengal, Tamil Nadu, etc.).
+      Professional tax paid is allowed as a deduction under Section 16(iii) from salary income.
+      This deduction is available in both old and new tax regimes.
+      The amount varies by state and salary level, with the maximum being Rs 2,500 per annum.
+      It is shown separately in the salary slip and Form 16.
+    summary: "Professional tax (max Rs 2,500/year) is deductible from salary income under both tax regimes."
+    common_questions:
+      - "Is professional tax deductible from income tax?"
+      - "What is the maximum professional tax in India?"
+
+  - section_number: "SAL_GRATUITY"
+    ltree_path: "income_tax.salary_components.gratuity"
+    title: "Gratuity"
+    content: >
+      Gratuity is a retirement benefit paid by employers to employees who have completed at least 5 years of service.
+      For government employees, gratuity is fully exempt from tax.
+      For private employees covered under the Payment of Gratuity Act, the exemption is the least of:
+      15 days salary for each year of service, actual gratuity received, or Rs 25 lakh (increased from Rs 20 lakh).
+      For employees not covered under the Act, the formula uses half-month salary for each year of service.
+      Salary for gratuity means basic + DA (last drawn). The exempt amount reduces the taxable salary.
+    summary: "Gratuity is exempt up to Rs 25 lakh for private employees; fully exempt for government employees."
+    common_questions:
+      - "How is gratuity calculated?"
+      - "Is gratuity taxable?"
+
+  - section_number: "SAL_LEAVE_ENCASH"
+    ltree_path: "income_tax.salary_components.leave_encashment"
+    title: "Leave Encashment"
+    content: >
+      Leave encashment received at retirement or resignation is partially exempt from tax for private sector employees.
+      For government employees, leave encashment is fully exempt.
+      For non-government employees, the exemption is the least of: cash equivalent of earned leave (max 30 days per year of service),
+      10 months average salary, actual leave encashment received, or Rs 25 lakh.
+      Leave encashment during employment (without retirement) is fully taxable.
+      Average salary means basic + DA for the 10 months preceding retirement.
+    summary: "Leave encashment at retirement is exempt up to Rs 25 lakh for private employees; fully exempt for government."
+    common_questions:
+      - "Is leave encashment taxable?"
+      - "What is the exemption limit for leave encashment?"
+
+  # ── House Property Details ──────────────────────────────────
+  - section_number: "HP_SELF_OCCUPIED"
+    ltree_path: "income_tax.house_property.self_occupied"
+    title: "Self-Occupied House Property"
+    content: >
+      A self-occupied property is one where the owner or their family resides. Up to 2 properties can be declared self-occupied.
+      The gross annual value of a self-occupied property is deemed to be nil.
+      Home loan interest up to Rs 2 lakh is deductible under Section 24(b).
+      Home loan principal repayment qualifies for deduction under Section 80C.
+      If the property is under construction, pre-construction interest can be claimed in 5 equal installments from the year of completion.
+      Municipal taxes paid for a self-occupied property are not deductible (since annual value is nil).
+    summary: "Self-occupied property has nil annual value; home loan interest up to Rs 2 lakh is deductible."
+    common_questions:
+      - "How is self-occupied property treated for tax?"
+      - "Can I claim two houses as self-occupied?"
+
+  - section_number: "HP_LET_OUT"
+    ltree_path: "income_tax.house_property.let_out"
+    title: "Let-Out House Property"
+    content: >
+      A let-out property generates rental income that is taxable under the head 'income from house property'.
+      Annual value = higher of actual rent or fair market rent, minus municipal taxes.
+      A standard deduction of 30% is available on the net annual value for repairs, maintenance, and insurance.
+      Home loan interest is deductible without any limit from the remaining amount.
+      If the net result is a loss (interest > rental income), it can be set off against other income up to Rs 2 lakh.
+      If the property is vacant for part of the year, the proportionate annual value is considered.
+    summary: "Let-out property income = rent minus 30% standard deduction minus home loan interest; loss set-off up to Rs 2 lakh."
+    common_questions:
+      - "How is rental income taxed after deductions?"
+      - "Is there a limit on home loan interest for rented property?"
+
+  - section_number: "HP_LOSS"
+    ltree_path: "income_tax.house_property.loss_from_hp"
+    title: "Loss from House Property — Set-Off Rules"
+    content: >
+      Loss from house property can be set off against income from any other head (salary, business, etc.) up to Rs 2 lakh per year.
+      This limit of Rs 2 lakh was introduced from FY 2017-18.
+      Unabsorbed loss beyond Rs 2 lakh can be carried forward for 8 assessment years and set off against future house property income.
+      The loss typically arises when home loan interest exceeds the net rental income (for let-out) or exceeds nil annual value (for self-occupied).
+      This set-off is available in both old and new tax regimes, but Section 24(b) deduction is only in the old regime.
+      Filing the return within the due date is recommended though house property loss carry-forward does not strictly require timely filing.
+    summary: "House property loss can be set off against other income up to Rs 2 lakh; excess carries forward for 8 years."
+    common_questions:
+      - "Can I set off home loan loss against salary?"
+      - "How long can I carry forward house property loss?"
+
+  # ── NPS ─────────────────────────────────────────────────────
+  - section_number: "NPS_OVERVIEW"
+    ltree_path: "income_tax.nps.overview"
+    title: "National Pension System (NPS) — Overview"
+    content: >
+      NPS is a government-sponsored pension scheme regulated by PFRDA, open to all citizens aged 18-70.
+      It offers two tiers: Tier I (retirement account with lock-in) and Tier II (flexible savings, no tax benefit except for government employees).
+      NPS allows investment in equity, corporate bonds, and government securities through professional fund managers.
+      Tax benefits: 80CCD(1) within 80C limit, 80CCD(1B) for additional Rs 50,000, and 80CCD(2) for employer contribution.
+      At 60, the subscriber can withdraw up to 60% as lump sum (tax-free) and must use 40% to buy an annuity.
+      NPS is one of the lowest-cost retirement investment vehicles available in India.
+    summary: "NPS is a low-cost pension scheme offering up to Rs 2 lakh deduction (80C + 80CCD(1B)) plus employer benefit."
+    common_questions:
+      - "What is NPS and how does it work?"
+      - "Is NPS better than PPF?"
+      - "What are the tax benefits of NPS?"
+
+  - section_number: "NPS_WITHDRAWAL"
+    ltree_path: "income_tax.nps.tax_on_withdrawal"
+    title: "NPS — Taxation on Withdrawal"
+    content: >
+      At maturity (age 60), 60% of the NPS corpus can be withdrawn as a lump sum completely tax-free.
+      The remaining 40% must be used to purchase an annuity, and the annuity income is taxable as salary/other sources.
+      For partial withdrawals (allowed after 3 years for specific purposes), the withdrawal is tax-free.
+      If the total corpus is Rs 5 lakh or less, the entire amount can be withdrawn as lump sum.
+      Premature exit (before 60): 80% must be used for annuity and 20% is tax-free lump sum.
+      Tier II withdrawals have no special tax treatment — gains are taxable based on the period of holding.
+    summary: "60% of NPS corpus is tax-free at maturity; 40% must buy an annuity (annuity income is taxable)."
+    common_questions:
+      - "Is NPS maturity amount taxable?"
+      - "Can I withdraw NPS before 60?"
+
+  # ── Assessment Year ─────────────────────────────────────────
+  - section_number: "AY_OVERVIEW"
+    ltree_path: "income_tax.assessment_year.overview"
+    title: "Assessment Year vs Financial Year"
+    content: >
+      The Financial Year (FY) is the year in which income is earned (April to March).
+      The Assessment Year (AY) is the following year in which the income is assessed and the return is filed.
+      For FY 2025-26, the assessment year is 2026-27, and the return is due by 31 July 2026.
+      Tax slabs, deductions, and exemptions are determined by the financial year in which income is earned.
+      The terms are often used interchangeably in casual conversation, but they have distinct legal meanings.
+      All tax payments and TDS relate to the assessment year on the income tax portal.
+    summary: "FY is the income-earning year (2025-26); AY is the next year (2026-27) when the return is filed."
+    common_questions:
+      - "What is the difference between FY and AY?"
+      - "What is the assessment year for FY 2025-26?"
+
+  # ── PAN ─────────────────────────────────────────────────────
+  - section_number: "PAN_OVERVIEW"
+    ltree_path: "income_tax.pan.overview"
+    title: "PAN — Permanent Account Number"
+    content: >
+      PAN is a unique 10-character alphanumeric identifier issued by the Income Tax Department.
+      It is mandatory for filing ITR, opening bank accounts, and financial transactions above specified limits.
+      PAN is required for transactions like property purchase above Rs 10 lakh, vehicle purchase, cash deposits above Rs 50,000, etc.
+      PAN must be linked to Aadhaar; failure to link makes the PAN inoperative.
+      Higher TDS (at 20%) is deducted if PAN is not provided for applicable transactions.
+      PAN can be applied online through NSDL or UTIITSL portals. The fee is Rs 107 for Indian address applicants.
+    summary: "PAN is mandatory for tax filing and major financial transactions; must be linked to Aadhaar."
+    common_questions:
+      - "How to apply for PAN card?"
+      - "What happens if PAN is not linked to Aadhaar?"
+
+  # ── Form 16 ─────────────────────────────────────────────────
+  - section_number: "FORM16_PART_A"
+    ltree_path: "income_tax.form16.part_a"
+    title: "Form 16 — Part A (TDS Certificate)"
+    content: >
+      Part A of Form 16 is the TDS certificate issued by the employer showing tax deducted and deposited with the government.
+      It contains employer and employee details, PAN, TAN, and quarter-wise TDS breakup.
+      Part A is generated from the TRACES portal and is digitally verified.
+      It shows the total salary paid, TDS deducted, and challan details for each quarter.
+      Employees should verify that the TDS shown in Part A matches their Form 26AS and AIS.
+      Part A is required for filing ITR and claiming TDS credit.
+    summary: "Form 16 Part A is the TDS certificate showing quarter-wise tax deducted by the employer."
+    common_questions:
+      - "What is Form 16 Part A?"
+      - "When will I get Form 16 from my employer?"
+
+  - section_number: "FORM16_PART_B"
+    ltree_path: "income_tax.form16.part_b"
+    title: "Form 16 — Part B (Income Details)"
+    content: >
+      Part B of Form 16 is a detailed statement of salary income, deductions, and tax computation prepared by the employer.
+      It shows gross salary, exempt allowances, standard deduction, deductions under Chapter VI-A, and net tax payable.
+      Part B includes breakup of salary components: basic, HRA, special allowance, perquisites, etc.
+      It also shows the employer's computation of taxable income and the tax regime (old or new) applied.
+      Part B is an annexure prepared by the employer and is not directly generated from TRACES.
+      It serves as the primary document for filing ITR-1 for salaried individuals.
+    summary: "Form 16 Part B details salary breakup, deductions, and complete tax computation by the employer."
+    common_questions:
+      - "What is the difference between Form 16 Part A and Part B?"
+      - "How to read Form 16 Part B?"
+
+  # ── AIS ─────────────────────────────────────────────────────
+  - section_number: "AIS_OVERVIEW"
+    ltree_path: "income_tax.ais.overview"
+    title: "Annual Information Statement (AIS)"
+    content: >
+      AIS is a comprehensive statement showing all financial transactions reported to the Income Tax Department.
+      It includes salary, interest, dividends, share transactions, mutual fund transactions, property transactions,
+      foreign remittances, GST turnover, and more.
+      AIS replaced the earlier Form 26AS as the primary information document for taxpayers.
+      Taxpayers can view, provide feedback, and download AIS from the income tax e-filing portal.
+      If any information is incorrect, feedback can be submitted to modify or dispute it.
+      The Taxpayer Information Summary (TIS) is an aggregated version of AIS used for pre-filling ITR.
+    summary: "AIS shows all financial transactions reported to the tax department; replaces Form 26AS for comprehensive info."
+    common_questions:
+      - "What is AIS in income tax?"
+      - "How to check AIS on the income tax portal?"
+      - "What is the difference between AIS and Form 26AS?"
+
+# ── Relationships ───────────────────────────────────────────
+relationships:
+  # 80C family
+  - parent: "80C"
+    child: "80CCC"
+    type: "supplements"
+  - parent: "80C"
+    child: "80CCD_1"
+    type: "supplements"
+
+  # 80CCD sub-sections
+  - parent: "80CCD_OVERVIEW"
+    child: "80CCD_1"
+    type: "supplements"
+  - parent: "80CCD_OVERVIEW"
+    child: "80CCD_1B"
+    type: "supplements"
+  - parent: "80CCD_OVERVIEW"
+    child: "80CCD_2"
+    type: "supplements"
+
+  # 80D sub-sections
+  - parent: "80D_OVERVIEW"
+    child: "80D_SELF"
+    type: "supplements"
+  - parent: "80D_OVERVIEW"
+    child: "80D_PARENTS"
+    type: "supplements"
+  - parent: "80D_OVERVIEW"
+    child: "80D_PREVENTIVE"
+    type: "supplements"
+
+  # 80G sub-sections
+  - parent: "80G_OVERVIEW"
+    child: "80G_FULL_NO_LIMIT"
+    type: "supplements"
+  - parent: "80G_OVERVIEW"
+    child: "80G_FULL_WITH_LIMIT"
+    type: "supplements"
+  - parent: "80G_OVERVIEW"
+    child: "80G_HALF_NO_LIMIT"
+    type: "supplements"
+  - parent: "80G_OVERVIEW"
+    child: "80G_HALF_WITH_LIMIT"
+    type: "supplements"
+
+  # Section 24(b) sub-sections
+  - parent: "24B_OVERVIEW"
+    child: "24B_SELF_OCCUPIED"
+    type: "supplements"
+  - parent: "24B_OVERVIEW"
+    child: "24B_LET_OUT"
+    type: "supplements"
+
+  # Regime overrides
+  - parent: "NEW_REGIME"
+    child: "OLD_REGIME"
+    type: "overrides"
+  - parent: "SLABS_NEW"
+    child: "SLABS_OLD"
+    type: "overrides"
+  - parent: "STD_DEDUCTION_NEW"
+    child: "STD_DEDUCTION_OLD"
+    type: "overrides"
+  - parent: "S87A_NEW"
+    child: "S87A_OLD"
+    type: "overrides"
+  - parent: "SURCHARGE_NEW"
+    child: "SURCHARGE_OLD"
+    type: "overrides"
+
+  # Capital gains exemptions
+  - parent: "CG_PROPERTY_LTCG"
+    child: "CG_EXEMPT_S54"
+    type: "supplements"
+  - parent: "CG_PROPERTY_LTCG"
+    child: "CG_EXEMPT_S54EC"
+    type: "supplements"
+  - parent: "CG_PROPERTY_LTCG"
+    child: "CG_EXEMPT_S54F"
+    type: "supplements"
+
+  # Capital loss dependencies
+  - parent: "CG_LOSS_INTRA"
+    child: "CG_LOSS_INTER"
+    type: "requires"
+  - parent: "CG_LOSS_INTRA"
+    child: "CG_LOSS_CARRY"
+    type: "requires"
+
+  # 80TTA / 80TTB mutual exclusivity
+  - parent: "80TTA"
+    child: "80TTB"
+    type: "requires"
+
+  # 80U / 80DD relationship
+  - parent: "80DD"
+    child: "80U"
+    type: "supplements"
+
+  # Form 16 dependencies
+  - parent: "FORM16_PART_A"
+    child: "FORM16_PART_B"
+    type: "requires"
+
+  # Advance tax interest dependencies
+  - parent: "ADVANCE_TAX_SCHEDULE"
+    child: "INTEREST_234B"
+    type: "requires"
+  - parent: "ADVANCE_TAX_SCHEDULE"
+    child: "INTEREST_234C"
+    type: "requires"
+  - parent: "FILING_DEADLINES"
+    child: "INTEREST_234A"
+    type: "requires"
+
+  # HRA sub-sections
+  - parent: "HRA_OVERVIEW"
+    child: "HRA_CALCULATION"
+    type: "supplements"
+  - parent: "HRA_OVERVIEW"
+    child: "HRA_EXEMPTION"
+    type: "supplements"
+
+  # House property relationships
+  - parent: "HEAD_HP"
+    child: "HP_SELF_OCCUPIED"
+    type: "supplements"
+  - parent: "HEAD_HP"
+    child: "HP_LET_OUT"
+    type: "supplements"
+  - parent: "HEAD_HP"
+    child: "HP_LOSS"
+    type: "supplements"
+
+  # NPS relationships
+  - parent: "NPS_OVERVIEW"
+    child: "NPS_WITHDRAWAL"
+    type: "supplements"
+  - parent: "NPS_OVERVIEW"
+    child: "80CCD_OVERVIEW"
+    type: "supplements"

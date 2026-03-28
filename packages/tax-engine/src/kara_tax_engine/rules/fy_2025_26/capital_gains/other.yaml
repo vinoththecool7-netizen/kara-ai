@@ -1,0 +1,37 @@
+asset_classes:
+  gold:
+    holding_period_months: 24
+    stcg:
+      section: "slab"
+      rate: null
+    ltcg:
+      section: "112"
+      rate: 0.125
+      exemption: 0
+    grandfathering: null
+
+  unlisted_shares:
+    holding_period_months: 24
+    stcg:
+      section: "slab"
+      rate: null
+    ltcg:
+      section: "112"
+      rate: 0.125
+      exemption: 0
+    grandfathering: null
+
+  vda_crypto:
+    holding_period_months: null
+    stcg:
+      section: "115BBH"
+      rate: 0.30
+    ltcg:
+      section: "115BBH"
+      rate: 0.30
+    exemption: 0
+    grandfathering: null
+    special_rules:
+      no_deduction_except_cost: true
+      no_loss_setoff: true
+      no_carry_forward: true

@@ -1,0 +1,25 @@
+asset_classes:
+  listed_equity:
+    holding_period_months: 12
+    stcg:
+      section: "111A"
+      rate: 0.20
+    ltcg:
+      section: "112A"
+      rate: 0.125
+      exemption: 125000
+    grandfathering:
+      cutoff_date: "2018-01-31"
+      note: "Cost = max(actual_cost, min(FMV_31Jan2018, sale_price))"
+
+  equity_mf:
+    holding_period_months: 12
+    stcg:
+      section: "111A"
+      rate: 0.20
+    ltcg:
+      section: "112A"
+      rate: 0.125
+      exemption: 125000
+    grandfathering:
+      cutoff_date: "2018-01-31"

@@ -1,0 +1,27 @@
+section: "80CCD"
+title: "National Pension System (NPS) deductions"
+financial_year: "2025-26"
+
+sub_sections:
+  - section: "80CCD(1)"
+    title: "Employee contribution to NPS"
+    regime: old_only
+    cap_percent_of_salary: 10  # 10% of salary (basic + DA)
+    within_80c_cap: true
+    note: "Included in the combined ₹1.5L cap of 80C/80CCC/80CCD(1)"
+
+  - section: "80CCD(1B)"
+    title: "Additional NPS contribution"
+    regime: old_only
+    cap: 50000
+    within_80c_cap: false
+    note: "Additional ₹50,000 over and above the 80C cap"
+
+  - section: "80CCD(2)"
+    title: "Employer contribution to NPS"
+    regime: both
+    cap_percent_of_salary:
+      government: 14   # 14% of salary for govt employees
+      private: 10       # 10% of salary for private sector
+    within_80c_cap: false
+    note: "Available in BOTH old and new regimes. Not subject to ₹1.5L cap."

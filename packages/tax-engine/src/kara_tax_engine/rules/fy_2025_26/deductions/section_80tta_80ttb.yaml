@@ -1,0 +1,17 @@
+section_80tta:
+  title: "Interest on savings accounts"
+  financial_year: "2025-26"
+  regime: old_only
+  age: below_60
+  cap: 10000
+  eligible_income: ["Savings account interest from banks, co-operative societies, post office"]
+  note: "Not available for FD interest, RD interest, or corporate deposits. Mutually exclusive with 80TTB."
+
+section_80ttb:
+  title: "Interest on deposits (senior citizens)"
+  financial_year: "2025-26"
+  regime: old_only
+  age: [senior, super_senior]
+  cap: 50000
+  eligible_income: ["Savings account", "Fixed deposits", "Post office deposits"]
+  note: "Replaces 80TTA for senior citizens. Broader scope — includes FD and post office interest."

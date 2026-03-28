@@ -1,0 +1,4 @@
+Requirement already satisfied: aiosqlite in c:\users\vinoth kumar\appdata\local\programs\python\python314\lib\site-packages (0.22.1)
+
+[notice] A new release of pip is available: 25.2 -> 26.0.1
+[notice] To update, run: C:\Users\VINOTH KUMAR\AppData\Local\Programs\Python\Python314\python.exe -m pip install --upgrade pip
