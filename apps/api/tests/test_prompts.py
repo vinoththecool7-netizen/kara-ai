@@ -127,6 +127,26 @@ class TestIntentSpecs:
                 f"Intent {intent.name} has no example_queries"
             )
 
+    def test_slot_optional_for_matches_intent_specs(self):
+        """Verify SlotDefinition.optional_for is consistent with IntentSpec.optional_slots."""
+        for slot_name, slot in ALL_SLOTS.items():
+            for intent_str in slot.optional_for:
+                intent = Intent(intent_str)
+                assert slot_name in INTENT_SPECS[intent].optional_slots, (
+                    f"Slot {slot_name!r} claims optional_for={intent_str!r} "
+                    f"but IntentSpec does not list it in optional_slots"
+                )
+
+    def test_slot_required_for_matches_intent_specs(self):
+        """Verify SlotDefinition.required_for is consistent with IntentSpec.required_slots."""
+        for slot_name, slot in ALL_SLOTS.items():
+            for intent_str in slot.required_for:
+                intent = Intent(intent_str)
+                assert slot_name in INTENT_SPECS[intent].required_slots, (
+                    f"Slot {slot_name!r} claims required_for={intent_str!r} "
+                    f"but IntentSpec does not list it in required_slots"
+                )
+
 
 # ---------------------------------------------------------------------------
 # TestEnhancedSystemPrompt

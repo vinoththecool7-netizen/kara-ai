@@ -122,14 +122,14 @@ _demographic_slots = [
         "residential_status",
         "Tax residency status (resident, non-resident, RNOR).",
         "str",
-        optional_for=["compute_tax", "compliance"],
+        optional_for=[],
         enum_values=["resident", "non_resident", "rnor"],
     ),
     _slot(
         "financial_year",
         "Financial year in YYYY-YY format.",
         "str",
-        optional_for=["compute_tax", "compare_regimes", "capital_gains"],
+        optional_for=["capital_gains"],
         default="2025-26",
     ),
     _slot(
@@ -326,7 +326,9 @@ INTENT_SPECS: dict[Intent, IntentSpec] = {
         optional_slots=[
             "regime", "age_category", "business_income",
             "house_property_income", "other_income",
-            "section_80c", "section_80d", "section_24b",
+            "section_80c", "section_80d", "section_80d_parents",
+            "section_80ccd_1b", "section_80ccd_2", "section_80e",
+            "section_80g", "section_80tta", "section_24b", "hra_exemption",
         ],
         primary_tool="compute_tax",
         example_queries=[
@@ -368,8 +370,9 @@ INTENT_SPECS: dict[Intent, IntentSpec] = {
         required_slots=["gross_salary"],
         optional_slots=[
             "age_category", "section_80c", "section_80d",
-            "section_80ccd_1b", "section_80e", "section_80g",
-            "section_80tta", "section_24b", "hra_exemption",
+            "section_80d_parents", "section_80ccd_1b", "section_80ccd_2",
+            "section_80e", "section_80g", "section_80tta",
+            "section_24b", "hra_exemption",
         ],
         primary_tool="find_deduction_gaps",
         example_queries=[
