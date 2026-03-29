@@ -1,5 +1,6 @@
-"""Agent package: prompt definitions, intent taxonomy, and profile builder."""
+"""Agent package: prompt definitions, intent taxonomy, profile builder, and core loop."""
 
+from kara_api.agent.loop import AgentError, AgentLoop, AgentResponse, ToolCallRecord
 from kara_api.agent.profile_builder import ProfileBuilder
 from kara_api.agent.prompts import (
     ALL_SLOTS,
@@ -15,12 +16,16 @@ from kara_api.agent.prompts import (
 
 __all__ = [
     "ALL_SLOTS",
+    "AgentError",
+    "AgentLoop",
+    "AgentResponse",
     "ENHANCED_SYSTEM_PROMPT",
     "INTENT_SPECS",
     "Intent",
     "IntentSpec",
     "ProfileBuilder",
     "SlotDefinition",
+    "ToolCallRecord",
     "get_intent_spec",
     "get_required_slots",
     "get_slot_definition",
