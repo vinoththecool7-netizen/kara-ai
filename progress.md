@@ -22,11 +22,11 @@
 | Phase | Days | Status | Progress |
 |-------|------|--------|----------|
 | 1 — Rule Engine | 1–20 | ✅ Complete | 20/20 days done |
-| 2 — Backend + AI Agent | 21–40 | 🔄 In Progress | 14/20 days done |
-| 3 — Frontend | 41–55 | ⬜ Not Started | 0/15 days done |
+| 2 — Backend + AI Agent | 21–40 | ✅ Complete | 20/20 days done |
+| 3 — Frontend | 41–55 | 🔄 In Progress | 4/15 days done |
 | 4 — Advanced Features | 56–70 | ⬜ Not Started | 0/15 days done |
 | 5 — Polish + Launch | 71–80 | ⬜ Not Started | 0/10 days done |
-| **Total** | **1–80** | | **34/80 days done (43%)** |
+| **Total** | **1–80** | | **44/80 days done (55%)** |
 
 ### Test Count Tracker
 
@@ -42,10 +42,11 @@
 | LLM client + providers | 30+ | 54 | ✅ |
 | Tool schemas + executor | 30+ | 55 | ✅ |
 | Agent prompts + profile | 20+ | 50 | ✅ |
-| Agent loop | 30+ | 0 | ⬜ |
+| Agent loop + chat | 30+ | 61 | ✅ |
+| E2E integration | 10+ | 13 | ✅ |
 | Frontend components | 20+ | 0 | ⬜ |
 | E2E journeys | 10+ | 0 | ⬜ |
-| **Total** | **350+** | **524** | **150%** |
+| **Total** | **350+** | **616** | **176%** |
 
 ---
 
@@ -719,78 +720,114 @@
 
 ---
 
-### Days 36–38: Agent Loop (Core ~120 Lines) ⬜
+### Days 36–38: Agent Loop + Session Manager + Chat Endpoints ✅
 
-**Status:** ⬜ TODO
+**Status:** ✅ COMPLETE (2026-03-29)
 
-**Tasks:**
-- [ ] Create `apps/api/src/kara_api/agent/loop.py` — the core agent loop:
-  ```
-  while not done:
-    response = llm.chat(messages, tools=tool_schemas)
-    if response.has_tool_calls:
-      for tool_call in response.tool_calls:
-        result = executor.run(tool_call)
-        messages.append(tool_result)
-    else:
-      done = True  # final answer
-  ```
-  - Max iterations guard (prevent infinite loops)
-  - Tool call validation before execution
-  - Error recovery — if tool fails, inform LLM and let it retry
-  - Streaming: yield partial responses as SSE events
-- [ ] Create `apps/api/src/kara_api/agent/session.py`:
-  - Session CRUD (create, get, list, delete)
-  - Message history persistence to PostgreSQL
-  - Profile state persistence
-- [ ] Write agent loop tests — 10+ tests (with mocked LLM)
-  - [ ] Test single-turn: user asks, AI answers directly
-  - [ ] Test multi-turn: AI asks clarifying question, user answers, AI computes
-  - [ ] Test tool calling: AI calls compute_tax, gets result, formats answer
-  - [ ] Test max iterations guard
-  - [ ] Test error recovery
+**What was built:**
 
-**Files to Create:**
-- `apps/api/src/kara_api/agent/loop.py`
-- `apps/api/src/kara_api/agent/session.py`
-- `apps/api/tests/test_agent_loop.py`
+1. **Agent Loop** (`apps/api/src/kara_api/agent/loop.py`) — ~120 lines core:
+   - [x] `AgentLoop` class: LLM ↔ tool execution cycle
+   - [x] `run()` method: takes user message + history → iterates LLM calls with tool execution
+   - [x] Max iterations guard (default 10) — returns fallback message on exhaustion
+   - [x] Error recovery — tool errors passed back to LLM as tool results for self-correction
+   - [x] LLM provider errors caught and raised as `AgentError`
+   - [x] Token usage accumulation across iterations
+   - [x] `AgentResponse` model: content, tool_calls_made, total_usage, iterations, profile_snapshot
+   - [x] `ToolCallRecord` model for observability audit trail
 
-**Tests Target:** 10+ agent loop tests
+2. **Session Manager** (`apps/api/src/kara_api/agent/session.py`) — ~80 lines:
+   - [x] `SessionManager` class with CRUD for chat sessions
+   - [x] `create_session()`, `get_session()`, `delete_session()` (cascade)
+   - [x] `add_message()`, `get_messages()` (chronological order)
+   - [x] `update_profile()` — persists ProfileBuilder state as JSONB
 
-**Definition of Done:** Agent loop works end-to-end with mocked LLM. Tool calling cycles correctly. Sessions persist.
+3. **Advisory Triggers** (`apps/api/src/kara_api/agent/advisory.py`) — ~77 lines:
+   - [x] `AdvisoryTriggers` class with 4 proactive hint rules:
+     - After `compute_tax` (alone) → suggest regime comparison
+     - After `compare_regimes` → suggest deduction opportunities
+     - After `find_deduction_gaps` → suggest ELSS/PPF/NPS
+     - After `compute_capital_gains` → suggest Section 54/54EC exemptions
+   - [x] Deduplication and suppression logic (e.g., no compute_tax hint if compare_regimes also called)
+
+4. **Chat Router** (`apps/api/src/kara_api/routers/chat.py`) — ~350 lines:
+   - [x] `POST /api/v1/chat` — create new session + first message → SSE stream
+   - [x] `POST /api/v1/chat/{session_id}` — continue conversation → SSE stream
+   - [x] `GET /api/v1/chat/{session_id}` — fetch session history + profile state
+   - [x] `DELETE /api/v1/chat/{session_id}` — delete session and messages
+   - [x] SSE events: `session_created`, `tool_result`, `content`, `advisory`, `done`, `error`
+   - [x] Non-streaming JSON fallback via `Accept: application/json` header
+   - [x] Profile state persistence and restoration across turns
+   - [x] Message history converted between DB and LLM formats
+
+**Files Created:**
+- `apps/api/src/kara_api/agent/loop.py` — Core agent loop
+- `apps/api/src/kara_api/agent/session.py` — Session CRUD
+- `apps/api/src/kara_api/agent/advisory.py` — Proactive advisory triggers
+- `apps/api/src/kara_api/routers/chat.py` — Chat endpoints with SSE
+- `apps/api/tests/test_agent_loop.py` — 20 tests
+- `apps/api/tests/test_session_manager.py` — 11 tests
+- `apps/api/tests/test_advisory.py` — 10 tests
+- `apps/api/tests/test_chat_endpoints.py` — 20 tests
+
+**Files Modified:**
+- `apps/api/src/kara_api/agent/__init__.py` — Added exports
+- `apps/api/src/kara_api/routers/__init__.py` — Added chat_router
+- `apps/api/src/kara_api/main.py` — Registered chat_router
+
+**Tests:** 61 new tests (20 + 11 + 10 + 20), bringing API total to 297 passed
+**Total project tests:** 603 (297 API + 306 tax-engine)
+
+**Definition of Done:** ✅ Agent loop works end-to-end with mocked LLM. Tool calling cycles correctly. Sessions persist. Chat endpoints serve SSE streams. Advisory triggers fire after computations.
 
 ---
 
-### Days 39–40: Chat Endpoint + SSE Streaming + Integration ⬜
+### Days 39–40: E2E Integration Tests + Docker Smoke Test ✅
 
-**Status:** ⬜ TODO
+**Status:** ✅ COMPLETE (2026-03-30)
 
-**Tasks:**
-- [ ] Create `apps/api/src/kara_api/routers/chat.py`:
-  - `POST /api/v1/chat` — create new session + send first message
-  - `POST /api/v1/chat/{session_id}` — continue conversation
-  - `GET /api/v1/chat/{session_id}` — get session history
-  - `DELETE /api/v1/chat/{session_id}` — delete session
-  - SSE streaming for real-time response delivery
-- [ ] Add proactive advisory triggers:
-  - After every tax computation → suggest regime switch if beneficial
-  - After capital gains → suggest tax-loss harvesting or deferral
-  - After deduction review → suggest gap-filling investments
-- [ ] End-to-end integration test — full conversation flow:
-  - User: "How much tax do I owe?" → AI asks for salary
-  - User: "15 lakh" → AI asks for regime/deductions
-  - User: "New regime" → AI computes, returns breakdown + tip
-- [ ] Write integration tests — 5+ tests
-- [ ] Verify `docker compose up` runs everything end-to-end
+**Note:** Chat router, SSE streaming, advisory triggers, and session management were completed ahead of schedule in Days 36–38. Days 39–40 focused on end-to-end integration testing and Docker readiness verification.
 
-**Files to Create:**
-- `apps/api/src/kara_api/routers/chat.py`
-- `apps/api/tests/test_chat_endpoint.py`
-- `apps/api/tests/test_integration.py`
+**What was built:**
 
-**Tests Target:** 5+ integration tests
+1. **End-to-End Integration Tests** (`apps/api/tests/test_integration.py`):
+   - [x] `InMemorySessionManager` — dict-backed drop-in for `SessionManager` (no PostgreSQL needed)
+   - [x] Integration test fixtures: `_integration_client` factory with FakeLLMProvider + real ToolRegistry
+   - [x] 8 single-turn tests exercising full HTTP → AgentLoop → ToolRegistry pipeline:
+     - `test_salary_tax_computation_sse` — compute_tax via SSE stream with real tax engine
+     - `test_salary_tax_computation_json` — same via JSON fallback
+     - `test_regime_comparison_flow` — compare_regimes + advisory hint verification
+     - `test_capital_gains_computation` — capital gains with specific field assertions
+     - `test_deduction_optimization` — deduction gap suggestions
+     - `test_stub_tools_tds_rate` — TDS rate stub tool
+     - `test_stub_tools_advance_tax` — advance tax stub tool
+     - `test_error_recovery_unknown_tool` — unknown tool error → graceful fallback
+   - [x] 5 multi-turn tests verifying session state across requests:
+     - `test_create_then_continue_session` — create → continue → GET history
+     - `test_profile_accumulates_across_turns` — profile state persists
+     - `test_session_deletion` — create → DELETE → 404
+     - `test_continue_nonexistent_session_404` — random UUID → 404
+     - `test_history_forwarded_to_agent` — prior messages passed to LLM
 
-**🏆 MILESTONE (Day 40):** AI chat working end-to-end. Docker compose runs full stack.
+2. **Docker Smoke Test** (`scripts/smoke_test.sh` + `docker-compose.test.yml`):
+   - [x] `docker-compose.test.yml` — compose override with `LLM_PROVIDER=fake`
+   - [x] `scripts/smoke_test.sh` — automated smoke test:
+     - Pre-flight checks (docker, docker compose, curl)
+     - Cleanup trap (docker compose down -v on EXIT)
+     - .env guard for fresh checkouts
+     - Health endpoint verification
+     - Chat JSON endpoint verification
+     - Chat SSE endpoint verification
+     - Pass/fail summary with correct exit codes
+
+**Files Created:**
+- `apps/api/tests/test_integration.py` (~750 lines) — 13 E2E integration tests
+- `scripts/smoke_test.sh` (~165 lines) — Docker smoke test script
+- `docker-compose.test.yml` — compose override for testing
+
+**Tests:** 13 new integration tests (310 total API tests passing, 12 integration deselected). 0 regressions.
+
+**🏆 MILESTONE (Day 40):** AI chat working end-to-end. Docker compose runs full stack. ✅ DONE
 
 ---
 
@@ -802,63 +839,46 @@
 
 ---
 
-### Days 41–42: Next.js Project Setup + Design System ⬜
+### Days 41–44: Next.js Setup + Design System + Landing Page + Navigation ✅
 
-**Status:** ⬜ TODO
-
-**Tasks:**
-- [ ] Initialize Next.js 14 with App Router: `npx create-next-app@latest apps/web`
-- [ ] Install dependencies: Tailwind CSS, shadcn/ui
-- [ ] Configure `tailwind.config.ts` with professional finance theme:
-  - Primary: Blue (#1e40af → #3b82f6)
-  - Accent: Green (#059669 → #10b981)
-  - Neutral: Slate grays
-- [ ] Set up shadcn/ui components: Button, Card, Input, ScrollArea, Avatar, Badge
-- [ ] Create layout shell:
-  - `app/layout.tsx` — html/body with font, metadata
-  - `app/page.tsx` — landing page with hero + CTA
-  - Header with Kara logo + "Open Source" badge
-- [ ] Set up dark mode with `next-themes`
-- [ ] Configure responsive breakpoints (375px mobile → 1440px desktop)
-
-**Files to Create:**
-- `apps/web/package.json` (via create-next-app)
-- `apps/web/tailwind.config.ts`
-- `apps/web/src/app/layout.tsx`
-- `apps/web/src/app/page.tsx`
-- `apps/web/src/lib/utils.ts` (shadcn cn utility)
-- `apps/web/src/components/ui/` (shadcn components)
-
-**Definition of Done:** Next.js runs with Tailwind + shadcn. Landing page renders. Dark mode toggles. Mobile responsive.
-
----
-
-### Days 43–44: Landing Page + Navigation ⬜
-
-**Status:** ⬜ TODO
+**Status:** ✅ COMPLETE (2026-04-02) — Days 41-42 and 43-44 merged: all work done in one sprint.
 
 **Tasks:**
-- [ ] Design landing page sections:
-  - Hero: "Your AI Tax Advisor" + subtitle + "Start Chatting" CTA
-  - Features grid: Conversational, Deterministic, Open Source, Privacy-first
-  - How it works: 3 steps (Ask → Compute → Advise)
-  - Tech stack badges: Python, FastAPI, Next.js, PostgreSQL
-- [ ] Create reusable components:
-  - `Header` — logo, nav links, dark mode toggle, GitHub star button
-  - `Footer` — links, MIT license badge, "Made in India"
-- [ ] Add animations with Framer Motion or CSS transitions
-- [ ] Mobile navigation (hamburger menu)
-- [ ] Link to chat page: `/chat`
+- [x] Initialize Next.js 16.2.2 with App Router + TypeScript + Tailwind v4 + shadcn/ui
+- [x] Install: next-themes, lucide-react, clsx, tailwind-merge, class-variance-authority
+- [x] Add shadcn components: Button, Card, Input, ScrollArea, Avatar, Badge
+- [x] Configure Kara design system (Tailwind v4 CSS-based, no tailwind.config.ts):
+  - IBM Plex Sans font (next/font/google, 400/500/600/700)
+  - Primary: #2563EB (blue-600), CTA: #F97316 (orange), Accent: #059669 (green)
+  - `--color-kara-*` tokens in `@theme inline` → Tailwind utilities `bg-kara-cta`, etc.
+  - oklch-based light (#F8FAFC bg, #1E293B text) and dark (#0F172A bg, #F1F5F9 text) palettes
+  - `prefers-reduced-motion` media query
+  - Skip-link accessibility CSS
+- [x] Layout shell: ThemeProvider, SkipLink, Header, `<main id="main-content">`, Footer
+- [x] Header: sticky, Kara/कर logo + "Open Source" badge, Home/Chat nav, dark mode toggle (resolvedTheme), GitHub link, mobile hamburger
+- [x] Footer: brand tagline, GitHub + /docs links, MIT License badge
+- [x] Landing page: Hero (h1 + CTA + GitHub), Features Grid (4 cards with h3 headings), How It Works (3 steps), Tech Stack badges
+- [x] Chat placeholder page at `/chat`
+- [x] 404 not-found page
+- [x] API proxy in next.config.ts: `/api/*` → `http://localhost:8000/api/*`
+- [x] GITHUB_URL constant centralised in lib/constants.ts
+- [x] `suppressHydrationWarning` on `<html>`, `lang="en"`, ARIA labels
 
-**Files to Create:**
-- `apps/web/src/components/landing/Hero.tsx`
-- `apps/web/src/components/landing/Features.tsx`
-- `apps/web/src/components/landing/HowItWorks.tsx`
-- `apps/web/src/components/layout/Header.tsx`
-- `apps/web/src/components/layout/Footer.tsx`
-- `apps/web/src/app/chat/page.tsx` (shell)
+**Files Created:**
+- `apps/web/` — full Next.js 16 project (package.json, tsconfig.json, next.config.ts, components.json)
+- `apps/web/src/app/globals.css` — Kara theme, dark mode, a11y
+- `apps/web/src/app/layout.tsx` — root layout
+- `apps/web/src/app/page.tsx` — landing page
+- `apps/web/src/app/chat/page.tsx` — chat placeholder
+- `apps/web/src/app/not-found.tsx` — 404
+- `apps/web/src/lib/fonts.ts`, `constants.ts`, `utils.ts`
+- `apps/web/src/components/theme-provider.tsx`
+- `apps/web/src/components/layout/Header.tsx`, `Footer.tsx`, `SkipLink.tsx`
+- `apps/web/src/components/ui/` — shadcn components
 
-**Definition of Done:** Landing page looks professional. All sections render. CTA links to /chat.
+**Tests:** Build passes, 3 static routes (`/`, `/chat`, `/_not-found`). Lint clean. TypeScript clean.
+
+**Commits:** c5bd871 → 18cf100 (6 commits)
 
 ---
 
