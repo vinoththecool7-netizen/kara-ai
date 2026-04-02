@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 export function Header() {
-  const { theme, setTheme } = useTheme();
+  const { theme, setTheme, resolvedTheme } = useTheme();
   const [menuOpen, setMenuOpen] = React.useState(false);
   const [mounted, setMounted] = React.useState(false);
 
@@ -57,10 +57,10 @@ export function Header() {
             size="icon"
             className="min-w-[44px] min-h-[44px]"
             onClick={toggleTheme}
-            aria-label="Toggle dark mode"
+            aria-label={mounted && resolvedTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
           >
             {mounted ? (
-              theme === "dark" ? (
+              resolvedTheme === "dark" ? (
                 <Sun className="h-4 w-4" />
               ) : (
                 <Moon className="h-4 w-4" />
@@ -105,6 +105,8 @@ export function Header() {
       {menuOpen && (
         <div
           id="mobile-menu"
+          role="navigation"
+          aria-label="Mobile navigation"
           className="md:hidden border-t bg-background px-4 py-3 flex flex-col gap-1"
         >
           <Link
@@ -130,10 +132,10 @@ export function Header() {
                 toggleTheme();
                 setMenuOpen(false);
               }}
-              aria-label="Toggle dark mode"
+              aria-label={mounted && resolvedTheme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
             >
               {mounted ? (
-                theme === "dark" ? (
+                resolvedTheme === "dark" ? (
                   <Sun className="h-4 w-4" />
                 ) : (
                   <Moon className="h-4 w-4" />

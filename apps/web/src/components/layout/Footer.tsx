@@ -19,7 +19,7 @@ export function Footer() {
               GitHub
             </a>
             <a
-              href="#"
+              href="/docs"
               className="text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
               Documentation

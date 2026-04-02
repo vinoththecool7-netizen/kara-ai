@@ -1,6 +1,7 @@
+import type { Metadata } from "next";
 import { MessageSquare } from "lucide-react";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Chat — Kara AI Tax Advisor",
   description: "Chat with Kara, your AI tax advisor for India.",
 };

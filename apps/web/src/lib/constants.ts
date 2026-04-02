@@ -1,3 +1,5 @@
+export const GITHUB_URL = "https://github.com/kara-project/kara"
+
 export const COLORS = {
   primary: "#2563EB",
   primaryDark: "#1D4ED8",

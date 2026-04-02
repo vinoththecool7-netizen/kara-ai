@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight, ExternalLink, MessageSquare, Calculator, Code, Shield } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { GITHUB_URL } from "@/lib/constants";
 
 const features = [
   {
@@ -76,7 +77,7 @@ export default function Home() {
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Link>
               <a
-                href="https://github.com/anthropics/kara"
+                href={GITHUB_URL}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center justify-center h-12 px-8 text-lg font-medium rounded-lg border border-border bg-background hover:bg-muted text-foreground transition-colors w-full sm:w-auto"
@@ -107,8 +108,8 @@ export default function Home() {
                     <div className="mb-2">
                       <Icon className="text-kara-primary" size={32} />
                     </div>
-                    <CardTitle className="font-semibold text-foreground">
-                      {feature.title}
+                    <CardTitle>
+                      <h3 className="font-semibold">{feature.title}</h3>
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
