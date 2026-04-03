@@ -38,7 +38,6 @@ export function ChatWindow() {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const isNearBottomRef = useRef(true);
-  const lastRetryRef = useRef<string | null>(null);
 
   // Track whether user is near the bottom of the scroll container
   const handleScroll = useCallback(() => {
@@ -63,10 +62,8 @@ export function ChatWindow() {
 
   // Retry: re-send the last user message
   function handleRetry() {
-    // Find the last user message
     for (let i = messages.length - 1; i >= 0; i--) {
       if (messages[i].role === "user") {
-        lastRetryRef.current = messages[i].content;
         dismissError();
         sendMessage(messages[i].content);
         return;
@@ -162,6 +159,7 @@ export function ChatWindow() {
                   variant="ghost"
                   size="xs"
                   onClick={handleRetry}
+                  disabled={isStreaming}
                 >
                   Try again
                 </Button>

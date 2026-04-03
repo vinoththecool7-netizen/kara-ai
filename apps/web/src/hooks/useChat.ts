@@ -189,7 +189,7 @@ export interface UseChatReturn {
 
 export function useChat(): UseChatReturn {
   const [state, dispatch] = useReducer(chatReducer, initialState);
-  const { processStream } = useSSE();
+  const { processStream, abort } = useSSE();
 
   // Use a ref to always have the latest sessionId inside async callbacks,
   // without needing to include it in useCallback dependency arrays.
@@ -201,6 +201,9 @@ export function useChat(): UseChatReturn {
   // -------------------------------------------------------------------------
 
   const sendMessage = useCallback(async (text: string): Promise<void> => {
+    // Cancel any in-flight stream before starting a new one
+    abort();
+
     // 1. Clear any existing error
     dispatch({ type: "SET_ERROR", error: null });
 
@@ -272,7 +275,7 @@ export function useChat(): UseChatReturn {
         error: "Unable to connect. Check your connection and try again.",
       });
     }
-  }, [processStream]);
+  }, [processStream, abort]);
 
   // -------------------------------------------------------------------------
   // clearChat
@@ -337,6 +340,11 @@ export function useChat(): UseChatReturn {
   // -------------------------------------------------------------------------
   // Mount effect: restore session from localStorage
   // -------------------------------------------------------------------------
+
+  // Abort in-flight stream on unmount
+  useEffect(() => {
+    return () => { abort(); };
+  }, [abort]);
 
   useEffect(() => {
     const storedId = localStorage.getItem("kara_session_id");
