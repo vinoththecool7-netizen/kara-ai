@@ -1,26 +1,160 @@
 "use client";
 
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { useRef, useEffect, useCallback } from "react";
+import { X, RotateCcw } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { cn } from "@/lib/utils";
+import { useChat } from "@/hooks/useChat";
+import { MessageBubble } from "./MessageBubble";
 import { MessageInput } from "./MessageInput";
+import { TypingIndicator } from "./TypingIndicator";
+import { SuggestedQuestions } from "./SuggestedQuestions";
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function prefersReducedMotion(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
 
 export function ChatWindow() {
-  function handleSend(text: string) {
-    console.log("User message:", text);
+  const {
+    messages,
+    isStreaming,
+    error,
+    sendMessage,
+    dismissError,
+  } = useChat();
+
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const isNearBottomRef = useRef(true);
+  const lastRetryRef = useRef<string | null>(null);
+
+  // Track whether user is near the bottom of the scroll container
+  const handleScroll = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    isNearBottomRef.current =
+      el.scrollHeight - el.scrollTop - el.clientHeight < 100;
+  }, []);
+
+  // Auto-scroll when messages change or streaming content appends
+  useEffect(() => {
+    if (!isNearBottomRef.current || !sentinelRef.current) return;
+    const behavior = prefersReducedMotion() ? "instant" : "smooth";
+    sentinelRef.current.scrollIntoView({ behavior });
+  }, [messages, isStreaming]);
+
+  // Determine whether to show the typing indicator:
+  // streaming is active AND the last assistant message has no content yet
+  const lastMessage = messages[messages.length - 1];
+  const showTypingIndicator =
+    isStreaming && lastMessage?.role === "assistant" && lastMessage.content === "";
+
+  // Retry: re-send the last user message
+  function handleRetry() {
+    // Find the last user message
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === "user") {
+        lastRetryRef.current = messages[i].content;
+        dismissError();
+        sendMessage(messages[i].content);
+        return;
+      }
+    }
   }
 
   return (
     <div className="flex flex-col h-full">
       {/* Messages area */}
-      <div className="flex-1 overflow-hidden">
-        <ScrollArea className="h-full">
-          <div className="max-w-3xl mx-auto w-full px-4 py-8 flex items-center justify-center min-h-[200px]">
-            <p className="text-muted-foreground text-sm">Messages will appear here</p>
-          </div>
-        </ScrollArea>
+      <div
+        ref={scrollContainerRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto"
+        role="log"
+        aria-live="polite"
+      >
+        <div className="max-w-3xl mx-auto w-full px-4 py-8 space-y-6">
+          {messages.length === 0 && !isStreaming && (
+            <div className="flex flex-col items-center justify-center gap-6 min-h-[60vh] py-8">
+              {/* Avatar */}
+              <Avatar
+                size="lg"
+                className="size-16 bg-kara-primary text-primary-foreground"
+              >
+                <AvatarFallback className="bg-kara-primary text-white text-2xl font-bold">
+                  K
+                </AvatarFallback>
+              </Avatar>
+
+              {/* Headings */}
+              <div className="text-center space-y-1">
+                <h2 className="text-2xl font-semibold tracking-tight">
+                  Hi! I&#39;m Kara
+                </h2>
+                <p className="text-muted-foreground text-sm">
+                  Your AI tax advisor for India
+                </p>
+              </div>
+
+              {/* Suggestion chips */}
+              <SuggestedQuestions onSelect={sendMessage} />
+            </div>
+          )}
+
+          {messages.map((msg) => (
+            <MessageBubble key={msg.id} message={msg} />
+          ))}
+
+          {showTypingIndicator && <TypingIndicator />}
+
+          {/* Error banner */}
+          {error && (
+            <div
+              className={cn(
+                "rounded-lg px-4 py-3 bg-destructive/10 text-destructive",
+                "flex items-center justify-between gap-3 text-sm"
+              )}
+              role="alert"
+            >
+              <span>{error}</span>
+              <div className="flex items-center gap-1 shrink-0">
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  onClick={handleRetry}
+                  aria-label="Retry"
+                >
+                  <RotateCcw className="size-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  onClick={dismissError}
+                  aria-label="Dismiss error"
+                >
+                  <X className="size-3.5" />
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Scroll sentinel */}
+          <div ref={sentinelRef} aria-hidden="true" />
+        </div>
       </div>
 
       {/* Input area */}
-      <MessageInput onSend={handleSend} />
+      <MessageInput onSend={sendMessage} disabled={isStreaming} />
     </div>
   );
 }
