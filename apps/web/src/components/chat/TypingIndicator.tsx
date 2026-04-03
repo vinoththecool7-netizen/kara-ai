@@ -17,7 +17,7 @@ export function TypingIndicator() {
       aria-label="Kara is thinking"
     >
       {/* Kara avatar */}
-      <Avatar className="h-8 w-8 bg-kara-primary text-white shrink-0">
+      <Avatar className="h-8 w-8 shrink-0">
         <AvatarFallback className="bg-kara-primary text-white text-sm font-semibold">
           K
         </AvatarFallback>

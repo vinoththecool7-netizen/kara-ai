@@ -53,6 +53,25 @@ const initialState: ChatState = {
 };
 
 // ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function lastAssistantIndex(messages: ChatMessage[]): number {
+  return messages.reduceRight(
+    (found, msg, idx) => (found === -1 && msg.role === "assistant" ? idx : found),
+    -1,
+  );
+}
+
+function markLastAssistantDone(messages: ChatMessage[]): ChatMessage[] {
+  const idx = lastAssistantIndex(messages);
+  if (idx === -1) return messages;
+  return messages.map((msg, i) =>
+    i === idx ? { ...msg, isStreaming: false } : msg,
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Reducer
 // ---------------------------------------------------------------------------
 
@@ -66,15 +85,11 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
 
     case "APPEND_CONTENT": {
       const messages = [...state.messages];
-      // Find last assistant message
-      const lastIndex = messages.reduceRight(
-        (found, msg, i) => (found === -1 && msg.role === "assistant" ? i : found),
-        -1
-      );
-      if (lastIndex === -1) return state;
-      messages[lastIndex] = {
-        ...messages[lastIndex],
-        content: messages[lastIndex].content + action.text,
+      const idx = lastAssistantIndex(messages);
+      if (idx === -1) return state;
+      messages[idx] = {
+        ...messages[idx],
+        content: messages[idx].content + action.text,
         isStreaming: true,
       };
       return { ...state, messages };
@@ -82,15 +97,11 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
 
     case "ADD_TOOL_EVENT": {
       const messages = [...state.messages];
-      const lastIndex = messages.reduceRight(
-        (found, msg, i) => (found === -1 && msg.role === "assistant" ? i : found),
-        -1
-      );
-      if (lastIndex === -1) return state;
-      const existing = messages[lastIndex];
-      messages[lastIndex] = {
-        ...existing,
-        toolEvents: [...(existing.toolEvents ?? []), action.event],
+      const idx = lastAssistantIndex(messages);
+      if (idx === -1) return state;
+      messages[idx] = {
+        ...messages[idx],
+        toolEvents: [...(messages[idx].toolEvents ?? []), action.event],
       };
       return { ...state, messages };
     }
@@ -98,65 +109,30 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
     case "SET_SESSION_ID":
       return { ...state, sessionId: action.sessionId };
 
-    case "SET_STREAMING": {
-      if (action.streaming) {
-        return { ...state, isStreaming: true };
-      }
-      // When stopping streaming, also mark last assistant message's isStreaming false
-      const messages = state.messages.map((msg, i, arr) => {
-        const isLast = i === arr.length - 1 || arr.slice(i + 1).every((m) => m.role !== "assistant");
-        if (msg.role === "assistant" && i === arr.reduceRight(
-          (found, m, idx) => (found === -1 && m.role === "assistant" ? idx : found),
-          -1
-        )) {
-          return { ...msg, isStreaming: false };
-        }
-        return msg;
-      });
-      return { ...state, isStreaming: false, messages };
-    }
+    case "SET_STREAMING":
+      return { ...state, isStreaming: action.streaming };
 
-    case "SET_ERROR": {
-      const messages = state.messages.map((msg, i, arr) => {
-        const lastAssistantIdx = arr.reduceRight(
-          (found, m, idx) => (found === -1 && m.role === "assistant" ? idx : found),
-          -1
-        );
-        if (msg.role === "assistant" && i === lastAssistantIdx) {
-          return { ...msg, isStreaming: false };
-        }
-        return msg;
-      });
-      return { ...state, error: action.error, isStreaming: false, isLoading: false, messages };
-    }
+    case "SET_ERROR":
+      return {
+        ...state,
+        error: action.error,
+        isStreaming: false,
+        isLoading: false,
+        messages: markLastAssistantDone(state.messages),
+      };
 
     case "SET_DONE": {
-      const messages = state.messages.map((msg, i, arr) => {
-        const lastAssistantIdx = arr.reduceRight(
-          (found, m, idx) => (found === -1 && m.role === "assistant" ? idx : found),
-          -1
-        );
-        if (msg.role === "assistant" && i === lastAssistantIdx) {
-          return { ...msg, isStreaming: false };
-        }
-        return msg;
-      });
+      const messages = markLastAssistantDone(state.messages);
+      const idx = lastAssistantIndex(messages);
+      const emptyResponse = idx !== -1 && messages[idx].content.trim() === "";
 
-      // Check if the last assistant message ended up with empty content
-      const lastAssistantIdx = messages.reduceRight(
-        (found, msg, idx) => (found === -1 && msg.role === "assistant" ? idx : found),
-        -1
-      );
-      const emptyResponse =
-        lastAssistantIdx !== -1 &&
-        messages[lastAssistantIdx].content.trim() === "";
       if (emptyResponse) {
         return {
           ...state,
           sessionId: action.sessionId,
           profileState: action.profileState,
           isStreaming: false,
-          messages,
+          messages: messages.filter((_, i) => i !== idx),
           error: "Kara couldn't generate a response. Please try rephrasing.",
         };
       }
@@ -293,7 +269,7 @@ export function useChat(): UseChatReturn {
     } catch {
       dispatch({
         type: "SET_ERROR",
-        error: "Unable to connect. Please check your connection and try again.",
+        error: "Unable to connect. Check your connection and try again.",
       });
     }
   }, [processStream]);

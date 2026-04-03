@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useEffect, useCallback } from "react";
-import { X, RotateCcw } from "lucide-react";
+import { X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -157,14 +157,13 @@ export function ChatWindow() {
               role="alert"
             >
               <span>{error}</span>
-              <div className="flex items-center gap-1 shrink-0">
+              <div className="flex items-center gap-2 shrink-0">
                 <Button
                   variant="ghost"
-                  size="icon-xs"
+                  size="xs"
                   onClick={handleRetry}
-                  aria-label="Retry"
                 >
-                  <RotateCcw className="size-3.5" />
+                  Try again
                 </Button>
                 <Button
                   variant="ghost"
