@@ -1,8 +1,8 @@
 "use client";
 
-import { useReducer, useRef, useCallback } from "react";
+import { useReducer, useRef, useCallback, useEffect } from "react";
 import { useSSE } from "@/hooks/useSSE";
-import { createChat, continueChat, fetchSession } from "@/lib/api";
+import { createChat, continueChat, fetchSession, deleteSession } from "@/lib/api";
 import type {
   ChatMessage,
   ProfileState,
@@ -244,6 +244,8 @@ export function useChat(): UseChatReturn {
           dispatch({ type: "SET_SESSION_ID", sessionId });
           // Keep ref in sync immediately (reducer updates async via re-render)
           sessionIdRef.current = sessionId;
+          // Persist so the session survives a page refresh
+          localStorage.setItem("kara_session_id", sessionId);
         },
         onToolResult: (toolName, result, isError) => {
           dispatch({
@@ -281,8 +283,14 @@ export function useChat(): UseChatReturn {
   // -------------------------------------------------------------------------
 
   const clearChat = useCallback((): void => {
+    const prevSessionId = sessionIdRef.current;
     dispatch({ type: "CLEAR" });
     sessionIdRef.current = null;
+    localStorage.removeItem("kara_session_id");
+    // Best-effort server-side deletion — ignore errors
+    if (prevSessionId) {
+      deleteSession(prevSessionId).catch(() => undefined);
+    }
   }, []);
 
   // -------------------------------------------------------------------------
@@ -312,6 +320,12 @@ export function useChat(): UseChatReturn {
       dispatch({ type: "SET_LOADING", loading: false });
       const message =
         err instanceof Error ? err.message : "Failed to load session.";
+      // If the session no longer exists on the server, clear the stale localStorage key
+      // silently rather than showing an error to the user
+      if (message.includes("404")) {
+        localStorage.removeItem("kara_session_id");
+        return;
+      }
       dispatch({ type: "SET_ERROR", error: message });
     }
   }, []);
@@ -323,6 +337,18 @@ export function useChat(): UseChatReturn {
   const dismissError = useCallback((): void => {
     dispatch({ type: "SET_ERROR", error: null });
   }, []);
+
+  // -------------------------------------------------------------------------
+  // Mount effect: restore session from localStorage
+  // -------------------------------------------------------------------------
+
+  useEffect(() => {
+    const storedId = localStorage.getItem("kara_session_id");
+    if (!storedId) return;
+    // loadSession handles 404 by clearing localStorage silently
+    loadSession(storedId);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // run once on mount
 
   return {
     messages: state.messages,
