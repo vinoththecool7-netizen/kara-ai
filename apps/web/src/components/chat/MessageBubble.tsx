@@ -1,0 +1,196 @@
+"use client";
+
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import type { ChatMessage } from "@/types/chat";
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function formatRelativeTime(date: Date): string {
+  const diffMs = Date.now() - date.getTime();
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHour = Math.floor(diffMin / 60);
+  const diffDay = Math.floor(diffHour / 24);
+
+  if (diffSec < 60) return "just now";
+  if (diffMin < 60) return `${diffMin}m ago`;
+  if (diffHour < 24) return `${diffHour}h ago`;
+  return `${diffDay}d ago`;
+}
+
+function humanizeToolName(name: string): string {
+  // snake_case → Title Case words
+  return name
+    .split("_")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+}
+
+// ---------------------------------------------------------------------------
+// Markdown component overrides for react-markdown v10+
+// ---------------------------------------------------------------------------
+
+const markdownComponents: React.ComponentProps<
+  typeof ReactMarkdown
+>["components"] = {
+  p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+  ul: ({ children }) => (
+    <ul className="list-disc pl-4 mb-2">{children}</ul>
+  ),
+  ol: ({ children }) => (
+    <ol className="list-decimal pl-4 mb-2">{children}</ol>
+  ),
+  li: ({ children }) => <li className="mb-0.5">{children}</li>,
+  // In react-markdown v10, code blocks are wrapped by <pre> automatically.
+  // The `code` element receives className="language-*" for fenced blocks
+  // and no className for inline code.
+  code: ({ className, children, ...props }) => {
+    const isCodeBlock = Boolean(className?.startsWith("language-"));
+    return (
+      <code
+        className={cn(
+          "font-mono text-sm",
+          isCodeBlock
+            ? "block bg-foreground/10 p-3 rounded-lg overflow-x-auto"
+            : "bg-foreground/10 px-1 py-0.5 rounded"
+        )}
+        {...props}
+      >
+        {children}
+      </code>
+    );
+  },
+  pre: ({ children }) => <pre className="mb-2 last:mb-0">{children}</pre>,
+  strong: ({ children }) => (
+    <strong className="font-semibold">{children}</strong>
+  ),
+  a: ({ href, children }) => (
+    <a
+      href={href}
+      className="text-primary underline underline-offset-2"
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      {children}
+    </a>
+  ),
+  table: ({ children }) => (
+    <table className="border-collapse border border-border text-sm my-2 w-full">
+      {children}
+    </table>
+  ),
+  th: ({ children }) => (
+    <th className="border border-border px-2 py-1 bg-muted font-semibold text-left">
+      {children}
+    </th>
+  ),
+  td: ({ children }) => (
+    <td className="border border-border px-2 py-1">{children}</td>
+  ),
+};
+
+// ---------------------------------------------------------------------------
+// Props
+// ---------------------------------------------------------------------------
+
+interface MessageBubbleProps {
+  message: ChatMessage;
+}
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
+export function MessageBubble({ message }: MessageBubbleProps) {
+  const isUser = message.role === "user";
+  const isoTimestamp = message.timestamp.toISOString();
+  const relativeTime = formatRelativeTime(message.timestamp);
+  const fullTimestamp = message.timestamp.toLocaleString();
+
+  return (
+    <div
+      className={cn(
+        "flex flex-col gap-1",
+        isUser ? "items-end" : "items-start"
+      )}
+    >
+      {/* Tool event badges — shown above the bubble for assistant messages */}
+      {!isUser &&
+        message.toolEvents &&
+        message.toolEvents.length > 0 && (
+          <div className="flex flex-wrap gap-1 pl-10">
+            {message.toolEvents.map((event, idx) => (
+              <Badge key={idx} variant="secondary" className="text-xs">
+                {humanizeToolName(event.toolName)}
+              </Badge>
+            ))}
+          </div>
+        )}
+
+      {/* Message row */}
+      <div
+        className={cn(
+          "flex gap-2 items-end",
+          isUser ? "flex-row-reverse" : "flex-row"
+        )}
+      >
+        {/* Avatar — only for assistant */}
+        {!isUser && (
+          <Avatar size="sm" className="shrink-0 mb-0.5">
+            <AvatarFallback className="bg-kara-primary text-white">
+              K
+            </AvatarFallback>
+          </Avatar>
+        )}
+
+        {/* Bubble */}
+        <div
+          className={cn(
+            "max-w-[85%] sm:max-w-[75%] px-4 py-2.5",
+            isUser
+              ? "bg-primary text-primary-foreground rounded-2xl rounded-br-sm"
+              : "bg-muted text-foreground rounded-2xl rounded-bl-sm"
+          )}
+        >
+          {isUser ? (
+            // Plain text for user messages
+            <span className="whitespace-pre-wrap break-words">
+              {message.content}
+            </span>
+          ) : (
+            // Markdown for assistant messages
+            <div className="prose-sm break-words">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={markdownComponents}
+              >
+                {message.content}
+              </ReactMarkdown>
+              {/* Streaming cursor */}
+              {message.isStreaming && (
+                <span
+                  aria-hidden="true"
+                  className="inline-block w-0.5 h-4 bg-foreground animate-pulse ml-0.5 align-text-bottom"
+                />
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Timestamp */}
+      <div className={cn("text-xs text-muted-foreground mt-1", isUser ? "pr-1" : "pl-10")}>
+        <time dateTime={isoTimestamp} aria-label={fullTimestamp}>
+          {relativeTime}
+        </time>
+      </div>
+    </div>
+  );
+}
