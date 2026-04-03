@@ -20,6 +20,16 @@ function buildJsonHeaders(): HeadersInit {
   return { "Content-Type": "application/json" };
 }
 
+export class HttpError extends Error {
+  constructor(
+    public readonly status: number,
+    message: string,
+  ) {
+    super(message);
+    this.name = "HttpError";
+  }
+}
+
 async function assertOk(response: Response, context: string): Promise<void> {
   if (!response.ok) {
     let detail = response.statusText;
@@ -29,7 +39,10 @@ async function assertOk(response: Response, context: string): Promise<void> {
     } catch {
       // ignore parse errors — keep statusText as the message
     }
-    throw new Error(`[${context}] HTTP ${response.status}: ${detail}`);
+    throw new HttpError(
+      response.status,
+      `[${context}] HTTP ${response.status}: ${detail}`,
+    );
   }
 }
 

@@ -119,8 +119,7 @@ export function ChatWindow() {
             <div className="flex flex-col items-center justify-center gap-6 min-h-[60vh] py-8">
               {/* Avatar */}
               <Avatar
-                size="lg"
-                className="size-16 bg-kara-primary text-primary-foreground"
+                className="size-16"
               >
                 <AvatarFallback className="bg-kara-primary text-white text-2xl font-bold">
                   K
