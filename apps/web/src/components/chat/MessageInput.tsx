@@ -43,6 +43,11 @@ export function MessageInput({
       e.preventDefault();
       submit();
     }
+    if (e.key === "Escape") {
+      setValue("");
+      const el = textareaRef.current;
+      if (el) el.style.height = "auto";
+    }
   }
 
   function submit() {
@@ -60,9 +65,17 @@ export function MessageInput({
   const sendDisabled = disabled || value.trim() === "";
 
   return (
-    <div className="border-t border-border bg-background px-4 py-3">
+    <div
+      className="border-t border-border bg-background px-4 py-3 sticky bottom-0"
+      style={{ paddingBottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}
+    >
+      {/* Visually hidden label for screen readers */}
+      <label htmlFor="kara-message-input" className="sr-only">
+        Type your message to Kara
+      </label>
       <div className="flex items-end gap-2 max-w-3xl mx-auto w-full">
         <textarea
+          id="kara-message-input"
           ref={textareaRef}
           rows={1}
           value={value}
@@ -84,7 +97,7 @@ export function MessageInput({
           onClick={submit}
           disabled={sendDisabled}
           aria-label="Send message"
-          className="min-w-[44px] min-h-[44px] shrink-0"
+          className="min-w-[44px] min-h-[44px] shrink-0 active:scale-95"
         >
           <ArrowUp className="size-4" aria-hidden="true" />
         </Button>

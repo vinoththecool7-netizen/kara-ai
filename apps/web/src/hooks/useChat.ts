@@ -2,7 +2,7 @@
 
 import { useReducer, useRef, useCallback, useEffect } from "react";
 import { useSSE } from "@/hooks/useSSE";
-import { createChat, continueChat, fetchSession, deleteSession } from "@/lib/api";
+import { createChat, continueChat, fetchSession, deleteSession, HttpError } from "@/lib/api";
 import type {
   ChatMessage,
   ProfileState,
@@ -127,7 +127,7 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
         }
         return msg;
       });
-      return { ...state, error: action.error, isStreaming: false, messages };
+      return { ...state, error: action.error, isStreaming: false, isLoading: false, messages };
     }
 
     case "SET_DONE": {
@@ -141,6 +141,26 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
         }
         return msg;
       });
+
+      // Check if the last assistant message ended up with empty content
+      const lastAssistantIdx = messages.reduceRight(
+        (found, msg, idx) => (found === -1 && msg.role === "assistant" ? idx : found),
+        -1
+      );
+      const emptyResponse =
+        lastAssistantIdx !== -1 &&
+        messages[lastAssistantIdx].content.trim() === "";
+      if (emptyResponse) {
+        return {
+          ...state,
+          sessionId: action.sessionId,
+          profileState: action.profileState,
+          isStreaming: false,
+          messages,
+          error: "Kara couldn't generate a response. Please try rephrasing.",
+        };
+      }
+
       return {
         ...state,
         sessionId: action.sessionId,
@@ -318,14 +338,14 @@ export function useChat(): UseChatReturn {
       sessionIdRef.current = session.session_id;
     } catch (err) {
       dispatch({ type: "SET_LOADING", loading: false });
-      const message =
-        err instanceof Error ? err.message : "Failed to load session.";
       // If the session no longer exists on the server, clear the stale localStorage key
       // silently rather than showing an error to the user
-      if (message.includes("404")) {
+      if (err instanceof HttpError && err.status === 404) {
         localStorage.removeItem("kara_session_id");
         return;
       }
+      const message =
+        err instanceof Error ? err.message : "Failed to load session.";
       dispatch({ type: "SET_ERROR", error: message });
     }
   }, []);

@@ -117,7 +117,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   return (
     <div
       className={cn(
-        "flex flex-col gap-1",
+        "flex flex-col gap-1 animate-in fade-in duration-200",
         isUser ? "items-end" : "items-start"
       )}
     >
