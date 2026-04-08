@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { ChatWindow } from "@/components/chat/ChatWindow";
+import { ChatLayout } from "@/components/chat/ChatLayout";
 
 export const metadata: Metadata = {
   title: "Chat — Kara AI Tax Advisor",
@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 export default function ChatPage() {
   return (
     <div className="flex flex-col flex-1 h-full">
-      <ChatWindow />
+      <ChatLayout />
     </div>
   );
 }

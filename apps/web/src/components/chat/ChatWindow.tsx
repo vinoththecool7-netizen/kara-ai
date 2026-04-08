@@ -1,12 +1,12 @@
 "use client";
 
 import { useRef, useEffect, useCallback } from "react";
-import { X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
-import { useChat } from "@/hooks/useChat";
+import type { UseChatReturn } from "@/hooks/useChat";
 import { MessageBubble } from "./MessageBubble";
 import { MessageInput } from "./MessageInput";
 import { TypingIndicator } from "./TypingIndicator";
@@ -25,7 +25,13 @@ function prefersReducedMotion(): boolean {
 // Component
 // ---------------------------------------------------------------------------
 
-export function ChatWindow() {
+interface ChatWindowProps {
+  chat: UseChatReturn;
+  /** Called when the user taps the mobile hamburger to open the sidebar. */
+  onOpenSidebar: () => void;
+}
+
+export function ChatWindow({ chat, onOpenSidebar }: ChatWindowProps) {
   const {
     messages,
     isStreaming,
@@ -33,7 +39,7 @@ export function ChatWindow() {
     error,
     sendMessage,
     dismissError,
-  } = useChat();
+  } = chat;
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -73,6 +79,23 @@ export function ChatWindow() {
 
   return (
     <div className="flex flex-col h-full">
+      {/* Mobile-only header with hamburger to open the session sidebar */}
+      <div className="md:hidden flex items-center px-2 py-2 border-b">
+        <button
+          type="button"
+          onClick={onOpenSidebar}
+          aria-label="Open session list"
+          aria-controls="session-sidebar"
+          className={cn(
+            "size-11 inline-flex items-center justify-center rounded-md",
+            "text-foreground hover:bg-muted",
+            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40",
+          )}
+        >
+          <Menu className="size-5" />
+        </button>
+      </div>
+
       {/* Messages area */}
       <div
         ref={scrollContainerRef}
