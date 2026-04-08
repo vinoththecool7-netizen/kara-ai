@@ -10,6 +10,7 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from kara_api.agent.loop import AgentResponse, ToolCallRecord
+from kara_api.agent.session import SessionSummaryRow
 from kara_api.llm.models import TokenUsage
 
 
@@ -90,6 +91,7 @@ def mock_session_manager():
     sm.add_message = AsyncMock(return_value=_FakeDbMessage())
     sm.update_profile = AsyncMock(return_value=True)
     sm.delete_session = AsyncMock(return_value=True)
+    sm.list_sessions = AsyncMock(return_value=[])
     return sm
 
 
@@ -378,3 +380,68 @@ class TestSSEFormat:
         done = [e for e in events if e["type"] == "done"]
         assert len(done) == 1
         assert done[0]["session_id"] == str(_SESSION_ID)
+
+
+# ---------------------------------------------------------------------------
+# TestListSessionsEndpoint
+# ---------------------------------------------------------------------------
+
+
+class TestListSessionsEndpoint:
+    async def test_list_sessions_empty(self, client, mock_session_manager):
+        mock_session_manager.list_sessions = AsyncMock(return_value=[])
+        resp = await client.get("/api/v1/chat/sessions")
+        assert resp.status_code == 200
+        assert resp.json() == []
+
+    async def test_list_sessions_returns_summary_rows(
+        self, client, mock_session_manager
+    ):
+        sid1 = uuid.UUID("11111111-1111-1111-1111-111111111111")
+        sid2 = uuid.UUID("22222222-2222-2222-2222-222222222222")
+        ts_newer = datetime(2026, 4, 8, 12, 0, 0, tzinfo=timezone.utc)
+        ts_older = datetime(2026, 4, 7, 9, 0, 0, tzinfo=timezone.utc)
+        mock_session_manager.list_sessions = AsyncMock(
+            return_value=[
+                SessionSummaryRow(
+                    id=str(sid1),
+                    created_at=ts_newer,
+                    updated_at=ts_newer,
+                    title="How much tax on 15 LPA?",
+                    message_count=4,
+                ),
+                SessionSummaryRow(
+                    id=str(sid2),
+                    created_at=ts_older,
+                    updated_at=ts_older,
+                    title="New Chat",
+                    message_count=0,
+                ),
+            ]
+        )
+        resp = await client.get("/api/v1/chat/sessions")
+        assert resp.status_code == 200
+        body = resp.json()
+        assert len(body) == 2
+        assert set(body[0].keys()) == {
+            "id",
+            "created_at",
+            "updated_at",
+            "title",
+            "message_count",
+        }
+        assert body[0]["id"] == str(sid1)
+        assert body[0]["title"] == "How much tax on 15 LPA?"
+        assert body[0]["message_count"] == 4
+        assert body[1]["title"] == "New Chat"
+
+    async def test_list_sessions_path_does_not_collide_with_session_uuid(
+        self, client, mock_session_manager
+    ):
+        """Ensure ``GET /chat/sessions`` is matched as the list route, not as
+        ``GET /chat/{session_id}`` with ``session_id="sessions"``."""
+        mock_session_manager.list_sessions = AsyncMock(return_value=[])
+        resp = await client.get("/api/v1/chat/sessions")
+        # If the wrong route handled this, FastAPI would return 422 for an
+        # invalid UUID path param.
+        assert resp.status_code == 200

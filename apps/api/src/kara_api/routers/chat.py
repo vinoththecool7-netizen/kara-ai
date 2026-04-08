@@ -63,6 +63,16 @@ class SessionResponse(BaseModel):
     messages: list[MessageResponse]
 
 
+class SessionSummary(BaseModel):
+    """Lightweight projection of a chat session for sidebar listing."""
+
+    id: str
+    created_at: str
+    updated_at: str
+    title: str
+    message_count: int
+
+
 class ChatResponse(BaseModel):
     """Non-streaming fallback response."""
 
@@ -310,6 +320,31 @@ async def continue_chat(session_id: uuid.UUID, body: ChatRequest, request: Reque
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+@router.get("/sessions", response_model=list[SessionSummary])
+async def list_sessions():
+    """Return all chat sessions, newest first, with derived titles.
+
+    Each row contains an ``id``, ``created_at``, ``updated_at``, a ``title``
+    derived from the first user message (truncated to 60 chars + ellipsis,
+    or ``"New Chat"`` when no user message exists), and ``message_count``.
+
+    NOTE: This route must remain declared *before* ``/{session_id}`` so the
+    literal path "/sessions" is not parsed as a UUID path parameter.
+    """
+    sm = _create_session_manager()
+    rows = await sm.list_sessions()
+    return [
+        SessionSummary(
+            id=row.id,
+            created_at=row.created_at.isoformat() if row.created_at else "",
+            updated_at=row.updated_at.isoformat() if row.updated_at else "",
+            title=row.title,
+            message_count=row.message_count,
+        )
+        for row in rows
+    ]
 
 
 @router.get("/{session_id}", response_model=SessionResponse)
