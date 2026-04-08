@@ -35,6 +35,21 @@ export interface SessionResponse {
   messages: MessageResponse[];
 }
 
+/**
+ * Lightweight projection of a session for the sidebar listing.
+ *
+ * Mirrors `SessionSummary` in apps/api/src/kara_api/routers/chat.py.
+ * `title` is derived server-side from the first user message (truncated to
+ * 60 characters with an ellipsis, or `"New Chat"` when empty).
+ */
+export interface SessionSummary {
+  id: string;
+  created_at: string;
+  updated_at: string;
+  title: string;
+  message_count: number;
+}
+
 export interface ChatResponse {
   session_id: string;
   response: string;

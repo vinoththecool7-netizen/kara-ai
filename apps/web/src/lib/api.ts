@@ -8,7 +8,7 @@
  * response.body as a ReadableStream for streaming events.
  */
 
-import type { SessionResponse } from "@/types/chat";
+import type { SessionResponse, SessionSummary } from "@/types/chat";
 
 const API_PREFIX = "/api/v1/chat";
 
@@ -114,4 +114,21 @@ export async function deleteSession(sessionId: string): Promise<void> {
   });
 
   await assertOk(response, "deleteSession");
+}
+
+/**
+ * List all chat sessions, newest first, for the sidebar.
+ *
+ * Each entry carries a server-derived `title` (first user message
+ * truncated to 60 characters, or `"New Chat"` when empty) and a total
+ * `message_count`.
+ */
+export async function listSessions(): Promise<SessionSummary[]> {
+  const response = await fetch(`${API_PREFIX}/sessions`, {
+    method: "GET",
+    headers: buildJsonHeaders(),
+  });
+
+  await assertOk(response, "listSessions");
+  return response.json() as Promise<SessionSummary[]>;
 }
