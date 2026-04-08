@@ -2,12 +2,29 @@
 from __future__ import annotations
 
 import uuid
+from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from kara_api.db.models import Message as DbMessage, Session as DbSession
+
+
+@dataclass
+class SessionSummaryRow:
+    """Lightweight projection of a session for sidebar listing.
+
+    ``title`` is derived from the first user message (truncated to 60 chars
+    with an ellipsis, or ``"New Chat"`` when no user message exists).
+    """
+
+    id: str
+    created_at: datetime
+    updated_at: datetime
+    title: str
+    message_count: int
 
 
 class SessionManager:
@@ -79,3 +96,45 @@ class SessionManager:
             session.profile_json = profile_data
             await db.commit()
             return True
+
+    async def list_sessions(self) -> list[SessionSummaryRow]:
+        """Return a summary of every session, newest first.
+
+        Each row carries a derived ``title`` (the first user message, truncated
+        to 60 characters with an ellipsis, or ``"New Chat"`` when the session
+        has no user message yet) and a total ``message_count``.
+        """
+        async with self._factory() as db:
+            sessions_result = await db.execute(
+                select(DbSession).order_by(DbSession.updated_at.desc())
+            )
+            sessions = list(sessions_result.scalars().all())
+
+            summaries: list[SessionSummaryRow] = []
+            for sess in sessions:
+                msgs_result = await db.execute(
+                    select(DbMessage)
+                    .where(DbMessage.session_id == sess.id)
+                    .order_by(DbMessage.id)
+                )
+                msgs = list(msgs_result.scalars().all())
+
+                first_user = next((m for m in msgs if m.role == "user"), None)
+                raw_content = (first_user.content if first_user else None) or ""
+                if not raw_content:
+                    title = "New Chat"
+                elif len(raw_content) > 60:
+                    title = raw_content[:60] + "…"
+                else:
+                    title = raw_content
+
+                summaries.append(
+                    SessionSummaryRow(
+                        id=str(sess.id),
+                        created_at=sess.created_at,
+                        updated_at=sess.updated_at,
+                        title=title,
+                        message_count=len(msgs),
+                    )
+                )
+            return summaries

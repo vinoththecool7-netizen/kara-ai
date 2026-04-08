@@ -2,11 +2,12 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from kara_api.agent.session import SessionManager
+from kara_api.agent.session import SessionManager, SessionSummaryRow
 
 
 # ---------------------------------------------------------------------------
@@ -264,3 +265,186 @@ class TestUpdateProfile:
 
         assert result is False
         mock_db.commit.assert_not_awaited()
+
+
+# ---------------------------------------------------------------------------
+# TestListSessions
+# ---------------------------------------------------------------------------
+
+
+def _make_scalars_result(items):
+    """Wrap items as a MagicMock that mimics ``result.scalars().all()``."""
+    mock_result = MagicMock()
+    mock_result.scalars.return_value.all.return_value = items
+    return mock_result
+
+
+def _make_dated_fake_session(
+    session_id: uuid.UUID | None = None,
+    created_at: datetime | None = None,
+    updated_at: datetime | None = None,
+):
+    fake = _make_fake_session(session_id=session_id)
+    ts = created_at or datetime(2026, 4, 8, 10, 0, 0, tzinfo=timezone.utc)
+    fake.created_at = ts
+    fake.updated_at = updated_at or ts
+    return fake
+
+
+class TestListSessions:
+    """Tests for SessionManager.list_sessions."""
+
+    async def test_list_sessions_empty(self):
+        """No sessions -> empty list."""
+        mock_factory, mock_db = _make_mock_factory()
+        mock_db.execute = AsyncMock(return_value=_make_scalars_result([]))
+
+        mgr = SessionManager(mock_factory)
+        result = await mgr.list_sessions()
+
+        assert result == []
+
+    async def test_list_sessions_sorted_order_preserved(self):
+        """Sorting is delegated to SQL; method returns rows in the same order
+        as ``db.execute`` hands them back (newest first)."""
+        mock_factory, mock_db = _make_mock_factory()
+        sid1 = uuid.UUID("11111111-1111-1111-1111-111111111111")
+        sid2 = uuid.UUID("22222222-2222-2222-2222-222222222222")
+        newer = _make_dated_fake_session(
+            session_id=sid1,
+            updated_at=datetime(2026, 4, 8, 12, 0, 0, tzinfo=timezone.utc),
+        )
+        older = _make_dated_fake_session(
+            session_id=sid2,
+            updated_at=datetime(2026, 4, 7, 12, 0, 0, tzinfo=timezone.utc),
+        )
+        mock_db.execute = AsyncMock(
+            side_effect=[
+                _make_scalars_result([newer, older]),
+                _make_scalars_result([]),
+                _make_scalars_result([]),
+            ]
+        )
+
+        mgr = SessionManager(mock_factory)
+        result = await mgr.list_sessions()
+
+        assert [r.id for r in result] == [str(sid1), str(sid2)]
+
+    async def test_list_sessions_title_from_first_user_message(self):
+        """Title is the first user message verbatim when under 60 chars."""
+        mock_factory, mock_db = _make_mock_factory()
+        sid = uuid.uuid4()
+        sess = _make_dated_fake_session(session_id=sid)
+        msg = _make_fake_message(
+            sid, role="user", content="How much tax on 15 LPA?", msg_id=1
+        )
+
+        mock_db.execute = AsyncMock(
+            side_effect=[_make_scalars_result([sess]), _make_scalars_result([msg])]
+        )
+
+        mgr = SessionManager(mock_factory)
+        result = await mgr.list_sessions()
+
+        assert len(result) == 1
+        assert result[0].title == "How much tax on 15 LPA?"
+        assert result[0].id == str(sid)
+        assert result[0].message_count == 1
+
+    async def test_list_sessions_title_truncates_at_60_chars(self):
+        """Long first user messages truncate at 60 chars + ellipsis."""
+        mock_factory, mock_db = _make_mock_factory()
+        sid = uuid.uuid4()
+        sess = _make_dated_fake_session(session_id=sid)
+        long_content = "a" * 100
+        msg = _make_fake_message(sid, role="user", content=long_content, msg_id=1)
+
+        mock_db.execute = AsyncMock(
+            side_effect=[_make_scalars_result([sess]), _make_scalars_result([msg])]
+        )
+
+        mgr = SessionManager(mock_factory)
+        result = await mgr.list_sessions()
+
+        assert len(result[0].title) == 61  # 60 chars + single ellipsis character
+        assert result[0].title.endswith("…")
+        assert result[0].title.startswith("a" * 60)
+
+    async def test_list_sessions_title_fallback_when_no_messages(self):
+        """Empty session -> title is 'New Chat'."""
+        mock_factory, mock_db = _make_mock_factory()
+        sid = uuid.uuid4()
+        sess = _make_dated_fake_session(session_id=sid)
+
+        mock_db.execute = AsyncMock(
+            side_effect=[_make_scalars_result([sess]), _make_scalars_result([])]
+        )
+
+        mgr = SessionManager(mock_factory)
+        result = await mgr.list_sessions()
+
+        assert result[0].title == "New Chat"
+        assert result[0].message_count == 0
+
+    async def test_list_sessions_title_fallback_when_only_assistant_message(self):
+        """If only assistant messages exist, title falls back to 'New Chat'."""
+        mock_factory, mock_db = _make_mock_factory()
+        sid = uuid.uuid4()
+        sess = _make_dated_fake_session(session_id=sid)
+        assistant_msg = _make_fake_message(
+            sid, role="assistant", content="Hello!", msg_id=1
+        )
+
+        mock_db.execute = AsyncMock(
+            side_effect=[
+                _make_scalars_result([sess]),
+                _make_scalars_result([assistant_msg]),
+            ]
+        )
+
+        mgr = SessionManager(mock_factory)
+        result = await mgr.list_sessions()
+
+        assert result[0].title == "New Chat"
+        assert result[0].message_count == 1
+
+    async def test_list_sessions_message_count_reflects_all_roles(self):
+        """message_count counts every persisted message regardless of role."""
+        mock_factory, mock_db = _make_mock_factory()
+        sid = uuid.uuid4()
+        sess = _make_dated_fake_session(session_id=sid)
+        m1 = _make_fake_message(sid, role="user", content="q1", msg_id=1)
+        m2 = _make_fake_message(sid, role="assistant", content="a1", msg_id=2)
+        m3 = _make_fake_message(sid, role="user", content="q2", msg_id=3)
+
+        mock_db.execute = AsyncMock(
+            side_effect=[
+                _make_scalars_result([sess]),
+                _make_scalars_result([m1, m2, m3]),
+            ]
+        )
+
+        mgr = SessionManager(mock_factory)
+        result = await mgr.list_sessions()
+
+        assert result[0].message_count == 3
+        assert result[0].title == "q1"  # first user message
+
+    async def test_list_sessions_returns_summary_dataclass(self):
+        """Returned rows are SessionSummaryRow instances with the 5 expected fields."""
+        mock_factory, mock_db = _make_mock_factory()
+        sid = uuid.uuid4()
+        sess = _make_dated_fake_session(session_id=sid)
+
+        mock_db.execute = AsyncMock(
+            side_effect=[_make_scalars_result([sess]), _make_scalars_result([])]
+        )
+
+        mgr = SessionManager(mock_factory)
+        result = await mgr.list_sessions()
+
+        assert isinstance(result[0], SessionSummaryRow)
+        assert result[0].id == str(sid)
+        assert result[0].created_at == sess.created_at
+        assert result[0].updated_at == sess.updated_at
