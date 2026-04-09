@@ -23,10 +23,10 @@
 |-------|------|--------|----------|
 | 1 — Rule Engine | 1–20 | ✅ Complete | 20/20 days done |
 | 2 — Backend + AI Agent | 21–40 | ✅ Complete | 20/20 days done |
-| 3 — Frontend | 41–55 | 🔄 In Progress | 4/15 days done |
+| 3 — Frontend | 41–55 | 🔄 In Progress | 7/15 days done |
 | 4 — Advanced Features | 56–70 | ⬜ Not Started | 0/15 days done |
 | 5 — Polish + Launch | 71–80 | ⬜ Not Started | 0/10 days done |
-| **Total** | **1–80** | | **44/80 days done (55%)** |
+| **Total** | **1–80** | | **47/80 days done (59%)** |
 
 ### Test Count Tracker
 
@@ -44,7 +44,7 @@
 | Agent prompts + profile | 20+ | 50 | ✅ |
 | Agent loop + chat | 30+ | 61 | ✅ |
 | E2E integration | 10+ | 13 | ✅ |
-| Frontend components | 20+ | 0 | ⬜ |
+| Frontend components | 20+ | 9 | 🔄 |
 | E2E journeys | 10+ | 0 | ⬜ |
 | **Total** | **350+** | **616** | **176%** |
 
@@ -882,77 +882,158 @@
 
 ---
 
-### Days 45–47: Chat Interface ⬜
+### Days 45–47: Chat Interface ✅
 
-**Status:** ⬜ TODO
+**Status:** ✅ COMPLETE (2026-04-03) — Full chat interface built with SSE streaming, session persistence, accessibility, and mobile polish.
 
-**Tasks:**
-- [ ] Create `ChatWindow` component:
-  - Message list with auto-scroll
-  - Input bar with send button + keyboard shortcut (Enter)
-  - Session management (create/switch/delete)
-- [ ] Create `MessageBubble` component:
-  - User messages (right-aligned, blue)
-  - Assistant messages (left-aligned, gray)
-  - Markdown rendering (bold, lists, code blocks)
-  - Timestamp display
-- [ ] Implement SSE streaming:
-  - Connect to `POST /api/v1/chat/{session_id}`
-  - Parse SSE events, append tokens in real-time
-  - Show typing indicator while streaming
-- [ ] Create `TypingIndicator` component — animated dots
-- [ ] Create `SuggestedQuestions` component — clickable chips:
-  - "How much tax do I owe on 15 lakh salary?"
-  - "Compare old vs new regime for me"
-  - "I sold mutual funds worth 8 lakh"
-  - "What deductions can I claim?"
-- [ ] Session persistence with localStorage
-- [ ] Create API client: `apps/web/src/lib/api.ts`
+**Architecture Decision:** Hybrid streaming — SSE events stream as they occur (session_created → tool_result × N → content → advisory → done), but `content` arrives as one chunk from the current backend. Frontend is built to also handle future `content_delta` token-by-token events when the backend is upgraded. Tool events provide visual progress ("Searching tax laws...", "Computing...") during the 8–15s agent processing time, so users never stare at a blank screen.
 
-**Files to Create:**
+**NPM Packages Installed:** `react-markdown` (^9.0.0), `remark-gfm` (^4.0.0)
+
+**Commits:** 430e455 → 428a160 (8 commits)
+
+---
+
+#### Day 45: Foundation — Types, API Client, SSE Hook, ChatWindow + MessageInput
+
+**Task 45.1: TypeScript Types + API Client** ✅
+- [x] Create `types/chat.ts` — `SSEEvent` discriminated union, `ChatRequest`, `MessageResponse`, `ProfileState`, `SessionResponse`, `ChatResponse`, `ChatMessage`, `ToolEvent`
+- [x] Create `lib/api.ts` — `createChat`, `continueChat`, `fetchSession`, `deleteSession` + `HttpError` class for typed status-code error handling
+
+**Task 45.2: SSE Streaming Hook** ✅
+- [x] Create `hooks/useSSE.ts` — fetch + ReadableStream parser; `processStream(response, callbacks)`; `abort()` via AbortController; handles `content` + `content_delta` for forward compatibility
+
+**Task 45.3: Basic ChatWindow + MessageInput** ✅
+- [x] Create `components/chat/MessageInput.tsx` — auto-growing textarea (1→5 rows), Enter to send, Shift+Enter for newline, ArrowUp send button, ≥44px touch target, sr-only label, Escape to clear, auto-focus on mount
+- [x] Create `components/chat/ChatWindow.tsx` — flex-col full-height layout, native scrollable div, MessageInput sticky at bottom
+- [x] Replace `app/chat/page.tsx` — Server Component wrapper rendering `<ChatWindow />`
+
+---
+
+#### Day 46: Messages — MessageBubble, TypingIndicator, useChat, Streaming Integration
+
+**Task 46.1: MessageBubble with Markdown** ✅
+- [x] Create `components/chat/MessageBubble.tsx` — user bubbles right-aligned (bg-primary), assistant bubbles left-aligned (bg-muted) with Kara avatar; `react-markdown` + `remark-gfm` with Tailwind component overrides; relative timestamps; streaming cursor animation; tool event badges above bubble; fade-in animation (animate-in)
+
+**Task 46.2: TypingIndicator + useChat Hook** ✅
+- [x] Create `components/chat/TypingIndicator.tsx` — 3 bouncing dots, staggered delays (0/150/300ms), `role="status"`, `aria-label="Kara is thinking"`
+- [x] Create `hooks/useChat.ts` — `useReducer` with `lastAssistantIndex`/`markLastAssistantDone` helpers; actions: ADD_USER_MESSAGE, ADD_ASSISTANT_MESSAGE, APPEND_CONTENT, ADD_TOOL_EVENT, SET_SESSION_ID, SET_STREAMING, SET_ERROR, SET_DONE, LOAD_HISTORY, SET_LOADING, CLEAR; `sendMessage`, `clearChat`, `loadSession`, `dismissError`
+
+**Task 46.3: Streaming Integration + Auto-scroll** ✅
+- [x] Wire ChatWindow with useChat — MessageBubble per message, TypingIndicator when streaming + empty content, error banner with "Try again" + dismiss
+- [x] Auto-scroll via sentinel div + `scrollIntoView`; skips when user scrolled up >100px; `behavior: 'instant'` for prefers-reduced-motion
+- [x] Abort in-flight stream on new `sendMessage` call and on unmount
+
+---
+
+#### Day 47: Polish — SuggestedQuestions, Session Persistence, Error Handling, a11y, Mobile
+
+**Task 47.1: SuggestedQuestions + Empty State** ✅
+- [x] Create `components/chat/SuggestedQuestions.tsx` — 4 chips in 2×2 grid (Calculator, Scale, TrendingUp, FileText icons), native `<button>` styled as Badge secondary, min-h 44px, 200ms hover transition, focus ring
+- [x] Empty state in ChatWindow: large Kara avatar (size-16, bg-kara-primary) + "Hi! I'm Kara" h2 + muted subtitle + SuggestedQuestions; disappears once first message sent; suppressed during loading/streaming
+
+**Task 47.2: Session Persistence (localStorage)** ✅
+- [x] On mount: read `kara_session_id` from localStorage → `loadSession()` → LOAD_HISTORY or silent clear on 404 (typed via `HttpError`)
+- [x] On `onSessionCreated`: `localStorage.setItem("kara_session_id", sessionId)`
+- [x] On `clearChat`: `localStorage.removeItem` + best-effort `deleteSession()` call
+- [x] Loading skeleton: 3 pulsing placeholder bubbles (assistant/user/assistant pattern) with `aria-busy="true"`
+
+**Task 47.3: Error Handling + Accessibility + Mobile Polish** ✅
+- [x] Error states: network failure ("Unable to connect. Check your connection and try again."), SSE error (backend message inline), empty response ("Kara couldn't generate a response. Please try rephrasing.") — empty assistant bubble removed from state
+- [x] Accessibility: `role="log"` + `aria-live="polite"` on message list; `role="alert"` on error banner; `role="status"` on typing indicator; `sr-only` label + `htmlFor`/`id` pairing on textarea; Escape to clear input; `aria-hidden` on decorative icons and scroll sentinel
+- [x] Mobile: sticky bottom-0 input with `calc(0.75rem + env(safe-area-inset-bottom))` for iOS; ≥44px touch targets everywhere; full-width layout
+- [x] Micro-interactions: `animate-in fade-in duration-200` on message bubbles; `active:scale-95` on send button; 200ms hover transition on suggestion chips
+
+**Files Created:**
+- `apps/web/src/types/chat.ts`
+- `apps/web/src/lib/api.ts` (+ `HttpError` class)
+- `apps/web/src/hooks/useSSE.ts`
+- `apps/web/src/hooks/useChat.ts`
 - `apps/web/src/components/chat/ChatWindow.tsx`
 - `apps/web/src/components/chat/MessageBubble.tsx`
 - `apps/web/src/components/chat/MessageInput.tsx`
 - `apps/web/src/components/chat/TypingIndicator.tsx`
 - `apps/web/src/components/chat/SuggestedQuestions.tsx`
-- `apps/web/src/hooks/useChat.ts`
-- `apps/web/src/hooks/useSSE.ts`
-- `apps/web/src/lib/api.ts`
-- `apps/web/src/types/chat.ts`
+- `apps/web/src/app/chat/page.tsx` (replaced placeholder)
 
-**Definition of Done:** Chat interface works end-to-end with SSE streaming. Messages render with markdown. Typing indicator shows. Suggested questions clickable.
+**Definition of Done:** ✅ Chat interface works end-to-end with hybrid SSE streaming. Tool events show progress. Messages render with markdown. Typing indicator shows. Suggested questions clickable. Session restores on reload. Mobile responsive. Accessible. Dark mode works.
 
 ---
 
-### Days 48–49: Chat Polish + Session Management ⬜
+### Days 48–49: Chat Polish + Session Management ✅
 
-**Status:** ⬜ TODO
+**Status:** ✅ DONE — 2026-04-09
 
-**Tasks:**
-- [ ] Session sidebar:
-  - List previous chat sessions
-  - "New Chat" button
-  - Session titles (auto-generated from first message)
-  - Delete session with confirmation
-- [ ] Message enhancements:
-  - Copy message button
-  - Retry failed messages
-  - Error state display
-- [ ] Skeleton loaders for initial page load
-- [ ] Empty state — show suggested questions when no messages
-- [ ] Mobile responsive chat:
-  - Full-width on mobile (no sidebar)
-  - Swipe to open session list
-  - Keyboard-aware input positioning
-- [ ] Accessibility: focus management, ARIA labels, keyboard navigation
+#### Day 48: Session Sidebar (Backend → Frontend → Layout)
 
-**Files to Create/Modify:**
-- `apps/web/src/components/chat/SessionSidebar.tsx`
-- `apps/web/src/components/chat/ChatWindow.tsx` (enhance)
-- `apps/web/src/components/chat/MessageBubble.tsx` (enhance)
+**Task 48.1: Backend — SessionManager.list_sessions()** ✅
+- [x] New `SessionSummaryRow` dataclass (`id`, `created_at`, `updated_at`, `title`, `message_count`) — dedicated projection for the sidebar
+- [x] `SessionManager.list_sessions()` — orders sessions by `updated_at DESC`, derives `title` from first user message (60-char truncation + `…`, or `"New Chat"` fallback when no user message exists)
+- [x] 8 new tests on `TestListSessions`: empty list, ordering preserved, title from first user message, 60-char truncation, fallback when no messages, fallback when only assistant message, message_count across roles, returns `SessionSummaryRow` instances
+
+**Task 48.2: Backend — GET /api/v1/chat/sessions** ✅
+- [x] New `SessionSummary` Pydantic model mirroring the dataclass
+- [x] `GET /sessions` route declared **before** `GET /{session_id}` so the literal path is not parsed as a UUID param (added a regression test for exactly this)
+- [x] 3 new tests on `TestListSessionsEndpoint`: empty list, populated rows, path-collision regression
+
+**Task 48.3: Frontend — Types + API Client + useSessions Hook** ✅
+- [x] `SessionSummary` interface in `types/chat.ts`
+- [x] `listSessions()` added to `lib/api.ts` (routes through the `/api/v1/chat/sessions` proxy)
+- [x] `hooks/useSessions.ts`: loads on mount, exposes `refetch`, and supports optimistic delete with automatic rollback on HTTP failure
+
+**Task 48.4: Frontend — SessionSidebar + SessionListItem** ✅
+- [x] `SessionSidebar.tsx` — 280px persistent rail on `md+`, slide-in drawer below `md` with dim backdrop; Escape closes; backdrop tap closes; motion-reduced friendly
+- [x] `SessionListItem.tsx` — derived title, relative timestamp (via new `lib/relative-time.ts`), `message_count`; hover/focus-revealed trash icon that swaps to inline Check/X confirm/cancel on touch and desktop
+- [x] All interactive targets ≥44×44 with visible focus rings; empty/loading/error states
+
+**Task 48.5: Frontend — ChatLayout + Hamburger Toggle** ✅
+- [x] New `ChatLayout.tsx` — owns both `useChat` and `useSessions` so the sidebar and chat window share session state; `md:grid md:grid-cols-[280px_1fr]`
+- [x] `ChatWindow` refactored: takes `chat: UseChatReturn` as a prop (no longer self-instantiates the hook), exposes a mobile-only header with a hamburger button that opens the drawer and reflects state via `aria-expanded`
+- [x] Whenever a fresh `sessionId` appears (e.g. after the first message of a new chat), the sidebar auto-refreshes so the new entry pops to the top
+- [x] Sidebar selection → `loadSession`; delete → `removeSession` + clears the open chat if it was the one deleted
+
+#### Day 49: Per-Message Actions, Keyboard Shortcuts, QA
+
+**Task 49.1: Copy Button on MessageBubble** ✅
+- [x] Assistant bubbles render a hover/focus-revealed Copy icon next to the timestamp; touch devices (no hover) always show it
+- [x] `navigator.clipboard.writeText` → icon swaps to a green Check for 2s; `role="status" aria-live="polite"` sr-only announcement communicates success to assistive tech
+- [x] Excludes streaming and empty bubbles
+
+**Task 49.2: Per-Message Retry on Failed Sends** ✅
+- [x] `ChatMessage.status?: "failed"` added to the type
+- [x] `SET_ERROR` reducer updated: drops any trailing empty assistant shell and tags the last user message with `status: "failed"`
+- [x] `retryMessage(id)` added to `useChat` — uses a `messagesRef` to find the failed entry, dispatches `REMOVE_MESSAGE`, then calls `sendMessage` with the original text
+- [x] Failed user bubbles render with a destructive-tinted border + inline "Failed to send · Retry" row; global error banner keeps the error text but drops its redundant "Try again" button
+
+**Task 49.3: Keyboard Shortcuts (Ctrl/Cmd+K, Ctrl/Cmd+Shift+N)** ✅
+- [x] `hooks/useKeyboardShortcuts.ts` — two global accelerators with `preventDefault()` to override browser defaults (Chrome Ctrl+K address bar)
+- [x] Ctrl/Cmd+K focuses the message input (by `kara-message-input` id)
+- [x] Ctrl/Cmd+Shift+N calls the same `handleNewChat` the sidebar button uses
+
+**Task 49.4: Final QA Polish** ✅
+- [x] `aria-expanded` on the mobile hamburger reflects drawer state
+- [x] Full backend suite: **321 passed** (Day 48 added 11 new tests)
+- [x] Frontend: `tsc --noEmit` clean, `eslint` clean, `next build` succeeds on all routes
+
+**Files Created:**
+- `apps/api/src/kara_api/agent/session.py` (SessionSummaryRow + list_sessions)
+- `apps/api/src/kara_api/routers/chat.py` (SessionSummary + GET /sessions)
 - `apps/web/src/hooks/useSessions.ts`
+- `apps/web/src/hooks/useKeyboardShortcuts.ts`
+- `apps/web/src/components/chat/ChatLayout.tsx`
+- `apps/web/src/components/chat/SessionSidebar.tsx`
+- `apps/web/src/components/chat/SessionListItem.tsx`
+- `apps/web/src/lib/relative-time.ts`
 
-**Definition of Done:** Session management works. Chat is polished, mobile-responsive, and accessible.
+**Files Modified:**
+- `apps/web/src/types/chat.ts` (+ `SessionSummary`, `ChatMessage.status`)
+- `apps/web/src/lib/api.ts` (+ `listSessions`)
+- `apps/web/src/hooks/useChat.ts` (+ `retryMessage`, `REMOVE_MESSAGE`, failed-status reducer logic)
+- `apps/web/src/components/chat/ChatWindow.tsx` (presentational, mobile hamburger)
+- `apps/web/src/components/chat/MessageBubble.tsx` (copy button, failed state, retry row)
+- `apps/web/src/app/chat/page.tsx` (mounts ChatLayout instead of ChatWindow)
+
+**Definition of Done:** ✅ Session sidebar lists past chats with derived titles and message counts, with optimistic delete + mobile drawer. Copy and retry affordances live on each message bubble. Ctrl/Cmd+K and Ctrl/Cmd+Shift+N shortcuts wired. All 321 backend tests + frontend build/lint/type-check green.
 
 ---
 
