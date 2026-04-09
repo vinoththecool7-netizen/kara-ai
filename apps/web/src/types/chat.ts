@@ -93,4 +93,9 @@ export interface ChatMessage {
   timestamp: Date;
   isStreaming?: boolean;
   toolEvents?: ToolEvent[];
+  /**
+   * Delivery status. Only populated for user messages that failed to send;
+   * absent (undefined) means "sent successfully".
+   */
+  status?: "failed";
 }

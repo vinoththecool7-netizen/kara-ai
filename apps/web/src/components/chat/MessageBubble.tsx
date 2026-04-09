@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Copy, Check } from "lucide-react";
+import { Copy, Check, AlertCircle, RotateCcw } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -104,14 +104,17 @@ const markdownComponents: React.ComponentProps<
 
 interface MessageBubbleProps {
   message: ChatMessage;
+  /** Called when the user clicks "Retry" on a failed user message. */
+  onRetry?: (id: string) => void;
 }
 
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
-export function MessageBubble({ message }: MessageBubbleProps) {
+export function MessageBubble({ message, onRetry }: MessageBubbleProps) {
   const isUser = message.role === "user";
+  const isFailed = isUser && message.status === "failed";
   const isoTimestamp = message.timestamp.toISOString();
   const relativeTime = formatRelativeTime(message.timestamp);
   const fullTimestamp = message.timestamp.toLocaleString();
@@ -174,9 +177,12 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           className={cn(
             "max-w-[85%] sm:max-w-[75%] px-4 py-2.5",
             isUser
-              ? "bg-primary text-primary-foreground rounded-2xl rounded-br-sm"
+              ? isFailed
+                ? "bg-destructive/10 text-foreground border border-destructive/40 rounded-2xl rounded-br-sm"
+                : "bg-primary text-primary-foreground rounded-2xl rounded-br-sm"
               : "bg-muted text-foreground rounded-2xl rounded-bl-sm"
           )}
+          aria-invalid={isFailed || undefined}
         >
           {isUser ? (
             // Plain text for user messages
@@ -207,13 +213,37 @@ export function MessageBubble({ message }: MessageBubbleProps) {
       {/* Timestamp + per-message actions */}
       <div
         className={cn(
-          "flex items-center gap-2 text-xs text-muted-foreground mt-1",
+          "flex items-center gap-2 text-xs mt-1",
+          isFailed ? "text-destructive" : "text-muted-foreground",
           isUser ? "pr-1" : "pl-10"
         )}
       >
-        <time dateTime={isoTimestamp} aria-label={fullTimestamp}>
-          {relativeTime}
-        </time>
+        {isFailed && (
+          <span className="inline-flex items-center gap-1" aria-hidden="true">
+            <AlertCircle className="size-3.5" />
+            Failed to send
+          </span>
+        )}
+        {isFailed && onRetry && (
+          <button
+            type="button"
+            onClick={() => onRetry(message.id)}
+            aria-label="Retry sending this message"
+            className={cn(
+              "inline-flex items-center gap-1 px-2 h-8 rounded",
+              "text-destructive hover:bg-destructive/10",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/40",
+            )}
+          >
+            <RotateCcw className="size-3.5" />
+            Retry
+          </button>
+        )}
+        {!isFailed && (
+          <time dateTime={isoTimestamp} aria-label={fullTimestamp}>
+            {relativeTime}
+          </time>
+        )}
 
         {/* Copy button — assistant bubbles only.
             Hidden until hover/focus on devices with hover; always shown on

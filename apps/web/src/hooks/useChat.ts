@@ -37,6 +37,7 @@ type ChatAction =
   | { type: "SET_DONE"; sessionId: string; profileState: ProfileState }
   | { type: "LOAD_HISTORY"; sessionId: string; messages: ChatMessage[]; profileState: ProfileState }
   | { type: "SET_LOADING"; loading: boolean }
+  | { type: "REMOVE_MESSAGE"; id: string }
   | { type: "CLEAR" };
 
 // ---------------------------------------------------------------------------
@@ -112,14 +113,40 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
     case "SET_STREAMING":
       return { ...state, isStreaming: action.streaming };
 
-    case "SET_ERROR":
+    case "SET_ERROR": {
+      // On failure: drop any trailing empty assistant bubble (so we don't
+      // leave an orphaned "typing…" shell), then tag the last user message
+      // as failed so the UI can render an inline Retry affordance.
+      let messages = state.messages;
+      const assistantIdx = lastAssistantIndex(messages);
+      if (
+        action.error &&
+        assistantIdx !== -1 &&
+        messages[assistantIdx].content === ""
+      ) {
+        messages = messages.filter((_, i) => i !== assistantIdx);
+      } else {
+        messages = markLastAssistantDone(messages);
+      }
+      if (action.error) {
+        // Mark the last user message (if any) as failed
+        for (let i = messages.length - 1; i >= 0; i--) {
+          if (messages[i].role === "user") {
+            messages = messages.map((msg, idx) =>
+              idx === i ? { ...msg, status: "failed" as const } : msg,
+            );
+            break;
+          }
+        }
+      }
       return {
         ...state,
         error: action.error,
         isStreaming: false,
         isLoading: false,
-        messages: markLastAssistantDone(state.messages),
+        messages,
       };
+    }
 
     case "SET_DONE": {
       const messages = markLastAssistantDone(state.messages);
@@ -158,6 +185,12 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
     case "SET_LOADING":
       return { ...state, isLoading: action.loading };
 
+    case "REMOVE_MESSAGE":
+      return {
+        ...state,
+        messages: state.messages.filter((m) => m.id !== action.id),
+      };
+
     case "CLEAR":
       return { ...initialState };
 
@@ -181,6 +214,7 @@ export interface UseChatReturn {
   clearChat: () => void;
   loadSession: (sessionId: string) => Promise<void>;
   dismissError: () => void;
+  retryMessage: (id: string) => Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -195,6 +229,11 @@ export function useChat(): UseChatReturn {
   // without needing to include it in useCallback dependency arrays.
   const sessionIdRef = useRef<string | null>(null);
   sessionIdRef.current = state.sessionId;
+
+  // Same trick for messages — needed so retryMessage can look up content
+  // by id without re-creating its useCallback every render.
+  const messagesRef = useRef<ChatMessage[]>(state.messages);
+  messagesRef.current = state.messages;
 
   // -------------------------------------------------------------------------
   // sendMessage
@@ -338,6 +377,21 @@ export function useChat(): UseChatReturn {
   }, []);
 
   // -------------------------------------------------------------------------
+  // retryMessage — re-send a previously failed user message.
+  // -------------------------------------------------------------------------
+
+  const retryMessage = useCallback(
+    async (id: string): Promise<void> => {
+      const target = messagesRef.current.find((m) => m.id === id);
+      if (!target || target.role !== "user") return;
+      // Drop the failed message so sendMessage can add a fresh one
+      dispatch({ type: "REMOVE_MESSAGE", id });
+      await sendMessage(target.content);
+    },
+    [sendMessage],
+  );
+
+  // -------------------------------------------------------------------------
   // Mount effect: restore session from localStorage
   // -------------------------------------------------------------------------
 
@@ -365,5 +419,6 @@ export function useChat(): UseChatReturn {
     clearChat,
     loadSession,
     dismissError,
+    retryMessage,
   };
 }

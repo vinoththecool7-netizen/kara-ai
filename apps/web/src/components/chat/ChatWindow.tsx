@@ -39,6 +39,7 @@ export function ChatWindow({ chat, onOpenSidebar }: ChatWindowProps) {
     error,
     sendMessage,
     dismissError,
+    retryMessage,
   } = chat;
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -66,16 +67,12 @@ export function ChatWindow({ chat, onOpenSidebar }: ChatWindowProps) {
   const showTypingIndicator =
     isStreaming && lastMessage?.role === "assistant" && lastMessage.content === "";
 
-  // Retry: re-send the last user message
-  function handleRetry() {
-    for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].role === "user") {
-        dismissError();
-        sendMessage(messages[i].content);
-        return;
-      }
-    }
-  }
+  const handleRetryMessage = useCallback(
+    (id: string) => {
+      void retryMessage(id);
+    },
+    [retryMessage],
+  );
 
   return (
     <div className="flex flex-col h-full">
@@ -162,12 +159,17 @@ export function ChatWindow({ chat, onOpenSidebar }: ChatWindowProps) {
           )}
 
           {messages.map((msg) => (
-            <MessageBubble key={msg.id} message={msg} />
+            <MessageBubble
+              key={msg.id}
+              message={msg}
+              onRetry={handleRetryMessage}
+            />
           ))}
 
           {showTypingIndicator && <TypingIndicator />}
 
-          {/* Error banner */}
+          {/* Error banner — inline retry lives on the failed user bubble;
+              the banner just surfaces the error text with a dismiss affordance. */}
           {error && (
             <div
               className={cn(
@@ -177,24 +179,14 @@ export function ChatWindow({ chat, onOpenSidebar }: ChatWindowProps) {
               role="alert"
             >
               <span>{error}</span>
-              <div className="flex items-center gap-2 shrink-0">
-                <Button
-                  variant="ghost"
-                  size="xs"
-                  onClick={handleRetry}
-                  disabled={isStreaming}
-                >
-                  Try again
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon-xs"
-                  onClick={dismissError}
-                  aria-label="Dismiss error"
-                >
-                  <X className="size-3.5" />
-                </Button>
-              </div>
+              <Button
+                variant="ghost"
+                size="icon-xs"
+                onClick={dismissError}
+                aria-label="Dismiss error"
+              >
+                <X className="size-3.5" />
+              </Button>
             </div>
           )}
 
