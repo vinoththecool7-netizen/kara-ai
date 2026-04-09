@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { ChatMessage } from "@/types/chat";
+import { TaxBreakdownCard } from "@/components/cards/TaxBreakdownCard";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -204,6 +205,12 @@ export function MessageBubble({ message, onRetry }: MessageBubbleProps) {
                   aria-hidden="true"
                   className="inline-block w-0.5 h-4 bg-foreground animate-pulse ml-0.5 align-text-bottom"
                 />
+              )}
+              {/* Tax breakdown card */}
+              {message.taxBreakdown && !message.isStreaming && (
+                <div className="mt-3">
+                  <TaxBreakdownCard breakdown={message.taxBreakdown} />
+                </div>
               )}
             </div>
           )}
