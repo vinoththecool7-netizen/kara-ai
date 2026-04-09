@@ -1,7 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { Copy, Check } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -113,11 +115,28 @@ export function MessageBubble({ message }: MessageBubbleProps) {
   const isoTimestamp = message.timestamp.toISOString();
   const relativeTime = formatRelativeTime(message.timestamp);
   const fullTimestamp = message.timestamp.toLocaleString();
+  const [copied, setCopied] = useState(false);
+
+  // Reset the "Copied!" state after 2 seconds
+  useEffect(() => {
+    if (!copied) return;
+    const timeout = setTimeout(() => setCopied(false), 2000);
+    return () => clearTimeout(timeout);
+  }, [copied]);
+
+  async function handleCopy(): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(message.content);
+      setCopied(true);
+    } catch {
+      // Clipboard API may be unavailable on insecure origins; fail silently.
+    }
+  }
 
   return (
     <div
       className={cn(
-        "flex flex-col gap-1 animate-in fade-in duration-200",
+        "group flex flex-col gap-1 animate-in fade-in duration-200 motion-reduce:animate-none",
         isUser ? "items-end" : "items-start"
       )}
     >
@@ -185,11 +204,48 @@ export function MessageBubble({ message }: MessageBubbleProps) {
         </div>
       </div>
 
-      {/* Timestamp */}
-      <div className={cn("text-xs text-muted-foreground mt-1", isUser ? "pr-1" : "pl-10")}>
+      {/* Timestamp + per-message actions */}
+      <div
+        className={cn(
+          "flex items-center gap-2 text-xs text-muted-foreground mt-1",
+          isUser ? "pr-1" : "pl-10"
+        )}
+      >
         <time dateTime={isoTimestamp} aria-label={fullTimestamp}>
           {relativeTime}
         </time>
+
+        {/* Copy button — assistant bubbles only.
+            Hidden until hover/focus on devices with hover; always shown on
+            touch devices (no hover capability). */}
+        {!isUser && message.content && !message.isStreaming && (
+          <button
+            type="button"
+            onClick={handleCopy}
+            aria-label={copied ? "Copied" : "Copy message"}
+            className={cn(
+              "size-8 inline-flex items-center justify-center rounded",
+              "text-muted-foreground hover:text-foreground hover:bg-muted",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40",
+              "opacity-0 group-hover:opacity-100 focus-visible:opacity-100",
+              "transition-opacity duration-150 motion-reduce:transition-none",
+              "[@media(hover:none)]:opacity-100",
+            )}
+          >
+            {copied ? (
+              <Check className="size-3.5 text-green-600 dark:text-green-400" />
+            ) : (
+              <Copy className="size-3.5" />
+            )}
+          </button>
+        )}
+
+        {/* Screen reader announcement for copy success */}
+        {copied && (
+          <span role="status" aria-live="polite" className="sr-only">
+            Message copied
+          </span>
+        )}
       </div>
     </div>
   );
