@@ -169,3 +169,20 @@
   z-index: 9999;
   font-weight: 600;
 }
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes wf-grow {
+    from {
+      transform: scaleY(0);
+      transform-origin: bottom;
+    }
+    to {
+      transform: scaleY(1);
+    }
+  }
+
+  .wf-bar {
+    animation: wf-grow 300ms ease-out both;
+    animation-delay: calc(var(--i) * 40ms);
+  }
+}
