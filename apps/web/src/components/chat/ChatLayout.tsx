@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 import { useChat } from "@/hooks/useChat";
 import { useSessions } from "@/hooks/useSessions";
+import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { ChatWindow } from "./ChatWindow";
 import { SessionSidebar } from "./SessionSidebar";
 
@@ -37,10 +38,22 @@ export function ChatLayout() {
     await chat.loadSession(id);
   };
 
-  const handleNewChat = () => {
+  const handleNewChat = useCallback(() => {
     chat.clearChat();
     void sessionsState.refetch();
-  };
+  }, [chat, sessionsState]);
+
+  // Global keyboard shortcuts: Ctrl/Cmd+K focuses the input,
+  // Ctrl/Cmd+Shift+N starts a new chat.
+  useKeyboardShortcuts({
+    onFocusInput: useCallback(() => {
+      const el = document.getElementById(
+        "kara-message-input",
+      ) as HTMLTextAreaElement | null;
+      el?.focus();
+    }, []),
+    onNewChat: handleNewChat,
+  });
 
   const handleDelete = async (id: string) => {
     try {
