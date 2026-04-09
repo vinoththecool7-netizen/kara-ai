@@ -82,7 +82,11 @@ export function ChatLayout() {
         onClose={() => setDrawerOpen(false)}
       />
       <div className="h-full min-w-0">
-        <ChatWindow chat={chat} onOpenSidebar={() => setDrawerOpen(true)} />
+        <ChatWindow
+          chat={chat}
+          onOpenSidebar={() => setDrawerOpen(true)}
+          sidebarOpen={drawerOpen}
+        />
       </div>
     </div>
   );

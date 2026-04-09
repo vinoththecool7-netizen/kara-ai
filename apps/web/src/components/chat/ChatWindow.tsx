@@ -29,9 +29,11 @@ interface ChatWindowProps {
   chat: UseChatReturn;
   /** Called when the user taps the mobile hamburger to open the sidebar. */
   onOpenSidebar: () => void;
+  /** True while the mobile sidebar drawer is open — drives aria-expanded. */
+  sidebarOpen: boolean;
 }
 
-export function ChatWindow({ chat, onOpenSidebar }: ChatWindowProps) {
+export function ChatWindow({ chat, onOpenSidebar, sidebarOpen }: ChatWindowProps) {
   const {
     messages,
     isStreaming,
@@ -83,6 +85,7 @@ export function ChatWindow({ chat, onOpenSidebar }: ChatWindowProps) {
           onClick={onOpenSidebar}
           aria-label="Open session list"
           aria-controls="session-sidebar"
+          aria-expanded={sidebarOpen}
           className={cn(
             "size-11 inline-flex items-center justify-center rounded-md",
             "text-foreground hover:bg-muted",
