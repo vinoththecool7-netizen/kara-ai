@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { ChatMessage } from "@/types/chat";
 import { TaxBreakdownCard } from "@/components/cards/TaxBreakdownCard";
+import { RegimeComparisonCard } from "@/components/cards/RegimeComparisonCard";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -206,16 +207,24 @@ export function MessageBubble({ message, onRetry }: MessageBubbleProps) {
                   className="inline-block w-0.5 h-4 bg-foreground animate-pulse ml-0.5 align-text-bottom"
                 />
               )}
-              {/* Tax breakdown card */}
-              {message.taxBreakdown && !message.isStreaming && (
-                <div className="mt-3">
-                  <TaxBreakdownCard breakdown={message.taxBreakdown} />
-                </div>
-              )}
             </div>
           )}
         </div>
       </div>
+
+      {/* Tax breakdown card — rendered outside the bubble for full width */}
+      {!isUser && message.taxBreakdown && !message.isStreaming && (
+        <div className="pl-10 w-full">
+          <TaxBreakdownCard breakdown={message.taxBreakdown} />
+        </div>
+      )}
+
+      {/* Regime comparison card — rendered outside the bubble for full width */}
+      {!isUser && message.regimeComparison && !message.isStreaming && (
+        <div className="pl-10 w-full">
+          <RegimeComparisonCard comparison={message.regimeComparison} />
+        </div>
+      )}
 
       {/* Timestamp + per-message actions */}
       <div

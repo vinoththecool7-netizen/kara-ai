@@ -387,6 +387,120 @@ class TestSSEFormat:
 # ---------------------------------------------------------------------------
 
 
+class TestRegimeComparisonSSE:
+    """Tests for the regime_comparison SSE event emitted from compare_regimes results."""
+
+    @staticmethod
+    def _make_comparison_json(savings: int = 40_000, breakeven: int = 375_000) -> str:
+        from kara_tax_engine.models import (
+            AgeCategory,
+            Regime,
+            RegimeComparison,
+            TaxBreakdown,
+        )
+
+        old = TaxBreakdown(
+            regime=Regime.OLD,
+            financial_year="2025-26",
+            assessment_year="2026-27",
+            age_category=AgeCategory.BELOW_60,
+            total_tax_payable=180_000,
+        )
+        new = TaxBreakdown(
+            regime=Regime.NEW,
+            financial_year="2025-26",
+            assessment_year="2026-27",
+            age_category=AgeCategory.BELOW_60,
+            total_tax_payable=140_000,
+        )
+        comparison = RegimeComparison(
+            old_regime=old,
+            new_regime=new,
+            recommended_regime=Regime.NEW,
+            savings=savings,
+            breakeven_deductions=breakeven,
+            explanation="New regime wins",
+        )
+        return comparison.model_dump_json()
+
+    async def test_compare_regimes_emits_regime_comparison_event(
+        self, client, mock_agent_loop
+    ):
+        comparison_json = self._make_comparison_json(savings=40_000)
+        mock_agent_loop.run = AsyncMock(
+            return_value=_make_agent_response(
+                content="Here is the comparison.",
+                tool_calls=[
+                    ToolCallRecord(
+                        tool_name="compare_regimes",
+                        arguments={"gross_salary": 1_500_000},
+                        result=comparison_json,
+                        is_error=False,
+                    )
+                ],
+            )
+        )
+        resp = await client.post(
+            "/api/v1/chat", json={"message": "Compare regimes"}
+        )
+        events = parse_sse_events(resp.text)
+        comparison_events = [e for e in events if e["type"] == "regime_comparison"]
+        assert len(comparison_events) == 1
+        assert comparison_events[0]["comparison"]["savings"] == 40_000
+        assert comparison_events[0]["comparison"]["recommended_regime"] == "new"
+
+    async def test_compare_regimes_error_no_event(self, client, mock_agent_loop):
+        mock_agent_loop.run = AsyncMock(
+            return_value=_make_agent_response(
+                content="Comparison failed.",
+                tool_calls=[
+                    ToolCallRecord(
+                        tool_name="compare_regimes",
+                        arguments={"gross_salary": 1_500_000},
+                        result="Tool execution failed",
+                        is_error=True,
+                    )
+                ],
+            )
+        )
+        resp = await client.post(
+            "/api/v1/chat", json={"message": "Compare regimes"}
+        )
+        events = parse_sse_events(resp.text)
+        comparison_events = [e for e in events if e["type"] == "regime_comparison"]
+        assert comparison_events == []
+
+    async def test_compare_regimes_malformed_json_no_crash(
+        self, client, mock_agent_loop
+    ):
+        mock_agent_loop.run = AsyncMock(
+            return_value=_make_agent_response(
+                content="Comparison done.",
+                tool_calls=[
+                    ToolCallRecord(
+                        tool_name="compare_regimes",
+                        arguments={"gross_salary": 1_500_000},
+                        result="{invalid json",
+                        is_error=False,
+                    )
+                ],
+            )
+        )
+        resp = await client.post(
+            "/api/v1/chat", json={"message": "Compare regimes"}
+        )
+        events = parse_sse_events(resp.text)
+        # Stream must complete normally
+        assert events[-1]["type"] == "done"
+        # No regime_comparison event was emitted
+        comparison_events = [e for e in events if e["type"] == "regime_comparison"]
+        assert comparison_events == []
+        # But the raw tool_result event is still present
+        tool_events = [e for e in events if e["type"] == "tool_result"]
+        assert len(tool_events) == 1
+        assert tool_events[0]["tool_name"] == "compare_regimes"
+
+
 class TestListSessionsEndpoint:
     async def test_list_sessions_empty(self, client, mock_session_manager):
         mock_session_manager.list_sessions = AsyncMock(return_value=[])
