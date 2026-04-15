@@ -4,7 +4,9 @@ import { useReducer, useRef, useCallback, useEffect } from "react";
 import { useSSE } from "@/hooks/useSSE";
 import { createChat, continueChat, fetchSession, deleteSession, HttpError } from "@/lib/api";
 import type {
+  CapitalGainsDetail,
   ChatMessage,
+  OptimizationResult,
   ProfileState,
   RegimeComparison,
   TaxBreakdown,
@@ -41,6 +43,8 @@ type ChatAction =
   | { type: "SET_LOADING"; loading: boolean }
   | { type: "SET_TAX_BREAKDOWN"; breakdown: TaxBreakdown }
   | { type: "SET_REGIME_COMPARISON"; comparison: RegimeComparison }
+  | { type: "SET_DEDUCTION_GAPS"; optimization: OptimizationResult }
+  | { type: "SET_CAPITAL_GAINS"; gains: CapitalGainsDetail[] }
   | { type: "REMOVE_MESSAGE"; id: string }
   | { type: "CLEAR" };
 
@@ -202,6 +206,22 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
       return { ...state, messages };
     }
 
+    case "SET_DEDUCTION_GAPS": {
+      const messages = [...state.messages];
+      const idx = lastAssistantIndex(messages);
+      if (idx === -1) return state;
+      messages[idx] = { ...messages[idx], deductionGaps: action.optimization };
+      return { ...state, messages };
+    }
+
+    case "SET_CAPITAL_GAINS": {
+      const messages = [...state.messages];
+      const idx = lastAssistantIndex(messages);
+      if (idx === -1) return state;
+      messages[idx] = { ...messages[idx], capitalGains: action.gains };
+      return { ...state, messages };
+    }
+
     case "SET_LOADING":
       return { ...state, isLoading: action.loading };
 
@@ -322,6 +342,12 @@ export function useChat(): UseChatReturn {
         },
         onRegimeComparison: (comparison) => {
           dispatch({ type: "SET_REGIME_COMPARISON", comparison });
+        },
+        onDeductionGaps: (optimization) => {
+          dispatch({ type: "SET_DEDUCTION_GAPS", optimization });
+        },
+        onCapitalGains: (gains) => {
+          dispatch({ type: "SET_CAPITAL_GAINS", gains });
         },
         onAdvisory: (hint) => {
           console.log("[Advisory]", hint);

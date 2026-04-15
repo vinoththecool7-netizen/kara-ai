@@ -1,7 +1,14 @@
 "use client";
 
 import { useRef, useState } from "react";
-import type { SSEEvent, ProfileState, TaxBreakdown, RegimeComparison } from "@/types/chat";
+import type {
+  SSEEvent,
+  ProfileState,
+  TaxBreakdown,
+  RegimeComparison,
+  OptimizationResult,
+  CapitalGainsDetail,
+} from "@/types/chat";
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -15,6 +22,8 @@ export interface UseSSECallbacks {
   onAdvisory?: (hint: string) => void;
   onTaxBreakdown?: (breakdown: TaxBreakdown) => void;
   onRegimeComparison?: (comparison: RegimeComparison) => void;
+  onDeductionGaps?: (optimization: OptimizationResult) => void;
+  onCapitalGains?: (gains: CapitalGainsDetail[]) => void;
   onDone?: (sessionId: string, profileState: ProfileState) => void;
   onError?: (message: string) => void;
 }
@@ -68,6 +77,12 @@ export function useSSE(): {
         break;
       case "regime_comparison":
         callbacks.onRegimeComparison?.(event.comparison);
+        break;
+      case "deduction_gaps":
+        callbacks.onDeductionGaps?.(event.optimization);
+        break;
+      case "capital_gains":
+        callbacks.onCapitalGains?.(event.gains);
         break;
       case "done":
         callbacks.onDone?.(event.session_id, event.profile_state);

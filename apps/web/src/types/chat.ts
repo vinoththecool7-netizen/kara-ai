@@ -146,6 +146,29 @@ export interface RegimeComparison {
   explanation: string;
 }
 
+export interface OptimizationSuggestion {
+  section: string;
+  instrument: string;
+  suggested_amount: number;
+  potential_tax_saving: number;
+  lock_in_years: number | null;
+  expected_return_range: number[];
+  note: string;
+}
+
+export interface OptimizationResult {
+  current_tax: number;
+  optimized_tax: number;
+  total_potential_saving: number;
+  suggestions: OptimizationSuggestion[];
+  section_80c_used: number;
+  section_80c_remaining: number;
+  section_80d_used: number;
+  section_80d_remaining: number;
+  section_80ccd_1b_used: number;
+  section_80ccd_1b_remaining: number;
+}
+
 // ---------------------------------------------------------------------------
 // SSE event discriminated union
 // Supports both current (full response) and future (token-by-token) streaming.
@@ -159,6 +182,8 @@ export type SSEEvent =
   | { type: "advisory"; hint: string }
   | { type: "tax_breakdown"; breakdown: TaxBreakdown }
   | { type: "regime_comparison"; comparison: RegimeComparison }
+  | { type: "deduction_gaps"; optimization: OptimizationResult }
+  | { type: "capital_gains"; gains: CapitalGainsDetail[] }
   | { type: "done"; session_id: string; profile_state: ProfileState }
   | { type: "error"; message: string };
 
@@ -181,6 +206,8 @@ export interface ChatMessage {
   toolEvents?: ToolEvent[];
   taxBreakdown?: TaxBreakdown;
   regimeComparison?: RegimeComparison;
+  deductionGaps?: OptimizationResult;
+  capitalGains?: CapitalGainsDetail[];
   /**
    * Delivery status. Only populated for user messages that failed to send;
    * absent (undefined) means "sent successfully".
