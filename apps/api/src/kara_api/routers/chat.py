@@ -14,7 +14,12 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, ValidationError
 
-from kara_tax_engine.models import TaxBreakdown, RegimeComparison
+from kara_tax_engine.models import (
+    CapitalGainsResult,
+    OptimizationResult,
+    RegimeComparison,
+    TaxBreakdown,
+)
 
 from kara_api.agent import (
     ENHANCED_SYSTEM_PROMPT,
@@ -187,6 +192,21 @@ async def _sse_generator(
                     yield f"data: {json.dumps({'type': 'regime_comparison', 'comparison': comparison.model_dump(mode='json')})}\n\n"
                 except (json.JSONDecodeError, ValidationError) as exc:
                     logger.warning("Failed to parse regime_comparison from compare_regimes result: %s", exc)
+
+            if record.tool_name == "find_deduction_gaps" and not record.is_error:
+                try:
+                    optimization = OptimizationResult.model_validate(json.loads(record.result))
+                    yield f"data: {json.dumps({'type': 'deduction_gaps', 'optimization': optimization.model_dump(mode='json')})}\n\n"
+                except (json.JSONDecodeError, ValidationError) as exc:
+                    logger.warning("Failed to parse deduction_gaps from find_deduction_gaps result: %s", exc)
+
+            if record.tool_name == "compute_capital_gains" and not record.is_error:
+                try:
+                    raw_list = json.loads(record.result)
+                    gains = [CapitalGainsResult.model_validate(item) for item in raw_list]
+                    yield f"data: {json.dumps({'type': 'capital_gains', 'gains': [g.model_dump(mode='json') for g in gains]})}\n\n"
+                except (json.JSONDecodeError, ValidationError) as exc:
+                    logger.warning("Failed to parse capital_gains from compute_capital_gains result: %s", exc)
 
         # Emit content
         if result.content:
