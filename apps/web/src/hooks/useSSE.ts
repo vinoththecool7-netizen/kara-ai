@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import type { SSEEvent, ProfileState } from "@/types/chat";
+import type { SSEEvent, ProfileState, TaxBreakdown, RegimeComparison } from "@/types/chat";
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -13,6 +13,8 @@ export interface UseSSECallbacks {
   onContent?: (text: string) => void;
   onContentDelta?: (text: string) => void; // forward-compatible with future token streaming
   onAdvisory?: (hint: string) => void;
+  onTaxBreakdown?: (breakdown: TaxBreakdown) => void;
+  onRegimeComparison?: (comparison: RegimeComparison) => void;
   onDone?: (sessionId: string, profileState: ProfileState) => void;
   onError?: (message: string) => void;
 }
@@ -60,6 +62,12 @@ export function useSSE(): {
         break;
       case "advisory":
         callbacks.onAdvisory?.(event.hint);
+        break;
+      case "tax_breakdown":
+        callbacks.onTaxBreakdown?.(event.breakdown);
+        break;
+      case "regime_comparison":
+        callbacks.onRegimeComparison?.(event.comparison);
         break;
       case "done":
         callbacks.onDone?.(event.session_id, event.profile_state);

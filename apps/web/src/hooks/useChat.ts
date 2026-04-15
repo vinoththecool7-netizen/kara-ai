@@ -6,6 +6,8 @@ import { createChat, continueChat, fetchSession, deleteSession, HttpError } from
 import type {
   ChatMessage,
   ProfileState,
+  RegimeComparison,
+  TaxBreakdown,
   ToolEvent,
 } from "@/types/chat";
 
@@ -37,6 +39,8 @@ type ChatAction =
   | { type: "SET_DONE"; sessionId: string; profileState: ProfileState }
   | { type: "LOAD_HISTORY"; sessionId: string; messages: ChatMessage[]; profileState: ProfileState }
   | { type: "SET_LOADING"; loading: boolean }
+  | { type: "SET_TAX_BREAKDOWN"; breakdown: TaxBreakdown }
+  | { type: "SET_REGIME_COMPARISON"; comparison: RegimeComparison }
   | { type: "REMOVE_MESSAGE"; id: string }
   | { type: "CLEAR" };
 
@@ -182,6 +186,22 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
         isLoading: false,
       };
 
+    case "SET_TAX_BREAKDOWN": {
+      const messages = [...state.messages];
+      const idx = lastAssistantIndex(messages);
+      if (idx === -1) return state;
+      messages[idx] = { ...messages[idx], taxBreakdown: action.breakdown };
+      return { ...state, messages };
+    }
+
+    case "SET_REGIME_COMPARISON": {
+      const messages = [...state.messages];
+      const idx = lastAssistantIndex(messages);
+      if (idx === -1) return state;
+      messages[idx] = { ...messages[idx], regimeComparison: action.comparison };
+      return { ...state, messages };
+    }
+
     case "SET_LOADING":
       return { ...state, isLoading: action.loading };
 
@@ -296,6 +316,12 @@ export function useChat(): UseChatReturn {
         },
         onContentDelta: (text) => {
           dispatch({ type: "APPEND_CONTENT", text });
+        },
+        onTaxBreakdown: (breakdown) => {
+          dispatch({ type: "SET_TAX_BREAKDOWN", breakdown });
+        },
+        onRegimeComparison: (comparison) => {
+          dispatch({ type: "SET_REGIME_COMPARISON", comparison });
         },
         onAdvisory: (hint) => {
           console.log("[Advisory]", hint);

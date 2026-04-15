@@ -137,6 +137,15 @@ export interface TaxBreakdown {
   computation_steps: string[];
 }
 
+export interface RegimeComparison {
+  old_regime: TaxBreakdown;
+  new_regime: TaxBreakdown;
+  recommended_regime: "old" | "new";
+  savings: number;
+  breakeven_deductions: number;
+  explanation: string;
+}
+
 // ---------------------------------------------------------------------------
 // SSE event discriminated union
 // Supports both current (full response) and future (token-by-token) streaming.
@@ -149,6 +158,7 @@ export type SSEEvent =
   | { type: "content_delta"; text: string } // future: incremental token stream
   | { type: "advisory"; hint: string }
   | { type: "tax_breakdown"; breakdown: TaxBreakdown }
+  | { type: "regime_comparison"; comparison: RegimeComparison }
   | { type: "done"; session_id: string; profile_state: ProfileState }
   | { type: "error"; message: string };
 
@@ -170,6 +180,7 @@ export interface ChatMessage {
   isStreaming?: boolean;
   toolEvents?: ToolEvent[];
   taxBreakdown?: TaxBreakdown;
+  regimeComparison?: RegimeComparison;
   /**
    * Delivery status. Only populated for user messages that failed to send;
    * absent (undefined) means "sent successfully".
