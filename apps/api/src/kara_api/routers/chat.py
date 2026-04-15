@@ -12,7 +12,9 @@ from typing import Any, AsyncIterator
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
+
+from kara_tax_engine.models import TaxBreakdown, RegimeComparison
 
 from kara_api.agent import (
     ENHANCED_SYSTEM_PROMPT,
@@ -170,6 +172,21 @@ async def _sse_generator(
         # Emit tool results
         for record in result.tool_calls_made:
             yield f"data: {json.dumps({'type': 'tool_result', 'tool_name': record.tool_name, 'result': record.result, 'is_error': record.is_error})}\n\n"
+
+            # Emit structured tax_breakdown event for compute_tax tool
+            if record.tool_name == "compute_tax" and not record.is_error:
+                try:
+                    breakdown = TaxBreakdown.model_validate(json.loads(record.result))
+                    yield f"data: {json.dumps({'type': 'tax_breakdown', 'breakdown': breakdown.model_dump(mode='json')})}\n\n"
+                except (json.JSONDecodeError, ValidationError) as exc:
+                    logger.warning("Failed to parse tax_breakdown from compute_tax result: %s", exc)
+
+            if record.tool_name == "compare_regimes" and not record.is_error:
+                try:
+                    comparison = RegimeComparison.model_validate(json.loads(record.result))
+                    yield f"data: {json.dumps({'type': 'regime_comparison', 'comparison': comparison.model_dump(mode='json')})}\n\n"
+                except (json.JSONDecodeError, ValidationError) as exc:
+                    logger.warning("Failed to parse regime_comparison from compare_regimes result: %s", exc)
 
         # Emit content
         if result.content:
