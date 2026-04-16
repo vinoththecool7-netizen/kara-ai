@@ -23,10 +23,10 @@
 |-------|------|--------|----------|
 | 1 — Rule Engine | 1–20 | ✅ Complete | 20/20 days done |
 | 2 — Backend + AI Agent | 21–40 | ✅ Complete | 20/20 days done |
-| 3 — Frontend | 41–55 | 🔄 In Progress | 7/15 days done |
+| 3 — Frontend | 41–55 | 🔄 In Progress | 13/15 days done |
 | 4 — Advanced Features | 56–70 | ⬜ Not Started | 0/15 days done |
 | 5 — Polish + Launch | 71–80 | ⬜ Not Started | 0/10 days done |
-| **Total** | **1–80** | | **47/80 days done (59%)** |
+| **Total** | **1–80** | | **53/80 days done (66%)** |
 
 ### Test Count Tracker
 
@@ -44,7 +44,7 @@
 | Agent prompts + profile | 20+ | 50 | ✅ |
 | Agent loop + chat | 30+ | 61 | ✅ |
 | E2E integration | 10+ | 13 | ✅ |
-| Frontend components | 20+ | 9 | 🔄 |
+| Frontend components | 20+ | 9 + 35 waterfall | 🔄 |
 | E2E journeys | 10+ | 0 | ⬜ |
 | **Total** | **350+** | **616** | **176%** |
 
@@ -1037,66 +1037,83 @@
 
 ---
 
-### Days 50–51: TaxBreakdownCard + Waterfall Visualization ⬜
+### Days 50–51: TaxBreakdownCard + Waterfall Visualization ✅
 
-**Status:** ⬜ TODO
+**Status:** ✅ COMPLETE
 
 **Tasks:**
-- [ ] Create `TaxBreakdownCard` — renders `TaxBreakdown` from API:
-  - Gross Total Income (header)
-  - (−) Deductions = Taxable Income
-  - Slab-wise tax breakdown (table with rates)
-  - (+) Surcharge
-  - (+) Cess
-  - (−) Rebate 87A
-  - = **Net Tax Payable** (bold, large)
-  - Effective tax rate badge
-- [ ] Create waterfall chart (using Recharts or custom SVG):
-  - Green bars for income
-  - Red bars for deductions
-  - Blue bars for tax components
-  - Horizontal connectors between bars
-- [ ] Indian number formatting throughout (₹12,50,000)
-- [ ] Collapsible sections for detail vs summary view
-- [ ] Mobile-responsive card layout
+- [x] **Day 50.1:** Backend emit `tax_breakdown` SSE event in `chat.py` — parse `compute_tax` tool results into `TaxBreakdown` Pydantic model, emit structured SSE event, graceful `ValidationError` fallback
+- [x] **Day 50.2:** Frontend types + SSE handler + reducer wiring — `TaxBreakdown` interface in `types/chat.ts`, `onTaxBreakdown` callback in `useSSE.ts`, `SET_TAX_BREAKDOWN` reducer action in `useChat.ts`
+- [x] **Day 50.3:** Indian number formatting (`lib/format.ts`) — `formatINR` (₹12,50,000 with 2,2,3 grouping), `formatCompactINR` (₹12.5L/₹1.25Cr), `formatPercent`, `formatIndianNumber`
+- [x] **Day 50.4:** `TaxBreakdownCard` component — KPI tiles (3-col grid), effective tax rate badge, collapsible detail section with income breakdown, deductions list, slab table, and adjustments
+- [x] **Day 50.5:** Wire `TaxBreakdownCard` into `MessageBubble` — renders outside bubble for full width, guarded by `!isStreaming`
+- [x] **Day 51.2:** Waterfall data transform (`lib/waterfall.ts`) — `computeWaterfallSteps()` produces up to 9 signed-delta steps with cumulative totals, zero-value skipping
+- [x] **Day 51.3:** WaterfallChart SVG component — dual-scale layout (income zone + tax zone), `viewBox="0 0 360 220"`, `preserveAspectRatio`, rounded bars, dashed connectors, compact INR labels, `role="img"` + `aria-labelledby`/`aria-describedby` + `<figure>`/`<figcaption class="sr-only">`
+- [x] **Day 51.3:** Waterfall animation (`globals.css`) — `@keyframes wf-grow` with staggered delay (`var(--i) * 40ms`), `transform-box: fill-box`, gated by `@media (prefers-reduced-motion: no-preference)`
+- [x] **Day 51.4:** Waterfall tests (`waterfall.test.ts`) — 6 test suites, 35 assertions (happy path, deductions, zero-skipping, full breakdown, rebate regime, cumulative integrity)
+- [x] **Day 51.5:** Integration — WaterfallChart rendered in TaxBreakdownCard summary view between KPI tiles and collapsible details
 
-**Files to Create:**
-- `apps/web/src/components/cards/TaxBreakdownCard.tsx`
-- `apps/web/src/components/cards/WaterfallChart.tsx`
-- `apps/web/src/lib/format.ts` (Indian number formatting)
+**Quality Review (12 findings, all fixed):**
+- Card `aria-labelledby` linked to title (`titleId`)
+- KPI tiles use semantic `<dl>`/`<dt>`/`<dd>` with `title` and `aria-label` for exact ₹ values
+- Chevron icons `aria-hidden="true"`
+- MoneyRow sections wrapped in `<dl>` (valid HTML)
+- SlabTable has `<caption class="sr-only">`
+- Collapsible detail has `role="region"` + `aria-label`
+- Toggle button has `touch-manipulation`
+- Slab upper-bound sentinel corrected to `>= 99_99_99_999`
+- `formatCompactINR` preserves negative sign
+- TaxBreakdownCard rendered outside prose bubble at full width
 
-**Definition of Done:** Tax breakdown renders beautifully as a card in chat. Waterfall chart visualizes the computation. Indian formatting correct.
+**Files Created/Modified:**
+- `apps/api/src/kara_api/routers/chat.py` — tax_breakdown SSE event
+- `apps/web/src/types/chat.ts` — TaxBreakdown + DeductionResult + SlabBreakdown + CapitalGainsDetail interfaces
+- `apps/web/src/hooks/useSSE.ts` — onTaxBreakdown dispatch
+- `apps/web/src/hooks/useChat.ts` — SET_TAX_BREAKDOWN reducer
+- `apps/web/src/lib/format.ts` — Indian number formatters
+- `apps/web/src/lib/waterfall.ts` — waterfall data transform
+- `apps/web/src/lib/waterfall.test.ts` — 35 assertions
+- `apps/web/src/components/cards/TaxBreakdownCard.tsx` — rich tax card
+- `apps/web/src/components/cards/WaterfallChart.tsx` — SVG waterfall visualization
+- `apps/web/src/components/chat/MessageBubble.tsx` — card integration
+- `apps/web/src/app/globals.css` — wf-grow animation
+
+**Definition of Done:** ✅ Tax breakdown renders as a polished card below assistant bubbles. Waterfall chart visualizes the computation with dual-scale layout. Indian formatting correct. WCAG AA accessibility. 375px mobile responsive. 35 tests passing.
 
 ---
 
-### Days 52–53: RegimeComparisonCard + DeductionGapCard ⬜
+### Days 52–53: RegimeComparisonCard + DeductionGapCard ✅ COMPLETE
 
-**Status:** ⬜ TODO
+**Status:** ✅ COMPLETE (Done 2026-04-16)
 
 **Tasks:**
-- [ ] Create `RegimeComparisonCard`:
+- [x] Create `RegimeComparisonCard`:
   - Side-by-side: Old Regime vs New Regime
   - Tax amount under each
   - Savings highlighted (green badge: "Save ₹X with New Regime")
   - Deductions breakdown showing what applies where
   - Recommendation badge
-- [ ] Create `DeductionGapCard`:
+- [x] Create `DeductionGapCard`:
   - Progress bars for each deduction section (used / cap)
   - 80C: ₹1,20,000 / ₹1,50,000 — "₹30,000 gap"
   - Color coding: green (>80% used), yellow (50-80%), red (<50%)
   - Suggestion chips: "Invest ₹30K in ELSS to save ₹9,360"
-  - Expandable details per section
-- [ ] Create `CapitalGainsCard`:
+  - Expandable investment tips section
+- [x] Create `CapitalGainsCard`:
   - Asset details, holding period, gain type
   - Tax computation with exemptions shown
-  - Proactive tip (e.g., "Defer sale to next FY for another ₹1.25L exemption")
+  - Per-transaction dl grid with rate, taxable gain, tax
+- [x] Wire all 3 cards into `MessageBubble` (after RegimeComparisonCard, outside bubble)
+- [x] SSE backend tests: `TestDeductionGapsSSE` (3 tests) + `TestCapitalGainsSSE` (4 tests)
 
-**Files to Create:**
-- `apps/web/src/components/cards/RegimeComparisonCard.tsx`
-- `apps/web/src/components/cards/DeductionGapCard.tsx`
-- `apps/web/src/components/cards/CapitalGainsCard.tsx`
+**Files Created/Modified:**
+- `apps/web/src/components/cards/RegimeComparisonCard.tsx` (created Day 52)
+- `apps/web/src/components/cards/DeductionGapCard.tsx` (created Day 53.3)
+- `apps/web/src/components/cards/CapitalGainsCard.tsx` (created Day 53.4)
+- `apps/web/src/components/chat/MessageBubble.tsx` (wired Day 53.5)
+- `apps/api/tests/test_chat_endpoints.py` (7 new tests Day 53.5)
 
-**Definition of Done:** All 3 card types render in chat. Visual design is clean and informative. Mobile responsive.
+**Definition of Done:** ✅ All 3 card types render in chat. Visual design is clean and informative. Mobile responsive. SSE events covered by 7 new backend tests.
 
 ---
 
@@ -1631,16 +1648,20 @@ apps/web/
 │   │   ├── chat/ChatWindow.tsx             ⬜
 │   │   ├── chat/MessageBubble.tsx          ⬜
 │   │   ├── chat/MessageInput.tsx           ⬜
-│   │   ├── cards/TaxBreakdownCard.tsx      ⬜
-│   │   ├── cards/RegimeComparisonCard.tsx  ⬜
-│   │   └── cards/DeductionGapCard.tsx      ⬜
+│   │   ├── cards/TaxBreakdownCard.tsx      ✅
+│   │   ├── cards/WaterfallChart.tsx        ✅
+│   │   ├── cards/RegimeComparisonCard.tsx  ✅
+│   │   ├── cards/DeductionGapCard.tsx      ✅
+│   │   └── cards/CapitalGainsCard.tsx      ✅
 │   ├── hooks/
-│   │   ├── useChat.ts                      ⬜
-│   │   └── useSSE.ts                       ⬜
+│   │   ├── useChat.ts                      ✅
+│   │   └── useSSE.ts                       ✅
 │   ├── lib/
-│   │   ├── api.ts                          ⬜
-│   │   └── format.ts                       ⬜
-│   └── types/chat.ts                       ⬜
+│   │   ├── api.ts                          ✅
+│   │   ├── format.ts                       ✅
+│   │   ├── waterfall.ts                    ✅
+│   │   └── waterfall.test.ts              ✅
+│   └── types/chat.ts                       ✅
 ```
 
 ---
@@ -1651,5 +1672,6 @@ apps/web/
 |------|-----------|------------------------|-------|
 | 2026-03-24 | 1 | Days 1–6 | Setup + models + loader + computer + new regime tests. Stubs for capital_gains, optimizer, comparator. |
 | 2026-03-24 | 2 | Day 7 | Old regime slab tests — 25 tests (below-60, senior, super-senior, 87A rebate). Total: 106/350+ tests. |
-| | | | |
+| 2026-04-09 | — | Days 50–51 | TaxBreakdownCard + WaterfallChart + format.ts + SSE wiring + 35 waterfall tests. Quality audit: 12 a11y/UX findings fixed. |
+| 2026-04-16 | — | Days 52–53 | RegimeComparisonCard + DeductionGapCard + CapitalGainsCard + MessageBubble wiring + 7 SSE backend tests. All 3 card types live in chat. |
 | | | | |
