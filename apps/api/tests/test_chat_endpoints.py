@@ -501,6 +501,244 @@ class TestRegimeComparisonSSE:
         assert tool_events[0]["tool_name"] == "compare_regimes"
 
 
+# ---------------------------------------------------------------------------
+# TestDeductionGapsSSE
+# ---------------------------------------------------------------------------
+
+
+class TestDeductionGapsSSE:
+    """Tests for the deduction_gaps SSE event emitted from find_deduction_gaps results."""
+
+    @staticmethod
+    def _make_optimization_json() -> str:
+        from kara_tax_engine.models import OptimizationResult, OptimizationSuggestion
+
+        return OptimizationResult(
+            current_tax=200_000,
+            optimized_tax=150_000,
+            total_potential_saving=50_000,
+            suggestions=[
+                OptimizationSuggestion(
+                    section="80C",
+                    instrument="ELSS Mutual Fund",
+                    suggested_amount=50_000,
+                    potential_tax_saving=15_000,
+                    lock_in_years=3,
+                    expected_return_range=[10.0, 15.0],
+                    note="",
+                )
+            ],
+            section_80c_used=100_000,
+            section_80c_remaining=50_000,
+            section_80d_used=25_000,
+            section_80d_remaining=0,
+            section_80ccd_1b_used=0,
+            section_80ccd_1b_remaining=50_000,
+        ).model_dump_json()
+
+    async def test_find_deduction_gaps_emits_deduction_gaps_event(
+        self, client, mock_agent_loop
+    ):
+        optimization_json = self._make_optimization_json()
+        mock_agent_loop.run = AsyncMock(
+            return_value=_make_agent_response(
+                content="Here are your tax saving opportunities.",
+                tool_calls=[
+                    ToolCallRecord(
+                        tool_name="find_deduction_gaps",
+                        arguments={},
+                        result=optimization_json,
+                        is_error=False,
+                    )
+                ],
+            )
+        )
+        resp = await client.post(
+            "/api/v1/chat", json={"message": "Find deduction gaps"}
+        )
+        events = parse_sse_events(resp.text)
+        deduction_events = [e for e in events if e["type"] == "deduction_gaps"]
+        assert len(deduction_events) == 1
+        assert deduction_events[0]["optimization"]["total_potential_saving"] == 50_000
+
+    async def test_find_deduction_gaps_error_no_event(self, client, mock_agent_loop):
+        mock_agent_loop.run = AsyncMock(
+            return_value=_make_agent_response(
+                content="Could not find deduction gaps.",
+                tool_calls=[
+                    ToolCallRecord(
+                        tool_name="find_deduction_gaps",
+                        arguments={},
+                        result="Tool execution failed",
+                        is_error=True,
+                    )
+                ],
+            )
+        )
+        resp = await client.post(
+            "/api/v1/chat", json={"message": "Find deduction gaps"}
+        )
+        events = parse_sse_events(resp.text)
+        deduction_events = [e for e in events if e["type"] == "deduction_gaps"]
+        assert deduction_events == []
+
+    async def test_find_deduction_gaps_malformed_json_no_crash(
+        self, client, mock_agent_loop
+    ):
+        mock_agent_loop.run = AsyncMock(
+            return_value=_make_agent_response(
+                content="Done.",
+                tool_calls=[
+                    ToolCallRecord(
+                        tool_name="find_deduction_gaps",
+                        arguments={},
+                        result="{invalid json",
+                        is_error=False,
+                    )
+                ],
+            )
+        )
+        resp = await client.post(
+            "/api/v1/chat", json={"message": "Find deduction gaps"}
+        )
+        events = parse_sse_events(resp.text)
+        # Stream must complete normally
+        assert events[-1]["type"] == "done"
+        # No deduction_gaps event was emitted
+        deduction_events = [e for e in events if e["type"] == "deduction_gaps"]
+        assert deduction_events == []
+
+
+# ---------------------------------------------------------------------------
+# TestCapitalGainsSSE
+# ---------------------------------------------------------------------------
+
+
+class TestCapitalGainsSSE:
+    """Tests for the capital_gains SSE event emitted from compute_capital_gains results."""
+
+    @staticmethod
+    def _make_gains_json(gains_list: list | None = None) -> str:
+        import json
+
+        from kara_tax_engine.models import AssetClass, CapitalGainsResult, GainType
+
+        if gains_list is None:
+            gains_list = [
+                CapitalGainsResult(
+                    asset_class=AssetClass.LISTED_EQUITY,
+                    gain_type=GainType.LTCG,
+                    section="112A",
+                    purchase_price=500_000,
+                    sale_price=750_000,
+                    total_gain=250_000,
+                    exempt_amount=125_000,
+                    taxable_gain=125_000,
+                    tax_rate=0.10,
+                    tax_amount=12_500,
+                    holding_months=18,
+                    note="",
+                )
+            ]
+        return json.dumps([g.model_dump(mode="json") for g in gains_list])
+
+    async def test_compute_capital_gains_emits_capital_gains_event(
+        self, client, mock_agent_loop
+    ):
+        gains_json = self._make_gains_json()
+        mock_agent_loop.run = AsyncMock(
+            return_value=_make_agent_response(
+                content="Here is your capital gains summary.",
+                tool_calls=[
+                    ToolCallRecord(
+                        tool_name="compute_capital_gains",
+                        arguments={},
+                        result=gains_json,
+                        is_error=False,
+                    )
+                ],
+            )
+        )
+        resp = await client.post(
+            "/api/v1/chat", json={"message": "Compute capital gains"}
+        )
+        events = parse_sse_events(resp.text)
+        gains_events = [e for e in events if e["type"] == "capital_gains"]
+        assert len(gains_events) == 1
+        assert len(gains_events[0]["gains"]) == 1
+
+    async def test_compute_capital_gains_empty_list(self, client, mock_agent_loop):
+        import json
+
+        mock_agent_loop.run = AsyncMock(
+            return_value=_make_agent_response(
+                content="No capital gains found.",
+                tool_calls=[
+                    ToolCallRecord(
+                        tool_name="compute_capital_gains",
+                        arguments={},
+                        result=json.dumps([]),
+                        is_error=False,
+                    )
+                ],
+            )
+        )
+        resp = await client.post(
+            "/api/v1/chat", json={"message": "Compute capital gains"}
+        )
+        events = parse_sse_events(resp.text)
+        gains_events = [e for e in events if e["type"] == "capital_gains"]
+        assert len(gains_events) == 1
+        assert gains_events[0]["gains"] == []
+
+    async def test_compute_capital_gains_error_no_event(self, client, mock_agent_loop):
+        mock_agent_loop.run = AsyncMock(
+            return_value=_make_agent_response(
+                content="Capital gains computation failed.",
+                tool_calls=[
+                    ToolCallRecord(
+                        tool_name="compute_capital_gains",
+                        arguments={},
+                        result="Tool execution failed",
+                        is_error=True,
+                    )
+                ],
+            )
+        )
+        resp = await client.post(
+            "/api/v1/chat", json={"message": "Compute capital gains"}
+        )
+        events = parse_sse_events(resp.text)
+        gains_events = [e for e in events if e["type"] == "capital_gains"]
+        assert gains_events == []
+
+    async def test_compute_capital_gains_malformed_json_no_crash(
+        self, client, mock_agent_loop
+    ):
+        mock_agent_loop.run = AsyncMock(
+            return_value=_make_agent_response(
+                content="Done.",
+                tool_calls=[
+                    ToolCallRecord(
+                        tool_name="compute_capital_gains",
+                        arguments={},
+                        result="{invalid json",
+                        is_error=False,
+                    )
+                ],
+            )
+        )
+        resp = await client.post(
+            "/api/v1/chat", json={"message": "Compute capital gains"}
+        )
+        events = parse_sse_events(resp.text)
+        # Stream must complete normally
+        assert events[-1]["type"] == "done"
+        # No capital_gains event was emitted
+        gains_events = [e for e in events if e["type"] == "capital_gains"]
+        assert gains_events == []
+
+
 class TestListSessionsEndpoint:
     async def test_list_sessions_empty(self, client, mock_session_manager):
         mock_session_manager.list_sessions = AsyncMock(return_value=[])

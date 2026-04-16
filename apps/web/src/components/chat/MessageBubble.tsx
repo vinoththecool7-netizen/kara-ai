@@ -11,6 +11,8 @@ import { cn } from "@/lib/utils";
 import type { ChatMessage } from "@/types/chat";
 import { TaxBreakdownCard } from "@/components/cards/TaxBreakdownCard";
 import { RegimeComparisonCard } from "@/components/cards/RegimeComparisonCard";
+import { DeductionGapCard } from "@/components/cards/DeductionGapCard";
+import { CapitalGainsCard } from "@/components/cards/CapitalGainsCard";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -223,6 +225,20 @@ export function MessageBubble({ message, onRetry }: MessageBubbleProps) {
       {!isUser && message.regimeComparison && !message.isStreaming && (
         <div className="pl-10 w-full">
           <RegimeComparisonCard comparison={message.regimeComparison} />
+        </div>
+      )}
+
+      {/* Deduction gap card — rendered outside the bubble for full width */}
+      {!isUser && message.deductionGaps && !message.isStreaming && (
+        <div className="pl-10 w-full">
+          <DeductionGapCard optimization={message.deductionGaps} />
+        </div>
+      )}
+
+      {/* Capital gains card — rendered outside the bubble for full width */}
+      {!isUser && message.capitalGains && message.capitalGains.length > 0 && !message.isStreaming && (
+        <div className="pl-10 w-full">
+          <CapitalGainsCard gains={message.capitalGains} />
         </div>
       )}
 
