@@ -13,6 +13,7 @@ import { TaxBreakdownCard } from "@/components/cards/TaxBreakdownCard";
 import { RegimeComparisonCard } from "@/components/cards/RegimeComparisonCard";
 import { DeductionGapCard } from "@/components/cards/DeductionGapCard";
 import { CapitalGainsCard } from "@/components/cards/CapitalGainsCard";
+import { CardSkeleton } from "@/components/cards/CardSkeleton";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ErrorFallback } from "@/components/ErrorFallback";
 import { toast } from "@/hooks/useToast";
@@ -122,6 +123,20 @@ interface MessageBubbleProps {
 export function MessageBubble({ message, onRetry }: MessageBubbleProps) {
   const isUser = message.role === "user";
   const isFailed = isUser && message.status === "failed";
+  const pendingTool = (name: string): boolean =>
+    Boolean(
+      message.isStreaming &&
+        message.toolEvents?.some((e) => e.toolName === name && !e.isError),
+    );
+  const showTaxSkeleton = !isUser && pendingTool("compute_tax") && !message.taxBreakdown;
+  const showRegimeSkeleton =
+    !isUser && pendingTool("compare_regimes") && !message.regimeComparison;
+  const showDeductionSkeleton =
+    !isUser && pendingTool("find_deduction_gaps") && !message.deductionGaps;
+  const showCapitalSkeleton =
+    !isUser &&
+    pendingTool("compute_capital_gains") &&
+    (!message.capitalGains || message.capitalGains.length === 0);
   const isoTimestamp = message.timestamp.toISOString();
   const relativeTime = formatRelativeTime(message.timestamp);
   const fullTimestamp = message.timestamp.toLocaleString();
@@ -217,6 +232,28 @@ export function MessageBubble({ message, onRetry }: MessageBubbleProps) {
           )}
         </div>
       </div>
+
+      {/* Card skeletons — shown while the matching tool is still running */}
+      {showTaxSkeleton && (
+        <div className="pl-10 w-full">
+          <CardSkeleton variant="tax" />
+        </div>
+      )}
+      {showRegimeSkeleton && (
+        <div className="pl-10 w-full">
+          <CardSkeleton variant="regime" />
+        </div>
+      )}
+      {showDeductionSkeleton && (
+        <div className="pl-10 w-full">
+          <CardSkeleton variant="deduction" />
+        </div>
+      )}
+      {showCapitalSkeleton && (
+        <div className="pl-10 w-full">
+          <CardSkeleton variant="capital" />
+        </div>
+      )}
 
       {/* Tax breakdown card — rendered outside the bubble for full width */}
       {!isUser && message.taxBreakdown && !message.isStreaming && (
