@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { SkipLink } from "@/components/layout/SkipLink";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import { Toaster } from "@/components/ui/toast";
 import "./globals.css";
 
 const geistMono = Geist_Mono({
@@ -42,6 +43,7 @@ export default function RootLayout({
             {children}
           </main>
           <Footer />
+          <Toaster />
         </ThemeProvider>
       </body>
     </html>
