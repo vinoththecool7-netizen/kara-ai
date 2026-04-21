@@ -3,6 +3,7 @@
 import { useReducer, useRef, useCallback, useEffect } from "react";
 import { useSSE } from "@/hooks/useSSE";
 import { createChat, continueChat, fetchSession, deleteSession, HttpError } from "@/lib/api";
+import { toast } from "@/hooks/useToast";
 import type {
   CapitalGainsDetail,
   ChatMessage,
@@ -358,13 +359,13 @@ export function useChat(): UseChatReturn {
         },
         onError: (message) => {
           dispatch({ type: "SET_ERROR", error: message });
+          toast.error(message);
         },
       });
     } catch {
-      dispatch({
-        type: "SET_ERROR",
-        error: "Unable to connect. Check your connection and try again.",
-      });
+      const message = "Unable to connect. Check your connection and try again.";
+      dispatch({ type: "SET_ERROR", error: message });
+      toast.error(message);
     }
   }, [processStream, abort]);
 
@@ -417,6 +418,7 @@ export function useChat(): UseChatReturn {
       const message =
         err instanceof Error ? err.message : "Failed to load session.";
       dispatch({ type: "SET_ERROR", error: message });
+      toast.error(message);
     }
   }, []);
 

@@ -1,9 +1,8 @@
 "use client";
 
 import { useRef, useEffect, useCallback } from "react";
-import { Menu, X } from "lucide-react";
+import { Menu } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -39,9 +38,7 @@ export function ChatWindow({ chat, onOpenSidebar, sidebarOpen }: ChatWindowProps
     messages,
     isStreaming,
     isLoading,
-    error,
     sendMessage,
-    dismissError,
     retryMessage,
   } = chat;
 
@@ -171,28 +168,6 @@ export function ChatWindow({ chat, onOpenSidebar, sidebarOpen }: ChatWindowProps
           ))}
 
           {showTypingIndicator && <TypingIndicator />}
-
-          {/* Error banner — inline retry lives on the failed user bubble;
-              the banner just surfaces the error text with a dismiss affordance. */}
-          {error && (
-            <div
-              className={cn(
-                "rounded-lg px-4 py-3 bg-destructive/10 text-destructive",
-                "flex items-center justify-between gap-3 text-sm"
-              )}
-              role="alert"
-            >
-              <span>{error}</span>
-              <Button
-                variant="ghost"
-                size="icon-xs"
-                onClick={dismissError}
-                aria-label="Dismiss error"
-              >
-                <X className="size-3.5" />
-              </Button>
-            </div>
-          )}
 
           {/* Scroll sentinel */}
           <div ref={sentinelRef} aria-hidden="true" />

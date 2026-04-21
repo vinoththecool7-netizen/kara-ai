@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useChat } from "@/hooks/useChat";
 import { useSessions } from "@/hooks/useSessions";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
+import { toast } from "@/hooks/useToast";
 import { ChatWindow } from "./ChatWindow";
 import { SessionSidebar } from "./SessionSidebar";
 
@@ -58,11 +59,13 @@ export function ChatLayout() {
   const handleDelete = async (id: string) => {
     try {
       await sessionsState.removeSession(id);
+      toast.success("Chat deleted");
       // If the deleted session is the one currently open, reset the chat.
       if (id === chat.sessionId) {
         chat.clearChat();
       }
     } catch {
+      toast.error("Couldn't delete chat");
       // The hook already rolled the optimistic removal back; nothing to do.
     }
   };

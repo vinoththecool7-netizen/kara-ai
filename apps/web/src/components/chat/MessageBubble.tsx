@@ -13,6 +13,7 @@ import { TaxBreakdownCard } from "@/components/cards/TaxBreakdownCard";
 import { RegimeComparisonCard } from "@/components/cards/RegimeComparisonCard";
 import { DeductionGapCard } from "@/components/cards/DeductionGapCard";
 import { CapitalGainsCard } from "@/components/cards/CapitalGainsCard";
+import { toast } from "@/hooks/useToast";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -135,8 +136,9 @@ export function MessageBubble({ message, onRetry }: MessageBubbleProps) {
     try {
       await navigator.clipboard.writeText(message.content);
       setCopied(true);
+      toast.success("Copied to clipboard");
     } catch {
-      // Clipboard API may be unavailable on insecure origins; fail silently.
+      toast.error("Couldn't copy to clipboard");
     }
   }
 
@@ -163,7 +165,7 @@ export function MessageBubble({ message, onRetry }: MessageBubbleProps) {
       {/* Message row */}
       <div
         className={cn(
-          "flex gap-2 items-end",
+          "flex gap-2 items-end w-full",
           isUser ? "flex-row-reverse" : "flex-row"
         )}
       >
@@ -302,12 +304,6 @@ export function MessageBubble({ message, onRetry }: MessageBubbleProps) {
           </button>
         )}
 
-        {/* Screen reader announcement for copy success */}
-        {copied && (
-          <span role="status" aria-live="polite" className="sr-only">
-            Message copied
-          </span>
-        )}
       </div>
     </div>
   );
