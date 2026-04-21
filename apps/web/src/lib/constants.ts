@@ -1,5 +1,8 @@
 export const GITHUB_URL = "https://github.com/kara-project/kara"
 
+export const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://kara.example"
+
 export const COLORS = {
   primary: "#2563EB",
   primaryDark: "#1D4ED8",
