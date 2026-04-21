@@ -9,8 +9,44 @@
  */
 
 import type { SessionResponse, SessionSummary } from "@/types/chat";
+import { reportNetworkError } from "@/hooks/useOnlineStatus";
 
 const API_PREFIX = "/api/v1/chat";
+
+interface RetryOptions {
+  retries?: number;
+  backoffMs?: number;
+}
+
+async function fetchWithRetry(
+  input: RequestInfo | URL,
+  init: RequestInit,
+  { retries = 0, backoffMs = 400 }: RetryOptions = {},
+): Promise<Response> {
+  let attempt = 0;
+  let lastError: unknown;
+  while (attempt <= retries) {
+    try {
+      const response = await fetch(input, init);
+      if (response.status >= 500 && attempt < retries) {
+        attempt++;
+        await new Promise((r) => setTimeout(r, backoffMs * attempt));
+        continue;
+      }
+      return response;
+    } catch (err) {
+      lastError = err;
+      if (attempt < retries) {
+        attempt++;
+        await new Promise((r) => setTimeout(r, backoffMs * attempt));
+        continue;
+      }
+      reportNetworkError();
+      throw lastError;
+    }
+  }
+  throw lastError ?? new Error("fetchWithRetry: exhausted retries");
+}
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -57,11 +93,17 @@ async function assertOk(response: Response, context: string): Promise<void> {
  * response.body (ReadableStream). The backend streams Server-Sent Events.
  */
 export async function createChat(message: string): Promise<Response> {
-  const response = await fetch(API_PREFIX, {
-    method: "POST",
-    headers: buildJsonHeaders(),
-    body: JSON.stringify({ message }),
-  });
+  let response: Response;
+  try {
+    response = await fetch(API_PREFIX, {
+      method: "POST",
+      headers: buildJsonHeaders(),
+      body: JSON.stringify({ message }),
+    });
+  } catch (err) {
+    reportNetworkError();
+    throw err;
+  }
 
   await assertOk(response, "createChat");
   return response;
@@ -77,11 +119,17 @@ export async function continueChat(
   sessionId: string,
   message: string
 ): Promise<Response> {
-  const response = await fetch(`${API_PREFIX}/${sessionId}`, {
-    method: "POST",
-    headers: buildJsonHeaders(),
-    body: JSON.stringify({ message }),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_PREFIX}/${sessionId}`, {
+      method: "POST",
+      headers: buildJsonHeaders(),
+      body: JSON.stringify({ message }),
+    });
+  } catch (err) {
+    reportNetworkError();
+    throw err;
+  }
 
   await assertOk(response, "continueChat");
   return response;
@@ -95,10 +143,11 @@ export async function continueChat(
 export async function fetchSession(
   sessionId: string
 ): Promise<SessionResponse> {
-  const response = await fetch(`${API_PREFIX}/${sessionId}`, {
-    method: "GET",
-    headers: buildJsonHeaders(),
-  });
+  const response = await fetchWithRetry(
+    `${API_PREFIX}/${sessionId}`,
+    { method: "GET", headers: buildJsonHeaders() },
+    { retries: 2 },
+  );
 
   await assertOk(response, "fetchSession");
   return response.json() as Promise<SessionResponse>;
@@ -124,10 +173,11 @@ export async function deleteSession(sessionId: string): Promise<void> {
  * `message_count`.
  */
 export async function listSessions(): Promise<SessionSummary[]> {
-  const response = await fetch(`${API_PREFIX}/sessions`, {
-    method: "GET",
-    headers: buildJsonHeaders(),
-  });
+  const response = await fetchWithRetry(
+    `${API_PREFIX}/sessions`,
+    { method: "GET", headers: buildJsonHeaders() },
+    { retries: 2 },
+  );
 
   await assertOk(response, "listSessions");
   return response.json() as Promise<SessionSummary[]>;

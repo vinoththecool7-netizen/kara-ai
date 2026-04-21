@@ -6,6 +6,7 @@ import { SkipLink } from "@/components/layout/SkipLink";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { Toaster } from "@/components/ui/toast";
+import { OfflineIndicator } from "@/components/OfflineIndicator";
 import "./globals.css";
 
 const geistMono = Geist_Mono({
@@ -38,6 +39,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <SkipLink />
+          <OfflineIndicator />
           <Header />
           <main id="main-content" className="flex-1">
             {children}
