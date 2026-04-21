@@ -13,6 +13,8 @@ import { TaxBreakdownCard } from "@/components/cards/TaxBreakdownCard";
 import { RegimeComparisonCard } from "@/components/cards/RegimeComparisonCard";
 import { DeductionGapCard } from "@/components/cards/DeductionGapCard";
 import { CapitalGainsCard } from "@/components/cards/CapitalGainsCard";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { ErrorFallback } from "@/components/ErrorFallback";
 import { toast } from "@/hooks/useToast";
 
 // ---------------------------------------------------------------------------
@@ -219,28 +221,68 @@ export function MessageBubble({ message, onRetry }: MessageBubbleProps) {
       {/* Tax breakdown card — rendered outside the bubble for full width */}
       {!isUser && message.taxBreakdown && !message.isStreaming && (
         <div className="pl-10 w-full">
-          <TaxBreakdownCard breakdown={message.taxBreakdown} />
+          <ErrorBoundary
+            resetKeys={[message.id]}
+            fallback={
+              <ErrorFallback
+                title="Couldn't render tax breakdown"
+                description="The tax breakdown card failed to render. The rest of the conversation is unaffected."
+              />
+            }
+          >
+            <TaxBreakdownCard breakdown={message.taxBreakdown} />
+          </ErrorBoundary>
         </div>
       )}
 
       {/* Regime comparison card — rendered outside the bubble for full width */}
       {!isUser && message.regimeComparison && !message.isStreaming && (
         <div className="pl-10 w-full">
-          <RegimeComparisonCard comparison={message.regimeComparison} />
+          <ErrorBoundary
+            resetKeys={[message.id]}
+            fallback={
+              <ErrorFallback
+                title="Couldn't render regime comparison"
+                description="The regime comparison card failed to render."
+              />
+            }
+          >
+            <RegimeComparisonCard comparison={message.regimeComparison} />
+          </ErrorBoundary>
         </div>
       )}
 
       {/* Deduction gap card — rendered outside the bubble for full width */}
       {!isUser && message.deductionGaps && !message.isStreaming && (
         <div className="pl-10 w-full">
-          <DeductionGapCard optimization={message.deductionGaps} />
+          <ErrorBoundary
+            resetKeys={[message.id]}
+            fallback={
+              <ErrorFallback
+                title="Couldn't render deduction gaps"
+                description="The deduction gap card failed to render."
+              />
+            }
+          >
+            <DeductionGapCard optimization={message.deductionGaps} />
+          </ErrorBoundary>
         </div>
       )}
 
       {/* Capital gains card — rendered outside the bubble for full width */}
       {!isUser && message.capitalGains && message.capitalGains.length > 0 && !message.isStreaming && (
         <div className="pl-10 w-full">
-          <CapitalGainsCard gains={message.capitalGains} />
+          <ErrorBoundary
+            resetKeys={[message.id]}
+            fallback={
+              <ErrorFallback
+                title="Couldn't render capital gains"
+                description="The capital gains card failed to render."
+              />
+            }
+          >
+            <CapitalGainsCard gains={message.capitalGains} />
+          </ErrorBoundary>
         </div>
       )}
 
