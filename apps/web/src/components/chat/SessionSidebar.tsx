@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { Plus, MessageSquare } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import type { SessionSummary } from "@/types/chat";
 import { SessionListItem } from "./SessionListItem";
@@ -98,10 +99,7 @@ export function SessionSidebar({
           {isLoading && (
             <div className="space-y-2" aria-busy="true" aria-label="Loading sessions">
               {Array.from({ length: 5 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="h-14 bg-muted/50 animate-pulse rounded-md motion-reduce:animate-none"
-                />
+                <Skeleton key={i} className="h-14 bg-muted/50" />
               ))}
             </div>
           )}
