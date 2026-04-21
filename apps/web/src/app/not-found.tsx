@@ -1,20 +1,48 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import { Home, MessageSquare } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+
+export const metadata: Metadata = {
+  title: "Not found",
+  robots: { index: false, follow: false },
+};
 
 export default function NotFound() {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center px-4 py-24 text-center">
-      <h1 className="text-4xl font-bold tracking-tight text-foreground">
-        Page not found
-      </h1>
-      <p className="mt-4 text-lg text-muted-foreground">
-        The page you&apos;re looking for doesn&apos;t exist.
-      </p>
-      <Link
-        href="/"
-        className="mt-8 inline-flex items-center justify-center rounded-lg bg-primary px-5 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      >
-        Go Home
-      </Link>
+    <div className="flex flex-1 items-center justify-center px-4 py-24">
+      <Card className="w-full max-w-md text-center">
+        <CardHeader>
+          <p
+            className="text-7xl font-bold tracking-tight text-kara-primary"
+            aria-hidden="true"
+          >
+            404
+          </p>
+          <CardTitle className="text-2xl">Page not found</CardTitle>
+          <CardDescription>
+            The page you&apos;re looking for doesn&apos;t exist or has moved.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col sm:flex-row gap-2 justify-center">
+          <Button render={<Link href="/" />} variant="default">
+            <Home className="size-4" aria-hidden="true" />
+            Back to home
+          </Button>
+          <Button render={<Link href="/chat" />} variant="outline">
+            <MessageSquare className="size-4" aria-hidden="true" />
+            Start a chat
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }
