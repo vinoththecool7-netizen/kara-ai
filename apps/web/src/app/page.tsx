@@ -1,8 +1,24 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, ExternalLink, MessageSquare, Calculator, Code, Shield } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { GITHUB_URL } from "@/lib/constants";
+import { GITHUB_URL, SITE_URL } from "@/lib/constants";
+
+export const metadata: Metadata = {
+  title: "Kara",
+  openGraph: {
+    title: "Kara — AI Tax Advisor for India",
+    description:
+      "Open-source conversational AI tax advisor for Indian income tax. Get accurate computations, regime comparisons, and personalized advice.",
+    url: SITE_URL,
+  },
+  twitter: {
+    title: "Kara — AI Tax Advisor for India",
+    description:
+      "Open-source conversational AI tax advisor for Indian income tax. Get accurate computations, regime comparisons, and personalized advice.",
+  },
+};
 
 const features = [
   {

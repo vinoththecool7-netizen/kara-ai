@@ -1,9 +1,18 @@
 import type { Metadata } from "next";
 import { ChatLayout } from "@/components/chat/ChatLayout";
+import { SITE_URL } from "@/lib/constants";
 
 export const metadata: Metadata = {
-  title: "Chat — Kara AI Tax Advisor",
-  description: "Chat with Kara, your AI tax advisor for India.",
+  title: "Chat with Kara",
+  openGraph: {
+    title: "Chat with Kara — AI Tax Advisor for India",
+    description: "Chat with Kara, your AI tax advisor for India.",
+    url: `${SITE_URL}/chat`,
+  },
+  twitter: {
+    title: "Chat with Kara — AI Tax Advisor for India",
+    description: "Chat with Kara, your AI tax advisor for India.",
+  },
 };
 
 export default function ChatPage() {
