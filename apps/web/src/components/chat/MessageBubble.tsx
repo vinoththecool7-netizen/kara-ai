@@ -9,10 +9,12 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { ChatMessage } from "@/types/chat";
-import { TaxBreakdownCard } from "@/components/cards/TaxBreakdownCard";
-import { RegimeComparisonCard } from "@/components/cards/RegimeComparisonCard";
-import { DeductionGapCard } from "@/components/cards/DeductionGapCard";
-import { CapitalGainsCard } from "@/components/cards/CapitalGainsCard";
+import {
+  TaxBreakdownCardLazy,
+  RegimeComparisonCardLazy,
+  DeductionGapCardLazy,
+  CapitalGainsCardLazy,
+} from "@/components/cards";
 import { CardSkeleton } from "@/components/cards/CardSkeleton";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ErrorFallback } from "@/components/ErrorFallback";
@@ -267,7 +269,7 @@ export function MessageBubble({ message, onRetry }: MessageBubbleProps) {
               />
             }
           >
-            <TaxBreakdownCard breakdown={message.taxBreakdown} />
+            <TaxBreakdownCardLazy breakdown={message.taxBreakdown} />
           </ErrorBoundary>
         </div>
       )}
@@ -284,7 +286,7 @@ export function MessageBubble({ message, onRetry }: MessageBubbleProps) {
               />
             }
           >
-            <RegimeComparisonCard comparison={message.regimeComparison} />
+            <RegimeComparisonCardLazy comparison={message.regimeComparison} />
           </ErrorBoundary>
         </div>
       )}
@@ -301,7 +303,7 @@ export function MessageBubble({ message, onRetry }: MessageBubbleProps) {
               />
             }
           >
-            <DeductionGapCard optimization={message.deductionGaps} />
+            <DeductionGapCardLazy optimization={message.deductionGaps} />
           </ErrorBoundary>
         </div>
       )}
@@ -318,7 +320,7 @@ export function MessageBubble({ message, onRetry }: MessageBubbleProps) {
               />
             }
           >
-            <CapitalGainsCard gains={message.capitalGains} />
+            <CapitalGainsCardLazy gains={message.capitalGains} />
           </ErrorBoundary>
         </div>
       )}
