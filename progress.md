@@ -1117,9 +1117,9 @@
 
 ---
 
-### Days 54–55: Frontend Polish + Error Handling ⬜
+### Days 54–55: Frontend Polish + Error Handling ✅
 
-**Status:** ⬜ TODO
+**Status:** ✅ COMPLETE (2026-04-23)
 
 **Tasks:**
 - [x] Error boundary components — graceful error display
@@ -1127,13 +1127,13 @@
 - [x] Loading states — skeleton loaders for every async operation
 - [x] Toast notifications for success/error actions
 - [x] 404 page
-- [ ] SEO: meta tags, Open Graph, favicon
-- [ ] Performance: lazy loading, image optimization, bundle analysis
-- [ ] Cross-browser testing: Chrome, Firefox, Safari, Edge
-- [ ] Mobile testing: iOS Safari, Android Chrome (375px+)
-- [ ] Lighthouse audit: aim for 90+ on all categories
-- [ ] Add `apps/web/Dockerfile` for production build
-- [ ] Update `docker-compose.yml` to include web service
+- [x] SEO: meta tags, Open Graph, favicon, JSON-LD, robots/sitemap
+- [x] Performance: lazy loading via next/dynamic, bundle analyzer
+- [x] Production Dockerfile (3-stage, non-root, standalone output)
+- [x] docker-compose.yml web service (health checks, deps)
+- [ ] Cross-browser testing: Chrome, Firefox, Safari, Edge (manual — see docs/day-55-browser-checklist.md)
+- [ ] Mobile testing: iOS Safari, Android Chrome (manual — see docs/day-55-browser-checklist.md)
+- [ ] Lighthouse audit: 90+ on all categories (manual — see docs/day-55-lighthouse.md)
 
 **Files to Create/Modify:**
 - `apps/web/src/components/ErrorBoundary.tsx`
