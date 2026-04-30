@@ -262,7 +262,7 @@ def make_form16_hra_edge() -> bytes:
         _part_a_header_block(
             employer_name="HRA Edge Employers",
             employer_tan="HYDH11111B",
-            employee_pan="HRAXXX1234Y",
+            employee_pan="HRAXX1234Y",
         )
         + [_quarterly_tds_table(tds_rows), _spacer(), PageBreak()]
         + [
