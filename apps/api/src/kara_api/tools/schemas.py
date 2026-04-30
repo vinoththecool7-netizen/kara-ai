@@ -373,6 +373,31 @@ SELECT_ITR_FORM = ToolDefinition(
 )
 
 # ---------------------------------------------------------------------------
+# 9. PARSE_FORM16
+# ---------------------------------------------------------------------------
+PARSE_FORM16 = ToolDefinition(
+    name="parse_form16",
+    description=(
+        "Parse an uploaded Form 16 PDF (Part A + Part B) and return structured "
+        "employer, TDS, salary, deductions, and tax fields."
+    ),
+    parameters={
+        "type": "object",
+        "properties": {
+            "pdf_base64": {
+                "type": "string",
+                "description": "Base64-encoded PDF bytes.",
+            },
+            "password": {
+                "type": "string",
+                "description": "Optional PDF password.",
+            },
+        },
+        "required": ["pdf_base64"],
+    },
+)
+
+# ---------------------------------------------------------------------------
 # Convenience exports
 # ---------------------------------------------------------------------------
 ALL_TOOLS: list[ToolDefinition] = [
@@ -384,6 +409,7 @@ ALL_TOOLS: list[ToolDefinition] = [
     GET_TDS_RATE,
     CALCULATE_ADVANCE_TAX,
     SELECT_ITR_FORM,
+    PARSE_FORM16,
 ]
 
 TOOL_MAP: dict[str, ToolDefinition] = {t.name: t for t in ALL_TOOLS}

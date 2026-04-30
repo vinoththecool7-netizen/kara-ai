@@ -67,6 +67,7 @@ class ToolRegistry:
             "get_tds_rate": self._handle_get_tds_rate,
             "calculate_advance_tax": self._handle_calculate_advance_tax,
             "select_itr_form": self._handle_select_itr_form,
+            "parse_form16": self._handle_parse_form16,
         }
 
     async def execute(self, tool_call: ToolCall) -> ToolResult:
@@ -331,6 +332,20 @@ class ToolRegistry:
             "form": "ITR-2",
             "reason": "Default form for individuals with multiple income sources",
         }
+
+    async def _handle_parse_form16(self, args: dict[str, Any]) -> dict:
+        """Parse a Base64-encoded Form 16 PDF and return structured data."""
+        import base64
+
+        from kara_api.parsers import Form16ParseError, parse_form16
+
+        pdf_bytes = base64.b64decode(args["pdf_base64"])
+        password = args.get("password")
+        try:
+            doc = parse_form16(pdf_bytes, password=password)
+            return doc.model_dump(mode="json")
+        except Form16ParseError as exc:
+            raise ValueError(str(exc)) from exc
 
     # ------------------------------------------------------------------
     # Helpers
