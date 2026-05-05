@@ -68,6 +68,8 @@ class ToolRegistry:
             "calculate_advance_tax": self._handle_calculate_advance_tax,
             "select_itr_form": self._handle_select_itr_form,
             "parse_form16": self._handle_parse_form16,
+            "parse_ais": self._handle_parse_ais,
+            "parse_26as": self._handle_parse_26as,
         }
 
     async def execute(self, tool_call: ToolCall) -> ToolResult:
@@ -346,6 +348,34 @@ class ToolRegistry:
             return doc.model_dump(mode="json")
         except Form16ParseError as exc:
             raise ValueError(str(exc)) from exc
+
+    async def _handle_parse_ais(self, args: dict[str, Any]) -> dict:
+        """Parse a Base64-encoded AIS JSON blob or PDF and return structured data."""
+        import base64
+        import json
+
+        from kara_api.parsers.ais import parse_ais_json, parse_ais_pdf
+
+        raw_bytes = base64.b64decode(args["content_b64"])
+        content_type = args["content_type"]
+
+        if content_type == "json":
+            blob = json.loads(raw_bytes.decode("utf-8"))
+            doc = parse_ais_json(blob)
+        else:
+            doc = parse_ais_pdf(raw_bytes)
+
+        return doc.model_dump(mode="json")
+
+    async def _handle_parse_26as(self, args: dict[str, Any]) -> dict:
+        """Parse a Base64-encoded Form 26AS PDF and return structured data."""
+        import base64
+
+        from kara_api.parsers.twenty_six_as import parse_form_26as
+
+        pdf_bytes = base64.b64decode(args["content_b64"])
+        doc = parse_form_26as(pdf_bytes)
+        return doc.model_dump(mode="json")
 
     # ------------------------------------------------------------------
     # Helpers

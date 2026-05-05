@@ -398,6 +398,53 @@ PARSE_FORM16 = ToolDefinition(
 )
 
 # ---------------------------------------------------------------------------
+# 10. PARSE_AIS
+# ---------------------------------------------------------------------------
+PARSE_AIS = ToolDefinition(
+    name="parse_ais",
+    description=(
+        "Parse an AIS (Annual Information Statement) JSON blob or PDF and return "
+        "structured income, TDS, and transaction data."
+    ),
+    parameters={
+        "type": "object",
+        "properties": {
+            "content_b64": {
+                "type": "string",
+                "description": "Base64-encoded content (JSON or PDF bytes).",
+            },
+            "content_type": {
+                "type": "string",
+                "enum": ["json", "pdf"],
+                "description": "Type of content.",
+            },
+        },
+        "required": ["content_b64", "content_type"],
+    },
+)
+
+# ---------------------------------------------------------------------------
+# 11. PARSE_26AS
+# ---------------------------------------------------------------------------
+PARSE_26AS = ToolDefinition(
+    name="parse_26as",
+    description=(
+        "Parse a Form 26AS (Tax Credit Statement) PDF and return TDS, "
+        "advance tax, and refund data."
+    ),
+    parameters={
+        "type": "object",
+        "properties": {
+            "content_b64": {
+                "type": "string",
+                "description": "Base64-encoded PDF bytes.",
+            },
+        },
+        "required": ["content_b64"],
+    },
+)
+
+# ---------------------------------------------------------------------------
 # Convenience exports
 # ---------------------------------------------------------------------------
 ALL_TOOLS: list[ToolDefinition] = [
@@ -410,6 +457,8 @@ ALL_TOOLS: list[ToolDefinition] = [
     CALCULATE_ADVANCE_TAX,
     SELECT_ITR_FORM,
     PARSE_FORM16,
+    PARSE_AIS,
+    PARSE_26AS,
 ]
 
 TOOL_MAP: dict[str, ToolDefinition] = {t.name: t for t in ALL_TOOLS}
