@@ -185,7 +185,8 @@ export type SSEEvent =
   | { type: "deduction_gaps"; optimization: OptimizationResult }
   | { type: "capital_gains"; gains: CapitalGainsDetail[] }
   | { type: "done"; session_id: string; profile_state: ProfileState }
-  | { type: "error"; message: string };
+  | { type: "error"; message: string }
+  | { type: "document_parsed"; summary: ParsedDocumentSummary };
 
 // ---------------------------------------------------------------------------
 // Client-side models (adds UI state not present in API responses)
@@ -195,6 +196,25 @@ export interface ToolEvent {
   toolName: string;
   result?: unknown;
   isError: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Parsed document summary (result of uploading Form 16 / AIS / 26AS)
+// ---------------------------------------------------------------------------
+
+export interface ParsedDocumentSummary {
+  document_id: string;
+  document_type: "form16" | "ais" | "26as" | string;
+  pan: string | null;
+  employer_name: string | null;
+  period: string | null;
+  key_amounts: Record<string, number>;
+  fields_filled: number;
+  profile_diff?: {
+    slots_added: Record<string, unknown>;
+    slots_overridden: Record<string, unknown[]>;
+    warnings: string[];
+  };
 }
 
 export interface ChatMessage {
@@ -208,6 +228,7 @@ export interface ChatMessage {
   regimeComparison?: RegimeComparison;
   deductionGaps?: OptimizationResult;
   capitalGains?: CapitalGainsDetail[];
+  parsedDocument?: ParsedDocumentSummary;
   /**
    * Delivery status. Only populated for user messages that failed to send;
    * absent (undefined) means "sent successfully".

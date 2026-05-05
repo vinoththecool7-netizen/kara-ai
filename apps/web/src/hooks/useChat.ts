@@ -2,12 +2,13 @@
 
 import { useReducer, useRef, useCallback, useEffect } from "react";
 import { useSSE } from "@/hooks/useSSE";
-import { createChat, continueChat, fetchSession, deleteSession, HttpError } from "@/lib/api";
+import { createChat, continueChat, fetchSession, deleteSession, uploadDocument, HttpError } from "@/lib/api";
 import { toast } from "@/hooks/useToast";
 import type {
   CapitalGainsDetail,
   ChatMessage,
   OptimizationResult,
+  ParsedDocumentSummary,
   ProfileState,
   RegimeComparison,
   TaxBreakdown,
@@ -46,6 +47,7 @@ type ChatAction =
   | { type: "SET_REGIME_COMPARISON"; comparison: RegimeComparison }
   | { type: "SET_DEDUCTION_GAPS"; optimization: OptimizationResult }
   | { type: "SET_CAPITAL_GAINS"; gains: CapitalGainsDetail[] }
+  | { type: "SET_PARSED_DOCUMENT"; messageId: string; summary: ParsedDocumentSummary }
   | { type: "REMOVE_MESSAGE"; id: string }
   | { type: "CLEAR" };
 
@@ -223,6 +225,15 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
       return { ...state, messages };
     }
 
+    case "SET_PARSED_DOCUMENT": {
+      const messages = state.messages.map((msg) =>
+        msg.id === action.messageId
+          ? { ...msg, parsedDocument: action.summary }
+          : msg,
+      );
+      return { ...state, messages };
+    }
+
     case "SET_LOADING":
       return { ...state, isLoading: action.loading };
 
@@ -251,7 +262,8 @@ export interface UseChatReturn {
   error: string | null;
   profileState: ProfileState | null;
   isLoading: boolean;
-  sendMessage: (text: string) => Promise<void>;
+  sendMessage: (text: string, files?: File[]) => Promise<void>;
+  uploadAndProcess: (files: File[]) => Promise<void>;
   clearChat: () => void;
   loadSession: (sessionId: string) => Promise<void>;
   dismissError: () => void;
@@ -280,7 +292,16 @@ export function useChat(): UseChatReturn {
   // sendMessage
   // -------------------------------------------------------------------------
 
-  const sendMessage = useCallback(async (text: string): Promise<void> => {
+  const sendMessage = useCallback(async (text: string, files?: File[]): Promise<void> => {
+    // If files are provided without text, delegate to uploadAndProcess
+    // (handled after definition via ref to avoid circular dep)
+    if (files && files.length > 0) {
+      // Fire-and-forget the upload alongside the text message
+      void uploadAndProcessRef.current(files);
+    }
+
+    if (!text.trim()) return;
+
     // Cancel any in-flight stream before starting a new one
     abort();
 
@@ -368,6 +389,71 @@ export function useChat(): UseChatReturn {
       toast.error(message);
     }
   }, [processStream, abort]);
+
+  // -------------------------------------------------------------------------
+  // uploadAndProcess — upload documents and attach results as chat messages
+  // -------------------------------------------------------------------------
+
+  // Ref allows sendMessage (defined before uploadAndProcess) to call it
+  const uploadAndProcessRef = useRef<(files: File[]) => Promise<void>>(
+    async () => undefined,
+  );
+
+  const uploadAndProcess = useCallback(async (files: File[]): Promise<void> => {
+    const currentSessionId = sessionIdRef.current;
+    if (!currentSessionId) {
+      toast.error("Please start a conversation first before uploading a document.");
+      return;
+    }
+
+    for (const file of files) {
+      // Synthetic "processing" user message
+      const processingMessageId = crypto.randomUUID();
+      const processingMessage: ChatMessage = {
+        id: processingMessageId,
+        role: "user",
+        content: `Processing document: ${file.name}…`,
+        timestamp: new Date(),
+      };
+      dispatch({ type: "ADD_USER_MESSAGE", message: processingMessage });
+
+      try {
+        const result = await uploadDocument(currentSessionId, file, "auto");
+
+        // Remove the placeholder message
+        dispatch({ type: "REMOVE_MESSAGE", id: processingMessageId });
+
+        // Build summary with profile_diff attached
+        const summary: ParsedDocumentSummary = {
+          ...result.parsed_summary,
+          profile_diff: result.profile_diff,
+        };
+
+        // Add synthetic assistant message carrying the parsed document
+        const assistantMessage: ChatMessage = {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content: `I've parsed your ${result.document_type === "form16" ? "Form 16" : result.document_type.toUpperCase()} (${file.name}). Here's a summary of what I found:`,
+          timestamp: new Date(),
+          parsedDocument: summary,
+        };
+        dispatch({ type: "ADD_ASSISTANT_MESSAGE", message: assistantMessage });
+
+        if (result.warnings.length > 0) {
+          toast.info(`Document parsed with ${result.warnings.length} warning(s).`);
+        }
+      } catch (err) {
+        // Remove the placeholder on failure
+        dispatch({ type: "REMOVE_MESSAGE", id: processingMessageId });
+        const message =
+          err instanceof Error ? err.message : "Failed to upload document.";
+        toast.error(message);
+      }
+    }
+  }, []);
+
+  // Keep the ref up-to-date so sendMessage can call the latest version
+  uploadAndProcessRef.current = uploadAndProcess;
 
   // -------------------------------------------------------------------------
   // clearChat
@@ -470,6 +556,7 @@ export function useChat(): UseChatReturn {
     profileState: state.profileState,
     isLoading: state.isLoading,
     sendMessage,
+    uploadAndProcess,
     clearChat,
     loadSession,
     dismissError,

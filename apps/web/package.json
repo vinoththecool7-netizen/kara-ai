@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "tsx src/lib/waterfall.test.ts && tsx src/lib/toast.test.ts",
+    "test": "tsx src/lib/waterfall.test.ts && tsx src/lib/toast.test.ts && tsx src/lib/api.test.ts",
     "analyze": "cross-env ANALYZE=true next build",
     "lighthouse": "lighthouse http://localhost:3000 --output=json,html --output-path=./lighthouse-report --chrome-flags=\"--headless\""
   },

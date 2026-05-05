@@ -14,6 +14,7 @@ import {
   RegimeComparisonCardLazy,
   DeductionGapCardLazy,
   CapitalGainsCardLazy,
+  ParsedDocumentCard,
 } from "@/components/cards";
 import { CardSkeleton } from "@/components/cards/CardSkeleton";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -321,6 +322,23 @@ export function MessageBubble({ message, onRetry }: MessageBubbleProps) {
             }
           >
             <CapitalGainsCardLazy gains={message.capitalGains} />
+          </ErrorBoundary>
+        </div>
+      )}
+
+      {/* Parsed document card — shown when a document upload result is attached */}
+      {!isUser && message.parsedDocument && !message.isStreaming && (
+        <div className="pl-10 w-full">
+          <ErrorBoundary
+            resetKeys={[message.id]}
+            fallback={
+              <ErrorFallback
+                title="Couldn't render document summary"
+                description="The parsed document card failed to render."
+              />
+            }
+          >
+            <ParsedDocumentCard summary={message.parsedDocument} />
           </ErrorBoundary>
         </div>
       )}

@@ -1,4 +1,5 @@
 import dynamic from "next/dynamic";
+import { CardSkeleton } from "./CardSkeleton";
 
 export const TaxBreakdownCardLazy = dynamic(
   () =>
@@ -30,4 +31,15 @@ export const CapitalGainsCardLazy = dynamic(
       default: m.CapitalGainsCard,
     })),
   { ssr: false },
+);
+
+export const ParsedDocumentCard = dynamic(
+  () =>
+    import("./ParsedDocumentCard").then((m) => ({
+      default: m.ParsedDocumentCard,
+    })),
+  {
+    ssr: false,
+    loading: () => <CardSkeleton variant="parsed-document" />,
+  },
 );

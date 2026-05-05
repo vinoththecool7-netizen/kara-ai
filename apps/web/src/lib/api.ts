@@ -182,3 +182,66 @@ export async function listSessions(): Promise<SessionSummary[]> {
   await assertOk(response, "listSessions");
   return response.json() as Promise<SessionSummary[]>;
 }
+
+// ---------------------------------------------------------------------------
+// Document upload
+// ---------------------------------------------------------------------------
+
+export interface DocumentUploadResponse {
+  document_id: string;
+  document_type: string;
+  parsed_summary: {
+    document_id: string;
+    document_type: string;
+    pan: string | null;
+    employer_name: string | null;
+    period: string | null;
+    key_amounts: Record<string, number>;
+    fields_filled: number;
+  };
+  profile_diff: {
+    slots_added: Record<string, unknown>;
+    slots_overridden: Record<string, unknown[]>;
+    warnings: string[];
+  };
+  warnings: string[];
+}
+
+const DOCUMENT_MAX_BYTES = 10 * 1024 * 1024; // 10 MB
+
+/**
+ * Upload a tax document (Form 16, AIS, 26AS) for parsing.
+ *
+ * Client-side guards: throws HttpError(413) if the file exceeds 10 MB.
+ * Uses indeterminate-progress fetch (no XHR) — spinner in the UI is
+ * sufficient given typical document sizes.
+ */
+export async function uploadDocument(
+  sessionId: string,
+  file: File,
+  documentType: "form16" | "ais" | "26as" | "auto" = "auto",
+): Promise<DocumentUploadResponse> {
+  if (file.size > DOCUMENT_MAX_BYTES) {
+    throw new HttpError(413, "File too large. Maximum is 10 MB.");
+  }
+
+  const formData = new FormData();
+  formData.append("session_id", sessionId);
+  formData.append("document_type", documentType);
+  formData.append("file", file);
+
+  let response: Response;
+  try {
+    response = await fetch("/api/v1/documents/upload", {
+      method: "POST",
+      // No Content-Type header — let the browser set multipart/form-data boundary
+      body: formData,
+    });
+  } catch (err) {
+    reportNetworkError();
+    throw err;
+  }
+
+  await assertOk(response, "uploadDocument");
+  return response.json() as Promise<DocumentUploadResponse>;
+}

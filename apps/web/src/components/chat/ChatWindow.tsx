@@ -39,6 +39,7 @@ export function ChatWindow({ chat, onOpenSidebar, sidebarOpen }: ChatWindowProps
     isStreaming,
     isLoading,
     sendMessage,
+    uploadAndProcess,
     retryMessage,
   } = chat;
 
@@ -175,7 +176,11 @@ export function ChatWindow({ chat, onOpenSidebar, sidebarOpen }: ChatWindowProps
       </div>
 
       {/* Input area */}
-      <MessageInput onSend={sendMessage} disabled={isStreaming} />
+      <MessageInput
+        onSend={sendMessage}
+        onFilesSelected={(files) => void uploadAndProcess(files)}
+        disabled={isStreaming}
+      />
     </div>
   );
 }
