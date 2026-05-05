@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from kara_api.config import get_settings
 from kara_api.db import close_db, init_db
-from kara_api.routers import chat_router, knowledge_router, tax_router
+from kara_api.routers import chat_router, documents_router, knowledge_router, tax_router
 
 
 @asynccontextmanager
@@ -39,6 +39,7 @@ def create_app() -> FastAPI:
     app.include_router(chat_router, prefix=settings.API_V1_PREFIX)
     app.include_router(tax_router, prefix=settings.API_V1_PREFIX)
     app.include_router(knowledge_router, prefix=settings.API_V1_PREFIX)
+    app.include_router(documents_router, prefix=settings.API_V1_PREFIX)
 
     @app.get("/health")
     async def health_check():

@@ -158,6 +158,18 @@ def _db_messages_to_response(db_msgs: list[DbMessage]) -> list[MessageResponse]:
 # ---------------------------------------------------------------------------
 
 
+# SSE event types emitted by _sse_generator (and by /documents/upload via client):
+#   "session_created"  — session UUID on new chat
+#   "tool_result"      — raw tool call result
+#   "tax_breakdown"    — structured TaxBreakdown from compute_tax tool
+#   "regime_comparison"— structured RegimeComparison from compare_regimes tool
+#   "deduction_gaps"   — structured OptimizationResult from find_deduction_gaps tool
+#   "capital_gains"    — structured CapitalGainsResult list from compute_capital_gains tool
+#   "document_parsed"  — emitted after a document upload auto-fills the profile
+#   "content"          — assistant text content
+#   "advisory"         — advisory hint
+#   "done"             — final event with profile state
+#   "error"            — error event
 async def _sse_generator(
     agent_loop: AgentLoop,
     session_manager: SessionManager,
