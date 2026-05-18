@@ -8,6 +8,7 @@ import type {
   RegimeComparison,
   OptimizationResult,
   CapitalGainsDetail,
+  ParsedDocumentSummary,
 } from "@/types/chat";
 
 // ---------------------------------------------------------------------------
@@ -24,6 +25,7 @@ export interface UseSSECallbacks {
   onRegimeComparison?: (comparison: RegimeComparison) => void;
   onDeductionGaps?: (optimization: OptimizationResult) => void;
   onCapitalGains?: (gains: CapitalGainsDetail[]) => void;
+  onDocumentParsed?: (summary: ParsedDocumentSummary) => void;
   onDone?: (sessionId: string, profileState: ProfileState) => void;
   onError?: (message: string) => void;
 }
@@ -83,6 +85,9 @@ export function useSSE(): {
         break;
       case "capital_gains":
         callbacks.onCapitalGains?.(event.gains);
+        break;
+      case "document_parsed":
+        callbacks.onDocumentParsed?.(event.summary);
         break;
       case "done":
         callbacks.onDone?.(event.session_id, event.profile_state);

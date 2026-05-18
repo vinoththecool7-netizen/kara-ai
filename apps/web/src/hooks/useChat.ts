@@ -445,8 +445,15 @@ export function useChat(): UseChatReturn {
       } catch (err) {
         // Remove the placeholder on failure
         dispatch({ type: "REMOVE_MESSAGE", id: processingMessageId });
-        const message =
-          err instanceof Error ? err.message : "Failed to upload document.";
+        let message = "Failed to upload document.";
+        if (err instanceof Error) {
+          // Map spec-prescribed HTTP error codes to user-friendly messages
+          const status = (err as { status?: number }).status;
+          if (status === 413) message = "File too large. Maximum is 10 MB.";
+          else if (status === 422) message = "PDF is password-protected. Remove the password and try again.";
+          else if (status === 415) message = "Only PDF or JSON files are supported.";
+          else message = err.message;
+        }
         toast.error(message);
       }
     }

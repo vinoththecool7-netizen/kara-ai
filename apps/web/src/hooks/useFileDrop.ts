@@ -52,7 +52,8 @@ export function useFileDrop(options: UseFileDropOptions): UseFileDropReturn {
   const onDragLeave = useCallback<React.DragEventHandler>((e) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!e.dataTransfer.types.includes("Files")) return;
+    // Don't guard on types here — browsers may clear dataTransfer on dragleave,
+    // which would prevent the depth counter from decrementing and leave isDragging stuck.
     dragDepthRef.current -= 1;
     if (dragDepthRef.current <= 0) {
       dragDepthRef.current = 0;

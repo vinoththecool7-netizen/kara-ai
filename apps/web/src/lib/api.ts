@@ -220,6 +220,8 @@ export async function uploadDocument(
   sessionId: string,
   file: File,
   documentType: "form16" | "ais" | "26as" | "auto" = "auto",
+  // onProgress is reserved for a future XHR-based implementation; ignored for now.
+  _onProgress?: (percent: number) => void,
 ): Promise<DocumentUploadResponse> {
   if (file.size > DOCUMENT_MAX_BYTES) {
     throw new HttpError(413, "File too large. Maximum is 10 MB.");

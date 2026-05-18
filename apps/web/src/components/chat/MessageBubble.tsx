@@ -14,7 +14,7 @@ import {
   RegimeComparisonCardLazy,
   DeductionGapCardLazy,
   CapitalGainsCardLazy,
-  ParsedDocumentCard,
+  ParsedDocumentCardLazy,
 } from "@/components/cards";
 import { CardSkeleton } from "@/components/cards/CardSkeleton";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
@@ -338,7 +338,7 @@ export function MessageBubble({ message, onRetry }: MessageBubbleProps) {
               />
             }
           >
-            <ParsedDocumentCard summary={message.parsedDocument} />
+            <ParsedDocumentCardLazy summary={message.parsedDocument} />
           </ErrorBoundary>
         </div>
       )}

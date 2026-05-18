@@ -266,6 +266,219 @@ void (async () => {
   }
 
   // -------------------------------------------------------------------------
+  // Test: client-side 413 message matches spec exactly
+  // -------------------------------------------------------------------------
+
+  {
+    const bigFile = new File([new Uint8Array(11 * 1024 * 1024)], "big.pdf", {
+      type: "application/pdf",
+    });
+
+    let errorMessage: string | null = null;
+    try {
+      await uploadDocument("s", bigFile, "auto");
+    } catch (err) {
+      if (err instanceof HttpError) errorMessage = err.message;
+    }
+    assertEqual(
+      errorMessage,
+      "File too large. Maximum is 10 MB.",
+      "client-side 413 message matches spec exactly",
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // Test: server 415 response throws HttpError(415)
+  // -------------------------------------------------------------------------
+
+  {
+    mockFetch(async () =>
+      makeResponse({ detail: "Unsupported media type" }, 415),
+    );
+
+    const file = new File(["content"], "test.docx");
+
+    await assertRejects(
+      () => uploadDocument("s", file, "auto"),
+      (err) => err instanceof HttpError && (err as HttpError).status === 415,
+      "server 415 throws HttpError(415)",
+    );
+    restoreFetch();
+  }
+
+  // -------------------------------------------------------------------------
+  // Test: server 413 response throws HttpError(413) (distinct from client-side)
+  // -------------------------------------------------------------------------
+
+  {
+    mockFetch(async () =>
+      makeResponse({ detail: "File too large" }, 413),
+    );
+
+    // Under 10 MB so client-side guard doesn't fire
+    const file = new File(["content"], "medium.pdf", { type: "application/pdf" });
+
+    await assertRejects(
+      () => uploadDocument("s", file, "auto"),
+      (err) => err instanceof HttpError && (err as HttpError).status === 413,
+      "server 413 throws HttpError(413)",
+    );
+    restoreFetch();
+  }
+
+  // -------------------------------------------------------------------------
+  // Test: network error (fetch throws) propagates
+  // -------------------------------------------------------------------------
+
+  {
+    mockFetch(async () => {
+      throw new TypeError("Failed to fetch");
+    });
+
+    const file = new File(["data"], "f.pdf", { type: "application/pdf" });
+
+    await assertRejects(
+      () => uploadDocument("sess-net", file, "auto"),
+      (err) => err instanceof TypeError && (err as TypeError).message === "Failed to fetch",
+      "network error propagates to caller",
+    );
+    restoreFetch();
+  }
+
+  // -------------------------------------------------------------------------
+  // Test: response with warnings array is returned correctly
+  // -------------------------------------------------------------------------
+
+  {
+    mockFetch(async () =>
+      makeResponse({
+        document_id: "doc-warn",
+        document_type: "form16",
+        parsed_summary: {
+          document_id: "doc-warn",
+          document_type: "form16",
+          pan: "ABCDE1234F",
+          employer_name: "Corp",
+          period: "2024-25",
+          key_amounts: {},
+          fields_filled: 3,
+        },
+        profile_diff: { slots_added: {}, slots_overridden: {}, warnings: ["TDS mismatch"] },
+        warnings: ["TDS mismatch", "Missing Part B"],
+      }, 200),
+    );
+
+    const file = new File(["pdf"], "form16.pdf", { type: "application/pdf" });
+    const result = await uploadDocument("sess-warn", file, "form16");
+
+    assertEqual(result.warnings.length, 2, "returns warnings array with correct length");
+    assertEqual(result.profile_diff.warnings[0], "TDS mismatch", "profile_diff.warnings preserved");
+    restoreFetch();
+  }
+
+  // -------------------------------------------------------------------------
+  // Test: AIS document type is sent in FormData
+  // -------------------------------------------------------------------------
+
+  {
+    let capturedDocType: string | null = null;
+    mockFetch(async (_, init) => {
+      capturedDocType = (init?.body as FormData)?.get("document_type") as string;
+      return makeResponse({
+        document_id: "ais-1", document_type: "ais",
+        parsed_summary: { document_id: "ais-1", document_type: "ais", pan: null, employer_name: null, period: null, key_amounts: {}, fields_filled: 0 },
+        profile_diff: { slots_added: {}, slots_overridden: {}, warnings: [] }, warnings: [],
+      }, 200);
+    });
+
+    const file = new File(["{}"], "ais.json", { type: "application/json" });
+    await uploadDocument("s", file, "ais");
+    assertEqual(capturedDocType, "ais", "AIS document type is sent in FormData");
+    restoreFetch();
+  }
+
+  // -------------------------------------------------------------------------
+  // Test: 26as document type is sent in FormData
+  // -------------------------------------------------------------------------
+
+  {
+    let capturedDocType: string | null = null;
+    mockFetch(async (_, init) => {
+      capturedDocType = (init?.body as FormData)?.get("document_type") as string;
+      return makeResponse({
+        document_id: "26as-1", document_type: "26as",
+        parsed_summary: { document_id: "26as-1", document_type: "26as", pan: null, employer_name: null, period: null, key_amounts: {}, fields_filled: 0 },
+        profile_diff: { slots_added: {}, slots_overridden: {}, warnings: [] }, warnings: [],
+      }, 200);
+    });
+
+    const file = new File(["%PDF"], "26as.pdf", { type: "application/pdf" });
+    await uploadDocument("s", file, "26as");
+    assertEqual(capturedDocType, "26as", "26as document type is sent in FormData");
+    restoreFetch();
+  }
+
+  // -------------------------------------------------------------------------
+  // Test: file just over 10 MB (10MB + 1 byte) is rejected client-side
+  // -------------------------------------------------------------------------
+
+  {
+    const oneByteTooLarge = new File(
+      [new Uint8Array(10 * 1024 * 1024 + 1)],
+      "over.pdf",
+      { type: "application/pdf" },
+    );
+
+    await assertRejects(
+      () => uploadDocument("s", oneByteTooLarge, "auto"),
+      (err) => err instanceof HttpError && (err as HttpError).status === 413,
+      "file 1 byte over 10 MB is rejected with HttpError(413)",
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // Test: onProgress parameter can be passed without TypeScript error
+  // -------------------------------------------------------------------------
+
+  {
+    mockFetch(async () =>
+      makeResponse({
+        document_id: "prog-1", document_type: "form16",
+        parsed_summary: { document_id: "prog-1", document_type: "form16", pan: null, employer_name: null, period: null, key_amounts: {}, fields_filled: 0 },
+        profile_diff: { slots_added: {}, slots_overridden: {}, warnings: [] }, warnings: [],
+      }, 200),
+    );
+
+    const file = new File(["data"], "f.pdf", { type: "application/pdf" });
+    let progressCalled = false;
+    // onProgress is currently a no-op stub; just verify it can be passed without crashing
+    const result = await uploadDocument("s", file, "auto", () => { progressCalled = true; });
+    assert(result.document_id === "prog-1", "uploadDocument accepts onProgress callback");
+    assert(!progressCalled, "onProgress is not yet called (stub)");
+    restoreFetch();
+  }
+
+  // -------------------------------------------------------------------------
+  // Test: parsed_summary.fields_filled is returned correctly
+  // -------------------------------------------------------------------------
+
+  {
+    mockFetch(async () =>
+      makeResponse({
+        document_id: "fields-1", document_type: "form16",
+        parsed_summary: { document_id: "fields-1", document_type: "form16", pan: "XYZAB1234C", employer_name: "MegaCorp", period: "2024-25", key_amounts: { gross_salary: 800000 }, fields_filled: 12 },
+        profile_diff: { slots_added: { gross_salary: 800000 }, slots_overridden: {}, warnings: [] }, warnings: [],
+      }, 200),
+    );
+
+    const file = new File(["pdf"], "f.pdf", { type: "application/pdf" });
+    const result = await uploadDocument("s", file, "form16");
+    assertEqual(result.parsed_summary.fields_filled, 12, "fields_filled returned correctly");
+    assertEqual(result.parsed_summary.pan, "XYZAB1234C", "PAN returned correctly");
+    restoreFetch();
+  }
+
+  // -------------------------------------------------------------------------
   // Summary
   // -------------------------------------------------------------------------
 

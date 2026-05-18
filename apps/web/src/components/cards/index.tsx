@@ -33,7 +33,7 @@ export const CapitalGainsCardLazy = dynamic(
   { ssr: false },
 );
 
-export const ParsedDocumentCard = dynamic(
+export const ParsedDocumentCardLazy = dynamic(
   () =>
     import("./ParsedDocumentCard").then((m) => ({
       default: m.ParsedDocumentCard,

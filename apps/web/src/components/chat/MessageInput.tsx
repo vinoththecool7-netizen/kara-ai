@@ -117,7 +117,7 @@ export function MessageInput({
             "flex items-center justify-center",
             "border-2 border-dashed border-blue-500",
             "bg-blue-50/80 backdrop-blur-sm",
-            // No pulse — respects prefers-reduced-motion by omitting animation entirely
+            "motion-safe:transition-opacity motion-safe:duration-150 motion-safe:ease-out",
           )}
         >
           <span className="text-sm font-medium text-blue-700 select-none pointer-events-none">
