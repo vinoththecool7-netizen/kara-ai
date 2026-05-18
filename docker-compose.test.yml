@@ -1,0 +1,5 @@
+# Override for smoke testing — uses fake LLM provider (no API key needed)
+services:
+  api:
+    environment:
+      - LLM_PROVIDER=fake
