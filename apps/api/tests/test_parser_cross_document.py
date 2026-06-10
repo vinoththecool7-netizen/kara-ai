@@ -5,8 +5,6 @@ and Form 26AS (Part A), the TDS deposited amounts should match within rounding.
 """
 from __future__ import annotations
 
-import pytest
-
 from kara_api.parsers import parse_form16
 from kara_api.parsers.twenty_six_as import parse_form_26as
 from tests.fixtures.form16_factory import make_form16_standard
@@ -66,7 +64,7 @@ def test_form16_and_26as_same_pan():
 
 def test_cross_document_no_crash_with_mismatched_tan():
     """Parser should not crash even when TANs do not match between documents."""
-    form16 = parse_form16(make_form16_standard())
+    parse_form16(make_form16_standard())
     # Use a different TAN intentionally
     f26as = parse_form_26as(build_26as_pdf(employer_tan="DELD99999Z"))
 

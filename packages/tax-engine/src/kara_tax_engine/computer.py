@@ -177,7 +177,8 @@ class TaxComputer:
             result.add_step(f"Net salary: {_fmt(net_salary)}")
 
         gti = net_salary + profile.business_income + profile.other_income
-        # House property income can be negative (loss), but set-off capped at ₹2L against other heads
+        # House property income can be negative (loss); set-off against
+        # other heads is capped at ₹2L.
         hp_income = profile.house_property_income
         if hp_income < 0:
             hp_setoff = max(hp_income, -200000)  # Loss set-off capped at ₹2L

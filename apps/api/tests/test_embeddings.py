@@ -1,11 +1,12 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from kara_api.config import Settings
 from kara_api.knowledge.embeddings import (
     FakeEmbeddingProvider,
-    OpenAIEmbeddingProvider,
     OllamaEmbeddingProvider,
+    OpenAIEmbeddingProvider,
     get_embedding_provider,
 )
 

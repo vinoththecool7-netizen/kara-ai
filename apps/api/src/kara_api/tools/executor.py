@@ -3,7 +3,11 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from kara_tax_engine.models import Deductions
 
 from pydantic import BaseModel, ValidationError
 
@@ -115,7 +119,6 @@ class ToolRegistry:
 
     async def _handle_compute_tax(self, args: dict[str, Any]) -> dict[str, Any]:
         """Build TaxProfile from args and compute tax."""
-        from kara_tax_engine.models import Deductions, TaxProfile
 
         profile = self._build_tax_profile(args)
         result = self._computer.compute_from_profile(profile)
@@ -123,7 +126,6 @@ class ToolRegistry:
 
     async def _handle_compare_regimes(self, args: dict[str, Any]) -> dict[str, Any]:
         """Build TaxProfile and compare both regimes."""
-        from kara_tax_engine.models import TaxProfile
 
         # Comparator computes both regimes internally, so regime value doesn't matter
         profile = self._build_tax_profile(args, default_regime="new")
@@ -412,7 +414,7 @@ class ToolRegistry:
         )
         return profile
 
-    def _build_deductions(self, ded_dict: dict[str, int]) -> "Deductions":
+    def _build_deductions(self, ded_dict: dict[str, int]) -> Deductions:
         """Build Deductions from a user-friendly dict (e.g. {"80C": 150000})."""
         from kara_tax_engine.models import Deductions
 

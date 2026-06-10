@@ -14,7 +14,6 @@ from kara_api.llm.models import (
 )
 from kara_api.llm.providers import FakeLLMProvider
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

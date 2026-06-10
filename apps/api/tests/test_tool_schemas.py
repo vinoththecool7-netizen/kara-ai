@@ -1,8 +1,6 @@
 """Tests for tool schema definitions (Task 6)."""
 from __future__ import annotations
 
-import pytest
-
 from kara_api.tools.schemas import (
     ALL_TOOLS,
     CALCULATE_ADVANCE_TAX,

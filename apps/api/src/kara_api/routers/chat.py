@@ -8,18 +8,18 @@ from __future__ import annotations
 import json
 import logging
 import uuid
-from typing import Any, AsyncIterator
+from collections.abc import AsyncIterator
+from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field, ValidationError
-
 from kara_tax_engine.models import (
     CapitalGainsResult,
     OptimizationResult,
     RegimeComparison,
     TaxBreakdown,
 )
+from pydantic import BaseModel, Field, ValidationError
 
 from kara_api.agent import (
     ENHANCED_SYSTEM_PROMPT,
@@ -173,6 +173,11 @@ def _db_messages_to_response(db_msgs: list[DbMessage]) -> list[MessageResponse]:
 # ---------------------------------------------------------------------------
 
 
+def _sse(payload: dict[str, Any]) -> str:
+    """Serialize a payload as a Server-Sent Events data frame."""
+    return f"data: {json.dumps(payload)}\n\n"
+
+
 # SSE event types emitted by _sse_generator (and by /documents/upload via client):
 #   "session_created"  — session UUID on new chat
 #   "tool_result"      — raw tool call result
@@ -195,7 +200,7 @@ async def _sse_generator(
     profile: ProfileBuilder,
 ) -> AsyncIterator[str]:
     try:
-        yield f"data: {json.dumps({'type': 'session_created', 'session_id': str(session_id)})}\n\n"
+        yield _sse({"type": "session_created", "session_id": str(session_id)})
 
         result: AgentResponse = await agent_loop.run(
             user_message, history=history, profile=profile
@@ -203,46 +208,76 @@ async def _sse_generator(
 
         # Emit tool results
         for record in result.tool_calls_made:
-            yield f"data: {json.dumps({'type': 'tool_result', 'tool_name': record.tool_name, 'result': record.result, 'is_error': record.is_error})}\n\n"
+            yield _sse(
+                {
+                    "type": "tool_result",
+                    "tool_name": record.tool_name,
+                    "result": record.result,
+                    "is_error": record.is_error,
+                }
+            )
 
             # Emit structured tax_breakdown event for compute_tax tool
             if record.tool_name == "compute_tax" and not record.is_error:
                 try:
                     breakdown = TaxBreakdown.model_validate(json.loads(record.result))
-                    yield f"data: {json.dumps({'type': 'tax_breakdown', 'breakdown': breakdown.model_dump(mode='json')})}\n\n"
+                    yield _sse(
+                        {"type": "tax_breakdown", "breakdown": breakdown.model_dump(mode="json")}
+                    )
                 except (json.JSONDecodeError, ValidationError) as exc:
                     logger.warning("Failed to parse tax_breakdown from compute_tax result: %s", exc)
 
             if record.tool_name == "compare_regimes" and not record.is_error:
                 try:
                     comparison = RegimeComparison.model_validate(json.loads(record.result))
-                    yield f"data: {json.dumps({'type': 'regime_comparison', 'comparison': comparison.model_dump(mode='json')})}\n\n"
+                    yield _sse(
+                        {
+                            "type": "regime_comparison",
+                            "comparison": comparison.model_dump(mode="json"),
+                        }
+                    )
                 except (json.JSONDecodeError, ValidationError) as exc:
-                    logger.warning("Failed to parse regime_comparison from compare_regimes result: %s", exc)
+                    logger.warning(
+                        "Failed to parse regime_comparison from compare_regimes result: %s", exc
+                    )
 
             if record.tool_name == "find_deduction_gaps" and not record.is_error:
                 try:
                     optimization = OptimizationResult.model_validate(json.loads(record.result))
-                    yield f"data: {json.dumps({'type': 'deduction_gaps', 'optimization': optimization.model_dump(mode='json')})}\n\n"
+                    yield _sse(
+                        {
+                            "type": "deduction_gaps",
+                            "optimization": optimization.model_dump(mode="json"),
+                        }
+                    )
                 except (json.JSONDecodeError, ValidationError) as exc:
-                    logger.warning("Failed to parse deduction_gaps from find_deduction_gaps result: %s", exc)
+                    logger.warning(
+                        "Failed to parse deduction_gaps from find_deduction_gaps result: %s", exc
+                    )
 
             if record.tool_name == "compute_capital_gains" and not record.is_error:
                 try:
                     raw_list = json.loads(record.result)
                     gains = [CapitalGainsResult.model_validate(item) for item in raw_list]
-                    yield f"data: {json.dumps({'type': 'capital_gains', 'gains': [g.model_dump(mode='json') for g in gains]})}\n\n"
+                    yield _sse(
+                        {
+                            "type": "capital_gains",
+                            "gains": [g.model_dump(mode="json") for g in gains],
+                        }
+                    )
                 except (json.JSONDecodeError, ValidationError) as exc:
-                    logger.warning("Failed to parse capital_gains from compute_capital_gains result: %s", exc)
+                    logger.warning(
+                        "Failed to parse capital_gains from compute_capital_gains result: %s", exc
+                    )
 
         # Emit content
         if result.content:
-            yield f"data: {json.dumps({'type': 'content', 'text': result.content})}\n\n"
+            yield _sse({"type": "content", "text": result.content})
 
         # Advisory hints
         tool_names = [r.tool_name for r in result.tool_calls_made]
         for hint in advisory.check(tool_names):
-            yield f"data: {json.dumps({'type': 'advisory', 'hint': hint})}\n\n"
+            yield _sse({"type": "advisory", "hint": hint})
 
         # Persist user message
         await session_manager.add_message(session_id, "user", user_message)
@@ -263,11 +298,17 @@ async def _sse_generator(
 
         # Done event
         profile_state = _build_profile_state(profile)
-        yield f"data: {json.dumps({'type': 'done', 'session_id': str(session_id), 'profile_state': profile_state.model_dump()})}\n\n"
+        yield _sse(
+            {
+                "type": "done",
+                "session_id": str(session_id),
+                "profile_state": profile_state.model_dump(),
+            }
+        )
 
     except Exception as exc:
         logger.exception("SSE stream error")
-        yield f"data: {json.dumps({'type': 'error', 'message': str(exc)})}\n\n"
+        yield _sse({"type": "error", "message": str(exc)})
 
 
 # ---------------------------------------------------------------------------
@@ -310,7 +351,12 @@ async def _run_json_response(
         session_id=str(session_id),
         response=result.content,
         tool_calls_made=[
-            {"tool_name": r.tool_name, "arguments": r.arguments, "result": r.result, "is_error": r.is_error}
+            {
+                "tool_name": r.tool_name,
+                "arguments": r.arguments,
+                "result": r.result,
+                "is_error": r.is_error,
+            }
             for r in result.tool_calls_made
         ],
         profile_state=profile_state,

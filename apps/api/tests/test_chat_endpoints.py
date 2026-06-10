@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from datetime import UTC, datetime
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -12,7 +12,6 @@ from httpx import ASGITransport, AsyncClient
 from kara_api.agent.loop import AgentResponse, ToolCallRecord
 from kara_api.agent.session import SessionSummaryRow
 from kara_api.llm.models import TokenUsage
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -53,7 +52,7 @@ class _FakeDbSession:
 
     def __init__(self, session_id: uuid.UUID | None = None, profile_json: dict | None = None):
         self.id = session_id or uuid.uuid4()
-        self.created_at = datetime(2026, 3, 29, 12, 0, 0, tzinfo=timezone.utc)
+        self.created_at = datetime(2026, 3, 29, 12, 0, 0, tzinfo=UTC)
         self.updated_at = self.created_at
         self.profile_json = profile_json or {}
 
@@ -72,7 +71,7 @@ class _FakeDbMessage:
         self.role = role
         self.content = content
         self.tool_calls_json = tool_calls_json
-        self.created_at = datetime(2026, 3, 29, 12, 0, 0, tzinfo=timezone.utc)
+        self.created_at = datetime(2026, 3, 29, 12, 0, 0, tzinfo=UTC)
 
 
 # ---------------------------------------------------------------------------
@@ -121,10 +120,10 @@ def patches(mock_session_manager, mock_agent_loop):
 @pytest.fixture
 async def client(patches):
     """HTTP client with mocked dependencies — no DB/LLM required."""
-    from kara_api.main import create_app
-
     # Patch lifespan to skip DB init
     from contextlib import asynccontextmanager
+
+    from kara_api.main import create_app
 
     @asynccontextmanager
     async def _noop_lifespan(app):
@@ -751,8 +750,8 @@ class TestListSessionsEndpoint:
     ):
         sid1 = uuid.UUID("11111111-1111-1111-1111-111111111111")
         sid2 = uuid.UUID("22222222-2222-2222-2222-222222222222")
-        ts_newer = datetime(2026, 4, 8, 12, 0, 0, tzinfo=timezone.utc)
-        ts_older = datetime(2026, 4, 7, 9, 0, 0, tzinfo=timezone.utc)
+        ts_newer = datetime(2026, 4, 8, 12, 0, 0, tzinfo=UTC)
+        ts_older = datetime(2026, 4, 7, 9, 0, 0, tzinfo=UTC)
         mock_session_manager.list_sessions = AsyncMock(
             return_value=[
                 SessionSummaryRow(

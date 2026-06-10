@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 import logging
 import uuid
-from typing import Any, Literal
+from typing import Literal
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
@@ -115,8 +115,6 @@ def _parse_document(
     filename: str,
 ) -> Form16Document | AISDocument | Form26ASDocument:
     """Parse *content* as the given document type."""
-    name_lower = filename.lower() if filename else ""
-
     try:
         if doc_type == "form16":
             return parse_form16(content)

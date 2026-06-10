@@ -2,10 +2,10 @@
 from __future__ import annotations
 
 import pytest
+from kara_tax_engine.models import TaxProfile
 
 from kara_api.agent.profile_builder import ProfileBuilder
-from kara_api.agent.prompts import INTENT_SPECS, Intent
-from kara_tax_engine.models import Deductions, TaxProfile
+from kara_api.agent.prompts import Intent
 
 
 # ---------------------------------------------------------------------------

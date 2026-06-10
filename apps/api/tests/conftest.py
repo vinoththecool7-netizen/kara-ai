@@ -40,7 +40,7 @@ def sync_database_url(database_url):
 @pytest.fixture
 async def db_session(database_url):
     """Yield an async session connected to the test database."""
-    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+    from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
     engine = create_async_engine(database_url, echo=False)
     factory = async_sessionmaker(engine, expire_on_commit=False)

@@ -1,11 +1,6 @@
 """Tests for kara_api.agent.document_autofill — pure autofill functions."""
 from __future__ import annotations
 
-from datetime import date
-from typing import Any
-
-import pytest
-
 from kara_api.agent.document_autofill import (
     AutofillDiff,
     apply_26as,
@@ -25,7 +20,6 @@ from kara_api.parsers.form16 import (
     Form16Document,
     Form16PartA,
     Form16PartB,
-    Sec10Exemptions,
 )
 from kara_api.parsers.twenty_six_as import (
     AdvanceTaxEntry,
@@ -34,7 +28,6 @@ from kara_api.parsers.twenty_six_as import (
     SelfAssessmentEntry,
     TDSSalaryEntry,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -289,7 +282,7 @@ class TestApplyAIS:
     def test_no_change_when_all_zero(self):
         builder = ProfileBuilder()
         doc = _make_ais()
-        diff = apply_ais(builder, doc)
+        apply_ais(builder, doc)
         # pan is set but no income added
         assert builder.get_slot("other_income") is None
 

@@ -1,15 +1,16 @@
 """Tests for the hybrid search module."""
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+
 from kara_api.knowledge.search import (
+    RRF_K,
     SearchResult,
-    semantic_search,
-    keyword_search,
     graph_boost,
     hybrid_search,
-    RRF_K,
+    keyword_search,
+    semantic_search,
 )
-from kara_api.knowledge.embeddings import FakeEmbeddingProvider
 
 
 def _make_result(id: int, section_number: str = "TEST", title: str = "Test", score: float = 0.5) -> SearchResult:

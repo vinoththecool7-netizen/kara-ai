@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel, Field
-
 from kara_tax_engine import (
     CapitalGainsCalculator,
     DeductionOptimizer,
@@ -13,13 +12,14 @@ from kara_tax_engine import (
     TaxComputer,
 )
 from kara_tax_engine.models import (
-    CapitalGainTransaction,
     CapitalGainsResult,
+    CapitalGainTransaction,
     OptimizationResult,
     RegimeComparison,
     TaxBreakdown,
     TaxProfile,
 )
+from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
 

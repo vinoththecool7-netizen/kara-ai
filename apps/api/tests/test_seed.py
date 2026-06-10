@@ -1,8 +1,9 @@
 """Tests to validate tax_sections.yaml data integrity."""
 import re
 from pathlib import Path
-import yaml
+
 import pytest
+import yaml
 
 DATA_FILE = Path(__file__).parent.parent / "src" / "kara_api" / "data" / "tax_sections.yaml"
 

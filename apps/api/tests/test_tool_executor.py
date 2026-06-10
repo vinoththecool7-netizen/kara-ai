@@ -6,7 +6,7 @@ import json
 import pytest
 
 from kara_api.llm.models import ToolCall
-from kara_api.tools.executor import ToolExecutionError, ToolRegistry, ToolResult
+from kara_api.tools.executor import ToolRegistry
 
 
 @pytest.fixture

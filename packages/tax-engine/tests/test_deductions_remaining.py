@@ -317,7 +317,6 @@ def test_integration_salaried_heavy_deductions(computer):
     assert r.cess_amount == math.ceil(259_500 * 0.04)
     assert r.total_tax_payable == 269_880
     # Verify multiple deduction sections present
-    sections = {d.section for d in r.deductions_applied}
     assert len(r.deductions_applied) >= 5  # 80C, 80CCD(1B), 80D, 80TTA, 24(b)
 
 
