@@ -267,20 +267,12 @@ class TaxComputer:
                     f"Marginal relief on surcharge: {_fmt(surcharge['marginal_relief'])}"
                 )
 
-        tax_plus_surcharge = result.total_tax_before_surcharge + result.surcharge_amount
-
-        # --- Step 6: Cess ---
-        cess_rate = self.rules.cess_rate
-        cess = math.ceil(tax_plus_surcharge * cess_rate)
-        result.cess_rate = cess_rate
-        result.cess_amount = cess
-        if cess > 0:
-            result.add_step(f"Health & Education Cess @4%: {_fmt(cess)}")
-
-        total_before_rebate = tax_plus_surcharge + cess
-
-        # --- Step 7: Section 87A Rebate ---
-        rebate = self._compute_rebate_87a(result.taxable_income, total_before_rebate, regime)
+        # --- Step 6: Section 87A Rebate (before cess, per Finance Act order) ---
+        # The rebate offsets income-tax on normal (slab-rate) income only;
+        # it is not available against special-rate capital gains tax.
+        rebate = self._compute_rebate_87a(
+            result.taxable_income, result.tax_on_normal_income, regime
+        )
         result.rebate_87a = rebate["rebate"]
         result.marginal_relief_87a = rebate["marginal_relief"]
         if rebate["rebate"] > 0:
@@ -290,8 +282,19 @@ class TaxComputer:
                     f"Marginal relief (87A boundary): {_fmt(rebate['marginal_relief'])}"
                 )
 
+        tax_after_rebate = max(0, result.total_tax_before_surcharge - result.rebate_87a)
+        tax_plus_surcharge = tax_after_rebate + result.surcharge_amount
+
+        # --- Step 7: Cess (on post-rebate tax + surcharge) ---
+        cess_rate = self.rules.cess_rate
+        cess = math.ceil(tax_plus_surcharge * cess_rate)
+        result.cess_rate = cess_rate
+        result.cess_amount = cess
+        if cess > 0:
+            result.add_step(f"Health & Education Cess @4%: {_fmt(cess)}")
+
         # --- Step 8: Net Tax Payable ---
-        result.total_tax_payable = max(0, total_before_rebate - result.rebate_87a)
+        result.total_tax_payable = tax_plus_surcharge + cess
         if result.gross_total_income > 0:
             result.effective_tax_rate = round(
                 result.total_tax_payable / result.gross_total_income * 100, 2
@@ -385,25 +388,24 @@ class TaxComputer:
         }
 
     def _compute_rebate_87a(
-        self, taxable_income: int, total_tax: int, regime: str
+        self, taxable_income: int, tax_on_normal_income: int, regime: str
     ) -> dict[str, Any]:
+        """Section 87A rebate against income-tax on slab-rate income (pre-cess)."""
         rebate_rules = self.rules.get_rebate_87a(regime)
         max_income = rebate_rules["max_taxable_income"]
         max_rebate = rebate_rules["max_rebate"]
 
         if taxable_income <= max_income:
-            # Full rebate — tax becomes zero
-            rebate = min(total_tax, max_rebate) if max_rebate else total_tax
+            # Full rebate — slab tax becomes zero (cess then applies on zero)
+            rebate = min(tax_on_normal_income, max_rebate) if max_rebate else tax_on_normal_income
             return {"rebate": rebate, "marginal_relief": 0}
 
-        # Marginal relief: if income is just above threshold,
-        # tax should not exceed the excess over threshold
+        # Marginal relief (new regime only): income-tax payable must not
+        # exceed the amount by which taxable income exceeds the threshold.
         excess = taxable_income - max_income
-        if regime == "new" and excess <= total_tax:
-            # Under new regime: marginal relief ensures tax <= excess over ₹12L
-            if total_tax > excess:
-                rebate = total_tax - excess
-                return {"rebate": rebate, "marginal_relief": rebate}
+        if regime == "new" and tax_on_normal_income > excess:
+            rebate = tax_on_normal_income - excess
+            return {"rebate": rebate, "marginal_relief": rebate}
 
         return {"rebate": 0, "marginal_relief": 0}
 

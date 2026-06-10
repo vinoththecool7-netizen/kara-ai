@@ -81,26 +81,33 @@ def test_rebate_1m(computer):
 
 
 def test_rebate_exact_boundary(computer):
-    """1,275K gross → taxable = 1,200K exactly. Max rebate = 60K. Cess (2,400) is not covered."""
+    """1,275K gross → taxable = 1,200K exactly. Slab tax = 60,000, fully
+    rebated under 87A. Cess applies on post-rebate tax (zero) → total 0.
+    """
     r = computer.compute(gross_salary=1_275_000, regime="new")
     assert r.taxable_income == 1_200_000
     assert r.rebate_87a == 60_000
-    assert r.total_tax_payable == 2_400  # cess = ceil(60000 * 0.04) = 2400, rebate doesn't cover it
+    assert r.cess_amount == 0
+    assert r.total_tax_payable == 0
 
 
 def test_marginal_relief_1_rupee_above_boundary(computer):
-    """1,275,001 gross → taxable = 1,200,001. Tax capped at excess = 1."""
+    """1,275,001 gross → taxable = 1,200,001. Marginal relief caps the
+    income-tax at the excess over 12L (₹1); 4% cess on ₹1 rounds up to ₹1.
+    """
     r = computer.compute(gross_salary=1_275_001, regime="new")
     assert r.taxable_income == 1_200_001
-    assert r.total_tax_payable == 1
+    assert r.total_tax_payable == 2  # ₹1 tax + ₹1 cess (ceil)
     assert r.marginal_relief_87a > 0
 
 
 def test_marginal_relief_50k_above_boundary(computer):
-    """1,325K gross → taxable = 1,250K. Tax capped at excess (50K) over 12L."""
+    """1,325K gross → taxable = 1,250K. Income-tax capped at the 50K excess
+    over 12L by marginal relief; cess (4% of 50K = 2,000) applies on top.
+    """
     r = computer.compute(gross_salary=1_325_000, regime="new")
     assert r.taxable_income == 1_250_000
-    assert r.total_tax_payable == 50_000
+    assert r.total_tax_payable == 52_000
 
 
 def test_above_rebate_zone_no_relief(computer):
