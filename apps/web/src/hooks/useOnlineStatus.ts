@@ -8,17 +8,24 @@ const listeners = new Set<Listener>();
 let recentFetchFailure = false;
 let failureTimer: number | undefined;
 
+// Snapshot must be reference-stable across calls when values are unchanged,
+// otherwise useSyncExternalStore detects "changes" every render and loops.
+let cachedSnapshot: OnlineStatus = { isOnline: true, hasRecentFailure: false };
+const serverSnapshot: OnlineStatus = { isOnline: true, hasRecentFailure: false };
+
 function getSnapshot(): OnlineStatus {
   const online = typeof navigator === "undefined" ? true : navigator.onLine;
-  return buildStatus(online, recentFetchFailure);
+  if (
+    cachedSnapshot.isOnline !== online ||
+    cachedSnapshot.hasRecentFailure !== recentFetchFailure
+  ) {
+    cachedSnapshot = { isOnline: online, hasRecentFailure: recentFetchFailure };
+  }
+  return cachedSnapshot;
 }
 
 function getServerSnapshot(): OnlineStatus {
-  return buildStatus(true, false);
-}
-
-function buildStatus(online: boolean, hasRecentFailure: boolean): OnlineStatus {
-  return { isOnline: online, hasRecentFailure };
+  return serverSnapshot;
 }
 
 function subscribe(listener: Listener): () => void {
