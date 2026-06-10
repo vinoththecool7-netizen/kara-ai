@@ -186,6 +186,29 @@ class TestSearchTaxLaw:
 # ---------------------------------------------------------------------------
 
 
+class TestStubDisclaimers:
+    """The three simplified tools must label their output as indicative so the
+    LLM (and the user) never present approximations as authoritative."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("tool", "args"),
+        [
+            ("get_tds_rate", {"payment_type": "rent"}),
+            ("calculate_advance_tax", {"total_estimated_tax": 200000}),
+            (
+                "select_itr_form",
+                {"income_sources": ["salary"], "total_income": 1200000},
+            ),
+        ],
+    )
+    async def test_stub_output_carries_disclaimer(self, registry, tool, args):
+        result = await registry.execute(_make_tool_call(tool, args))
+        assert result.is_error is False
+        data = json.loads(result.content)
+        assert "indicative" in data.get("disclaimer", "").lower()
+
+
 class TestGetTdsRate:
     @pytest.mark.asyncio
     async def test_execute_get_tds_rate_salary(self, registry):

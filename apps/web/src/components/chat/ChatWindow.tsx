@@ -181,6 +181,10 @@ export function ChatWindow({ chat, onOpenSidebar, sidebarOpen }: ChatWindowProps
         onFilesSelected={(files) => void uploadAndProcess(files)}
         disabled={isStreaming}
       />
+      <p className="px-4 pb-2 text-center text-xs text-muted-foreground">
+        Kara provides general tax information, not professional tax advice.
+        Verify with a qualified professional before filing.
+      </p>
     </div>
   );
 }

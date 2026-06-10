@@ -15,6 +15,14 @@ from kara_api.llm.models import ToolCall
 
 logger = logging.getLogger(__name__)
 
+# Attached to the output of the simplified (non-rule-engine) tools so the
+# LLM never presents their approximations as authoritative.
+_INDICATIVE_DISCLAIMER = (
+    "Indicative only: this is a simplified lookup, not the full rule engine. "
+    "Verify rates, thresholds, and eligibility against the current Finance "
+    "Act or with a qualified professional before acting."
+)
+
 
 class ToolResult(BaseModel):
     """Result of executing a tool."""
@@ -205,6 +213,7 @@ class ToolRegistry:
             info["rate"] = 0.20
             info["note"] = "Higher rate (20%) applied due to missing PAN"
 
+        info["disclaimer"] = _INDICATIVE_DISCLAIMER
         return info
 
     async def _handle_calculate_advance_tax(
@@ -222,6 +231,7 @@ class ToolRegistry:
                 "advance_tax_required": False,
                 "net_tax_after_tds": net,
                 "message": "No advance tax required (net tax liability below Rs 10,000)",
+                "disclaimer": _INDICATIVE_DISCLAIMER,
             }
 
         # Parse financial year for due dates
@@ -265,10 +275,17 @@ class ToolRegistry:
             "net_tax_after_tds": net,
             "financial_year": financial_year,
             "installments": installments,
+            "disclaimer": _INDICATIVE_DISCLAIMER,
         }
 
     async def _handle_select_itr_form(self, args: dict[str, Any]) -> dict[str, Any]:
         """Determine the appropriate ITR form (stub)."""
+        decision = self._itr_decision(args)
+        decision["disclaimer"] = _INDICATIVE_DISCLAIMER
+        return decision
+
+    def _itr_decision(self, args: dict[str, Any]) -> dict[str, Any]:
+        """Simplified ITR form decision tree."""
         income_sources = args.get("income_sources", [])
         is_company = args.get("is_company", False)
         is_partnership = args.get("is_partnership", False)
