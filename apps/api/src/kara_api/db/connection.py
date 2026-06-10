@@ -43,6 +43,13 @@ def get_session_factory() -> async_sessionmaker[AsyncSession]:
     return _session_factory
 
 
+def get_engine() -> AsyncEngine:
+    """Return the engine. Raises RuntimeError if init_db not called."""
+    if _engine is None:
+        raise RuntimeError("Database not initialized. Call init_db() first.")
+    return _engine
+
+
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
     """FastAPI dependency: yields an AsyncSession, handles commit/rollback."""
     factory = get_session_factory()

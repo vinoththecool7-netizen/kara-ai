@@ -1,11 +1,7 @@
-"""Tests for seed_knowledge_base.py helper functions."""
-import sys
-from pathlib import Path
+"""Tests for knowledge-base seeding helper functions."""
 import pytest
 
-# Add scripts dir to path so we can import the seed module
-sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
-from seed_knowledge_base import build_embedding_text, load_yaml, validate_yaml
+from kara_api.knowledge.seeding import build_embedding_text, load_sections_data
 
 
 class TestBuildEmbeddingText:
@@ -33,25 +29,23 @@ class TestBuildEmbeddingText:
             "content": "Test content here.",
         }
         result = build_embedding_text(section)
-        assert "Test Title" in result
-        assert "Test content here." in result
-        # Should not crash, just have title and content
         assert result == "Test Title\nTest content here."
 
 
-class TestLoadYaml:
-    def test_load_yaml_returns_dict(self):
-        data = load_yaml()
+class TestLoadSectionsData:
+    def test_returns_dict_with_sections(self):
+        data = load_sections_data()
         assert isinstance(data, dict)
         assert "sections" in data
 
-
-class TestValidateYaml:
-    def test_raises_on_missing_sections_key(self):
+    def test_raises_on_missing_sections_key(self, tmp_path):
+        bad = tmp_path / "bad.yaml"
+        bad.write_text("relationships: []\n")
         with pytest.raises(ValueError, match="missing top-level 'sections' key"):
-            validate_yaml({})
+            load_sections_data(bad)
 
-    def test_raises_on_missing_required_fields(self):
-        data = {"sections": [{"section_number": "X"}]}
+    def test_raises_on_missing_required_fields(self, tmp_path):
+        bad = tmp_path / "bad.yaml"
+        bad.write_text("sections:\n  - section_number: X\n")
         with pytest.raises(ValueError, match="missing required fields"):
-            validate_yaml(data)
+            load_sections_data(bad)
