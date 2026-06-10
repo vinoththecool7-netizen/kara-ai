@@ -24,7 +24,7 @@ class TestToolSchemaStructure:
     """Verify overall shape and consistency of the tool catalogue."""
 
     def test_all_tools_count(self):
-        assert len(ALL_TOOLS) == 8
+        assert len(ALL_TOOLS) == 11
 
     def test_tool_map_keys(self):
         expected_names = {
@@ -36,6 +36,9 @@ class TestToolSchemaStructure:
             "get_tds_rate",
             "calculate_advance_tax",
             "select_itr_form",
+            "parse_form16",
+            "parse_ais",
+            "parse_26as",
         }
         assert set(TOOL_MAP.keys()) == expected_names
 
