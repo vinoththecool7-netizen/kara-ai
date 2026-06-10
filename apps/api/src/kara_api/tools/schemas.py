@@ -51,10 +51,22 @@ COMPUTE_TAX = ToolDefinition(
             },
             "deductions": {
                 "type": "object",
+                "properties": {
+                    "parents_senior": {
+                        "type": "boolean",
+                        "description": (
+                            "Set true only if the parents covered under "
+                            "80D_parents are aged 60+, which raises that cap "
+                            "from 25,000 to 50,000. Ask the user if unknown."
+                        ),
+                    },
+                },
                 "additionalProperties": {"type": "integer"},
                 "description": (
                     "Map of deduction section codes to claimed amounts, "
-                    "e.g. {\"80C\": 150000, \"80D\": 25000}."
+                    "e.g. {\"80C\": 150000, \"80D\": 25000}. For 80G enter the "
+                    "eligible deduction amount (after the 50%/100% category and "
+                    "qualifying limit), not the raw donation."
                 ),
             },
         },
@@ -101,10 +113,22 @@ COMPARE_REGIMES = ToolDefinition(
             },
             "deductions": {
                 "type": "object",
+                "properties": {
+                    "parents_senior": {
+                        "type": "boolean",
+                        "description": (
+                            "Set true only if the parents covered under "
+                            "80D_parents are aged 60+, which raises that cap "
+                            "from 25,000 to 50,000. Ask the user if unknown."
+                        ),
+                    },
+                },
                 "additionalProperties": {"type": "integer"},
                 "description": (
                     "Map of deduction section codes to claimed amounts, "
-                    "e.g. {\"80C\": 150000, \"80D\": 25000}."
+                    "e.g. {\"80C\": 150000, \"80D\": 25000}. For 80G enter the "
+                    "eligible deduction amount (after the 50%/100% category and "
+                    "qualifying limit), not the raw donation."
                 ),
             },
         },

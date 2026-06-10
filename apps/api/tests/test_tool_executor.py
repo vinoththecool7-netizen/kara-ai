@@ -79,6 +79,29 @@ class TestComputeTax:
         assert data["regime"] == "new"
         assert data["age_category"] == "below_60"
 
+    @pytest.mark.asyncio
+    async def test_execute_compute_tax_parents_senior_flag(self, registry):
+        """parents_senior in the deductions dict raises the 80D parents cap to 50K."""
+        base_args = {
+            "gross_salary": 1500000,
+            "regime": "old",
+            "deductions": {"80D_parents": 50000},
+        }
+        result_default = await registry.execute(_make_tool_call("compute_tax", base_args))
+        data_default = json.loads(result_default.content)
+        entry = next(d for d in data_default["deductions_applied"] if d["section"] == "80D")
+        assert entry["allowed"] == 25000  # conservative cap without the flag
+
+        senior_args = {
+            "gross_salary": 1500000,
+            "regime": "old",
+            "deductions": {"80D_parents": 50000, "parents_senior": True},
+        }
+        result_senior = await registry.execute(_make_tool_call("compute_tax", senior_args))
+        data_senior = json.loads(result_senior.content)
+        entry = next(d for d in data_senior["deductions_applied"] if d["section"] == "80D")
+        assert entry["allowed"] == 50000
+
 
 class TestCompareRegimes:
     @pytest.mark.asyncio

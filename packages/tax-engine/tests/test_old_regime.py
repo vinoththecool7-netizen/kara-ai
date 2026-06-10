@@ -450,6 +450,24 @@ def test_old_surcharge_mr_at_5Cr(computer):
     assert r.total_tax_payable == 15_457_000
 
 
+def test_senior_surcharge_mr_uses_senior_slabs(computer):
+    """Senior just above 50L: threshold tax must use the SENIOR slab set.
+
+    Senior, taxable = 50,00,100. Slab tax: 10,000 + 1,00,000 + 30%×40,00,100
+    = 13,10,030. Senior threshold tax at 50L = 13,10,000; excess = 100, so
+    the marginal limit is 13,10,100 → surcharge after relief = 70.
+    Cess: 4% of 13,10,100 = 52,404. Total: 13,62,504.
+
+    (Using below-60 slabs for the threshold would inflate the limit to
+    13,12,600 and overcharge the senior by ~₹2,500.)
+    """
+    r = computer.compute(gross_salary=5_050_100, regime="old", age_category="senior")
+    assert r.taxable_income == 5_000_100
+    assert r.tax_on_normal_income == 1_310_030
+    assert r.surcharge_amount == 70
+    assert r.total_tax_payable == 1_362_504
+
+
 # ---------------------------------------------------------------------------
 # Group I: 37% surcharge — old regime exclusive (2 tests)
 # ---------------------------------------------------------------------------

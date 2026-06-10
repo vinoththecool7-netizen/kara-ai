@@ -122,6 +122,9 @@ class TaxComputer:
                 "section_24b": "section_24b",
             }
             for key, value in deductions.items():
+                if key == "parents_senior":
+                    ded.parents_senior = bool(value)
+                    continue
                 attr = mapping.get(key)
                 if attr and hasattr(ded, attr):
                     setattr(ded, attr, value)
@@ -253,7 +256,7 @@ class TaxComputer:
         # Surcharge threshold uses total income including capital gains
         surcharge_threshold_income = result.taxable_income + result.capital_gains_income
         surcharge = self._compute_surcharge(
-            surcharge_threshold_income, result.total_tax_before_surcharge, regime
+            surcharge_threshold_income, result.total_tax_before_surcharge, regime, age
         )
         result.surcharge_amount = surcharge["amount"]
         result.surcharge_rate = surcharge["rate"]
@@ -341,7 +344,9 @@ class TaxComputer:
 
         return breakdown, total_tax
 
-    def _compute_surcharge(self, taxable_income: int, tax: int, regime: str) -> dict[str, Any]:
+    def _compute_surcharge(
+        self, taxable_income: int, tax: int, regime: str, age_category: str = "below_60"
+    ) -> dict[str, Any]:
         tiers = self.rules.get_surcharge_tiers(regime)
         max_rate = self.rules.get_max_surcharge_rate(regime)
 
@@ -361,20 +366,16 @@ class TaxComputer:
 
         surcharge = math.ceil(tax * applicable_rate)
 
-        # Marginal relief: total tax + surcharge should not exceed
-        # income above the threshold + tax at threshold
+        # Marginal relief: (tax + surcharge) should not exceed
+        # (tax on threshold income) + (income exceeding threshold).
+        # Threshold tax must be computed with the taxpayer's own slab set.
         _, tax_at_threshold = self._compute_slab_tax(
             applicable_threshold,
-            self.rules.get_slabs(regime, "below_60"),
+            self.rules.get_slabs(regime, age_category),
         )
         excess_income = taxable_income - applicable_threshold
-        max_surcharge = max(0, excess_income - (tax_at_threshold - tax_at_threshold))
-
-        # Marginal relief: (tax + surcharge) should not exceed
-        # (tax on threshold income) + (income exceeding threshold)
         total_with_surcharge = tax + surcharge
-        total_at_threshold = tax_at_threshold
-        marginal_limit = total_at_threshold + excess_income
+        marginal_limit = tax_at_threshold + excess_income
 
         marginal_relief = 0
         if total_with_surcharge > marginal_limit:
@@ -477,8 +478,8 @@ class TaxComputer:
             # Self/family: ₹25K (₹50K if senior)
             self_cap = 50000 if profile.age_category != AgeCategory.BELOW_60 else 25000
             allowed_self = min(ded.section_80d, self_cap)
-            # Parents: additional ₹25K (₹50K if parents are senior)
-            parents_cap = 50000  # Assume senior parents for max; user declares actual
+            # Parents: ₹25K, or ₹50K only when senior parents are declared
+            parents_cap = 50000 if ded.parents_senior else 25000
             allowed_parents = min(ded.section_80d_parents, parents_cap)
             total_80d = allowed_self + allowed_parents
             if total_80d > 0:
@@ -503,14 +504,21 @@ class TaxComputer:
                 )
             )
 
-        # Section 80G — donations (old regime only)
+        # Section 80G — donations (old regime only).
+        # The engine does NOT compute the 50%/100% category split or the
+        # 10%-of-adjusted-GTI qualifying limit; the caller must supply the
+        # final eligible deduction amount, not the raw donation.
         if not is_new and ded.section_80g > 0:
             applied.append(
                 DeductionResult(
                     section="80G",
                     claimed=ded.section_80g,
                     allowed=ded.section_80g,
-                    note="Donations (actual qualifying amount)",
+                    note=(
+                        "Donations — enter the eligible deduction amount; the "
+                        "50%/100% category and 10%-of-AGTI qualifying limit are "
+                        "not auto-computed"
+                    ),
                 )
             )
 

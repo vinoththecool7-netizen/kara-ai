@@ -452,6 +452,9 @@ class ToolRegistry:
 
         ded = Deductions()
         for key, value in ded_dict.items():
+            if key == "parents_senior":
+                ded.parents_senior = bool(value)
+                continue
             attr = mapping.get(key)
             if attr and hasattr(ded, attr):
                 setattr(ded, attr, value)

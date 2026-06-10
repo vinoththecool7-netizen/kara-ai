@@ -397,7 +397,7 @@ def test_integration_kitchen_sink_old_regime(computer):
       80CCD1B: 50K → allowed 50K (cap)
       80CCD2: 100K → allowed 100K (both regimes)
       80D: 25K → allowed 25K
-      80D_parents: 50K → allowed 50K
+      80D_parents: 50K (senior parents declared) → allowed 50K
       80E: 200K → allowed 200K (no cap)
       80G: 100K → allowed 100K (no cap)
       80TTA: 10K → allowed 10K (cap)
@@ -422,6 +422,7 @@ def test_integration_kitchen_sink_old_regime(computer):
             "80CCD2": 100_000,
             "80D": 25_000,
             "80D_parents": 50_000,
+            "parents_senior": True,
             "80E": 200_000,
             "80G": 100_000,
             "80TTA": 10_000,
