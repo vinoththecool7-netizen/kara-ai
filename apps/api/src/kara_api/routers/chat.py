@@ -178,6 +178,43 @@ def _sse(payload: dict[str, Any]) -> str:
     return f"data: {json.dumps(payload)}\n\n"
 
 
+_GENERIC_ERROR_MESSAGE = (
+    "Something went wrong while generating a response. Please try again."
+)
+
+# Structured card events derived from specific tool results:
+#   tool name            -> (event type,        payload key)
+_CARD_EVENT_SPECS = {
+    "compute_tax": ("tax_breakdown", "breakdown", TaxBreakdown),
+    "compare_regimes": ("regime_comparison", "comparison", RegimeComparison),
+    "find_deduction_gaps": ("deduction_gaps", "optimization", OptimizationResult),
+}
+
+
+def _card_events(record) -> list[dict[str, Any]]:
+    """Build structured card payloads from a successful tool result."""
+    if record.is_error:
+        return []
+    try:
+        if record.tool_name in _CARD_EVENT_SPECS:
+            event_type, key, model = _CARD_EVENT_SPECS[record.tool_name]
+            parsed = model.model_validate(json.loads(record.result))
+            return [{"type": event_type, key: parsed.model_dump(mode="json")}]
+        if record.tool_name == "compute_capital_gains":
+            gains = [
+                CapitalGainsResult.model_validate(item)
+                for item in json.loads(record.result)
+            ]
+            return [
+                {"type": "capital_gains", "gains": [g.model_dump(mode="json") for g in gains]}
+            ]
+    except (json.JSONDecodeError, ValidationError) as exc:
+        logger.warning(
+            "Failed to parse structured card from %s result: %s", record.tool_name, exc
+        )
+    return []
+
+
 # SSE event types emitted by _sse_generator (and by /documents/upload via client):
 #   "session_created"  — session UUID on new chat
 #   "tool_result"      — raw tool call result
@@ -186,10 +223,11 @@ def _sse(payload: dict[str, Any]) -> str:
 #   "deduction_gaps"   — structured OptimizationResult from find_deduction_gaps tool
 #   "capital_gains"    — structured CapitalGainsResult list from compute_capital_gains tool
 #   "document_parsed"  — emitted after a document upload auto-fills the profile
-#   "content"          — assistant text content
+#   "content_delta"    — incremental assistant text (token streaming)
+#   "content"          — full assistant text (legacy, JSON fallback only)
 #   "advisory"         — advisory hint
 #   "done"             — final event with profile state
-#   "error"            — error event
+#   "error"            — error event (generic message; details are logged)
 async def _sse_generator(
     agent_loop: AgentLoop,
     session_manager: SessionManager,
@@ -202,85 +240,38 @@ async def _sse_generator(
     try:
         yield _sse({"type": "session_created", "session_id": str(session_id)})
 
-        result: AgentResponse = await agent_loop.run(
+        # Persist the user message BEFORE running the agent so a provider
+        # failure or client disconnect can never silently swallow it.
+        await session_manager.add_message(session_id, "user", user_message)
+
+        result: AgentResponse | None = None
+        async for event in agent_loop.run_stream(
             user_message, history=history, profile=profile
-        )
+        ):
+            if event.type == "content_delta":
+                yield _sse({"type": "content_delta", "text": event.text})
+            elif event.type == "tool_result":
+                record = event.record
+                yield _sse(
+                    {
+                        "type": "tool_result",
+                        "tool_name": record.tool_name,
+                        "result": record.result,
+                        "is_error": record.is_error,
+                    }
+                )
+                for payload in _card_events(record):
+                    yield _sse(payload)
+            elif event.type == "done":
+                result = event.response
 
-        # Emit tool results
-        for record in result.tool_calls_made:
-            yield _sse(
-                {
-                    "type": "tool_result",
-                    "tool_name": record.tool_name,
-                    "result": record.result,
-                    "is_error": record.is_error,
-                }
-            )
-
-            # Emit structured tax_breakdown event for compute_tax tool
-            if record.tool_name == "compute_tax" and not record.is_error:
-                try:
-                    breakdown = TaxBreakdown.model_validate(json.loads(record.result))
-                    yield _sse(
-                        {"type": "tax_breakdown", "breakdown": breakdown.model_dump(mode="json")}
-                    )
-                except (json.JSONDecodeError, ValidationError) as exc:
-                    logger.warning("Failed to parse tax_breakdown from compute_tax result: %s", exc)
-
-            if record.tool_name == "compare_regimes" and not record.is_error:
-                try:
-                    comparison = RegimeComparison.model_validate(json.loads(record.result))
-                    yield _sse(
-                        {
-                            "type": "regime_comparison",
-                            "comparison": comparison.model_dump(mode="json"),
-                        }
-                    )
-                except (json.JSONDecodeError, ValidationError) as exc:
-                    logger.warning(
-                        "Failed to parse regime_comparison from compare_regimes result: %s", exc
-                    )
-
-            if record.tool_name == "find_deduction_gaps" and not record.is_error:
-                try:
-                    optimization = OptimizationResult.model_validate(json.loads(record.result))
-                    yield _sse(
-                        {
-                            "type": "deduction_gaps",
-                            "optimization": optimization.model_dump(mode="json"),
-                        }
-                    )
-                except (json.JSONDecodeError, ValidationError) as exc:
-                    logger.warning(
-                        "Failed to parse deduction_gaps from find_deduction_gaps result: %s", exc
-                    )
-
-            if record.tool_name == "compute_capital_gains" and not record.is_error:
-                try:
-                    raw_list = json.loads(record.result)
-                    gains = [CapitalGainsResult.model_validate(item) for item in raw_list]
-                    yield _sse(
-                        {
-                            "type": "capital_gains",
-                            "gains": [g.model_dump(mode="json") for g in gains],
-                        }
-                    )
-                except (json.JSONDecodeError, ValidationError) as exc:
-                    logger.warning(
-                        "Failed to parse capital_gains from compute_capital_gains result: %s", exc
-                    )
-
-        # Emit content
-        if result.content:
-            yield _sse({"type": "content", "text": result.content})
+        if result is None:  # defensive: run_stream always ends with done
+            raise RuntimeError("agent stream ended without a done event")
 
         # Advisory hints
         tool_names = [r.tool_name for r in result.tool_calls_made]
         for hint in advisory.check(tool_names):
             yield _sse({"type": "advisory", "hint": hint})
-
-        # Persist user message
-        await session_manager.add_message(session_id, "user", user_message)
 
         # Persist assistant message
         await session_manager.add_message(
@@ -306,9 +297,9 @@ async def _sse_generator(
             }
         )
 
-    except Exception as exc:
+    except Exception:
         logger.exception("SSE stream error")
-        yield _sse({"type": "error", "message": str(exc)})
+        yield _sse({"type": "error", "message": _GENERIC_ERROR_MESSAGE})
 
 
 # ---------------------------------------------------------------------------
@@ -326,10 +317,10 @@ async def _run_json_response(
     profile: ProfileBuilder,
 ) -> ChatResponse:
     """Run the agent and return a plain JSON response."""
-    result = await agent_loop.run(user_message, history=history, profile=profile)
-
-    # Persist user message
+    # Persist the user message first — an agent failure must not swallow it.
     await session_manager.add_message(session_id, "user", user_message)
+
+    result = await agent_loop.run(user_message, history=history, profile=profile)
 
     # Persist assistant message
     await session_manager.add_message(

@@ -8,7 +8,8 @@ iteration budget is exhausted.
 from __future__ import annotations
 
 import logging
-from typing import Any
+from collections.abc import AsyncIterator
+from typing import Any, Literal
 
 from pydantic import BaseModel
 
@@ -63,6 +64,20 @@ class AgentError(Exception):
         super().__init__(message)
         self.iterations = iterations
         self.usage = usage
+
+
+class AgentStreamEvent(BaseModel):
+    """A single event emitted by :meth:`AgentLoop.run_stream`.
+
+    - ``content_delta``: ``text`` holds the next token(s) of assistant text.
+    - ``tool_result``: ``record`` holds the completed tool invocation.
+    - ``done``: ``response`` holds the final AgentResponse; always the last event.
+    """
+
+    type: Literal["content_delta", "tool_result", "done"]
+    text: str = ""
+    record: ToolCallRecord | None = None
+    response: AgentResponse | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -201,4 +216,103 @@ class AgentLoop:
             total_usage=total_usage,
             iterations=iterations,
             profile_snapshot=profile.to_dict(),
+        )
+
+    async def run_stream(
+        self,
+        user_message: str,
+        history: list[Message] | None = None,
+        profile: ProfileBuilder | None = None,
+    ) -> AsyncIterator[AgentStreamEvent]:
+        """Execute one agent turn, streaming events as they happen.
+
+        Yields ``content_delta`` events as assistant text arrives token by
+        token, a ``tool_result`` event after each tool execution, and finally
+        a single ``done`` event carrying the complete :class:`AgentResponse`.
+
+        Raises
+        ------
+        AgentError
+            If the LLM provider raises an unexpected exception.
+        """
+        messages = list(history or []) + [
+            Message(role=Role.user, content=user_message),
+        ]
+        profile = profile or ProfileBuilder()
+
+        total_usage = TokenUsage()
+        tool_call_records: list[ToolCallRecord] = []
+        iterations = 0
+        content_parts: list[str] = []
+
+        while iterations < self._max_iterations:
+            turn_content = ""
+            turn_tool_calls = []
+
+            # ----- stream one LLM turn ------------------------------------
+            try:
+                async for chunk in self._llm.chat_stream(messages, tools=self._tools):
+                    if chunk.content:
+                        turn_content += chunk.content
+                        yield AgentStreamEvent(type="content_delta", text=chunk.content)
+                    if chunk.tool_calls:
+                        turn_tool_calls.extend(chunk.tool_calls)
+                    if chunk.usage:
+                        total_usage = _accumulate_usage(total_usage, chunk.usage)
+            except Exception as exc:
+                raise AgentError(
+                    str(exc), iterations=iterations, usage=total_usage
+                ) from exc
+
+            iterations += 1
+            if turn_content:
+                content_parts.append(turn_content)
+
+            # ----- tool calls? -------------------------------------------
+            if turn_tool_calls:
+                messages.append(
+                    Message(
+                        role=Role.assistant,
+                        content=turn_content or None,
+                        tool_calls=turn_tool_calls,
+                    )
+                )
+                for tc in turn_tool_calls:
+                    result = await self._registry.execute(tc)
+                    messages.append(
+                        Message(
+                            role=Role.tool,
+                            content=result.content,
+                            tool_call_id=result.tool_call_id,
+                        )
+                    )
+                    record = ToolCallRecord(
+                        tool_name=tc.name,
+                        arguments=tc.arguments,
+                        result=result.content,
+                        is_error=result.is_error,
+                    )
+                    tool_call_records.append(record)
+                    yield AgentStreamEvent(type="tool_result", record=record)
+
+                continue  # loop back for the LLM to process tool results
+
+            break  # final text answer (already streamed)
+        else:
+            # max iterations exhausted while still getting tool_calls —
+            # stream the fallback so the client actually displays it.
+            content_parts.append(_FALLBACK_MESSAGE)
+            yield AgentStreamEvent(type="content_delta", text=_FALLBACK_MESSAGE)
+
+        yield AgentStreamEvent(
+            type="done",
+            response=AgentResponse(
+                # Everything the user saw, in order (text may have been
+                # produced both before tool calls and as the final answer).
+                content="\n\n".join(p for p in content_parts if p.strip()),
+                tool_calls_made=tool_call_records,
+                total_usage=total_usage,
+                iterations=iterations,
+                profile_snapshot=profile.to_dict(),
+            ),
         )

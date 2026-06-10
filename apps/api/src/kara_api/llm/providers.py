@@ -171,6 +171,24 @@ class OpenAIProvider:
         }
 
         timeout = httpx.Timeout(connect=10.0, read=120.0, write=10.0, pool=10.0)
+        # Tool-call arguments arrive as string fragments spread across many
+        # chunks, keyed by index; accumulate and flush as complete ToolCalls.
+        tool_buf: dict[int, dict] = {}
+
+        def _flush_tool_calls() -> list[ToolCall]:
+            calls: list[ToolCall] = []
+            for idx in sorted(tool_buf):
+                buf = tool_buf[idx]
+                try:
+                    args = json.loads(buf["arguments"]) if buf["arguments"] else {}
+                except json.JSONDecodeError:
+                    args = {}
+                calls.append(
+                    ToolCall(id=buf["id"] or f"call_{idx}", name=buf["name"], arguments=args)
+                )
+            tool_buf.clear()
+            return calls
+
         async with httpx.AsyncClient(timeout=timeout) as client:
             async with client.stream("POST", url, json=payload, headers=headers) as resp:
                 resp.raise_for_status()
@@ -180,13 +198,30 @@ class OpenAIProvider:
                         continue
                     data_str = line[len("data: "):]
                     if data_str == "[DONE]":
+                        pending = _flush_tool_calls()
+                        if pending:
+                            yield StreamChunk(tool_calls=pending)
                         yield StreamChunk(is_final=True)
                         return
                     data = json.loads(data_str)
                     choice = data.get("choices", [{}])[0] if data.get("choices") else {}
                     delta = choice.get("delta", {})
 
+                    for tc_delta in delta.get("tool_calls") or []:
+                        idx = tc_delta.get("index", 0)
+                        buf = tool_buf.setdefault(idx, {"id": "", "name": "", "arguments": ""})
+                        if tc_delta.get("id"):
+                            buf["id"] = tc_delta["id"]
+                        fn = tc_delta.get("function") or {}
+                        if fn.get("name"):
+                            buf["name"] = fn["name"]
+                        if fn.get("arguments"):
+                            buf["arguments"] += fn["arguments"]
+
                     chunk = StreamChunk(content=delta.get("content"))
+
+                    if choice.get("finish_reason"):
+                        chunk.tool_calls = _flush_tool_calls()
 
                     # Check for usage in the chunk (sent with stream_options)
                     if data.get("usage"):
@@ -492,6 +527,8 @@ class FakeLLMProvider:
         words = (response.content or "").split()
         for word in words:
             yield StreamChunk(content=word + " ")
+        if response.tool_calls:
+            yield StreamChunk(tool_calls=response.tool_calls)
         yield StreamChunk(
             is_final=True,
             usage=response.usage,

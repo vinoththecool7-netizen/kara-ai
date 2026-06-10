@@ -229,6 +229,8 @@ export interface ChatMessage {
   deductionGaps?: OptimizationResult;
   capitalGains?: CapitalGainsDetail[];
   parsedDocument?: ParsedDocumentSummary;
+  /** Proactive advisory tips emitted by the backend after tool calls. */
+  advisoryHints?: string[];
   /**
    * Delivery status. Only populated for user messages that failed to send;
    * absent (undefined) means "sent successfully".

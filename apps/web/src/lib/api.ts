@@ -92,16 +92,22 @@ async function assertOk(response: Response, context: string): Promise<void> {
  * Returns the raw Response so the caller can parse the SSE stream via
  * response.body (ReadableStream). The backend streams Server-Sent Events.
  */
-export async function createChat(message: string): Promise<Response> {
+export async function createChat(
+  message: string,
+  signal?: AbortSignal,
+): Promise<Response> {
   let response: Response;
   try {
     response = await fetch(API_PREFIX, {
       method: "POST",
       headers: buildJsonHeaders(),
       body: JSON.stringify({ message }),
+      signal,
     });
   } catch (err) {
-    reportNetworkError();
+    if (!(err instanceof DOMException && err.name === "AbortError")) {
+      reportNetworkError();
+    }
     throw err;
   }
 
@@ -117,7 +123,8 @@ export async function createChat(message: string): Promise<Response> {
  */
 export async function continueChat(
   sessionId: string,
-  message: string
+  message: string,
+  signal?: AbortSignal,
 ): Promise<Response> {
   let response: Response;
   try {
@@ -125,9 +132,12 @@ export async function continueChat(
       method: "POST",
       headers: buildJsonHeaders(),
       body: JSON.stringify({ message }),
+      signal,
     });
   } catch (err) {
-    reportNetworkError();
+    if (!(err instanceof DOMException && err.name === "AbortError")) {
+      reportNetworkError();
+    }
     throw err;
   }
 

@@ -544,3 +544,111 @@ class TestIntegration:
         # The real tax engine produces JSON with tax data
         assert "total_tax" in record.result
         assert result.content == "Your tax is Rs 1,12,500 under new regime."
+
+
+# ---------------------------------------------------------------------------
+# Streaming agent loop
+# ---------------------------------------------------------------------------
+
+
+class TestRunStream:
+    """AgentLoop.run_stream yields typed events: content_delta as tokens
+    arrive, tool_result after each tool execution, done with the final
+    AgentResponse."""
+
+    def _make_loop(self, responses: list[LLMResponse]) -> AgentLoop:
+        provider = FakeLLMProvider(responses=responses)
+        client = LLMClient(provider)
+        return AgentLoop(llm_client=client, tool_registry=ToolRegistry())
+
+    @pytest.mark.asyncio
+    async def test_streams_content_deltas_for_text_answer(self):
+        loop = self._make_loop([_text_response("Hello there friend")])
+
+        events = [e async for e in loop.run_stream("hi")]
+
+        deltas = [e for e in events if e.type == "content_delta"]
+        assert len(deltas) == 3  # FakeLLMProvider streams word by word
+        assert "".join(d.text for d in deltas).strip() == "Hello there friend"
+
+        done = [e for e in events if e.type == "done"]
+        assert len(done) == 1
+        assert done[0] is events[-1]
+        assert done[0].response.content.strip() == "Hello there friend"
+        assert done[0].response.iterations == 1
+
+    @pytest.mark.asyncio
+    async def test_tool_call_turn_then_final_answer(self):
+        tc = ToolCall(id="t1", name="compute_tax", arguments={"gross_salary": 1500000})
+        loop = self._make_loop(
+            [
+                _tool_response([tc]),
+                _text_response("Your tax is computed."),
+            ]
+        )
+
+        events = [e async for e in loop.run_stream("tax on 15L?")]
+
+        tool_events = [e for e in events if e.type == "tool_result"]
+        assert len(tool_events) == 1
+        assert tool_events[0].record.tool_name == "compute_tax"
+        assert tool_events[0].record.is_error is False
+
+        # Tool event must come before the final answer's deltas
+        types = [e.type for e in events]
+        assert types.index("tool_result") < types.index("content_delta")
+
+        done = events[-1]
+        assert done.type == "done"
+        assert done.response.iterations == 2
+        assert len(done.response.tool_calls_made) == 1
+        assert done.response.content.strip() == "Your tax is computed."
+
+    @pytest.mark.asyncio
+    async def test_max_iterations_yields_fallback(self):
+        tc = ToolCall(id="t1", name="get_tds_rate", arguments={"payment_type": "rent"})
+        responses = [_tool_response([tc]) for _ in range(12)]
+        provider = FakeLLMProvider(responses=responses)
+        client = LLMClient(provider)
+        loop = AgentLoop(llm_client=client, tool_registry=ToolRegistry(), max_iterations=2)
+
+        events = [e async for e in loop.run_stream("loop forever")]
+
+        done = events[-1]
+        assert done.type == "done"
+        assert _FALLBACK_MESSAGE in done.response.content
+        # The fallback must also have been streamed so the client displays it
+        deltas = "".join(e.text for e in events if e.type == "content_delta")
+        assert _FALLBACK_MESSAGE.split()[0] in deltas
+
+    @pytest.mark.asyncio
+    async def test_provider_error_raises_agent_error(self):
+        class ExplodingProvider:
+            async def complete(self, request):
+                raise RuntimeError("Provider exploded")
+
+            async def stream(self, request):
+                raise RuntimeError("Provider exploded")
+                yield  # unreachable — makes this an async generator
+
+        client = LLMClient(ExplodingProvider())
+        loop = AgentLoop(llm_client=client, tool_registry=ToolRegistry())
+
+        with pytest.raises(AgentError):
+            async for _ in loop.run_stream("boom"):
+                pass
+
+    @pytest.mark.asyncio
+    async def test_usage_accumulated_across_turns(self):
+        tc = ToolCall(id="t1", name="get_tds_rate", arguments={"payment_type": "rent"})
+        loop = self._make_loop(
+            [
+                _tool_response([tc], prompt_tokens=100, completion_tokens=20),
+                _text_response("done", prompt_tokens=10, completion_tokens=5),
+            ]
+        )
+
+        events = [e async for e in loop.run_stream("tds on rent")]
+        usage = events[-1].response.total_usage
+        assert usage.prompt_tokens == 110
+        assert usage.completion_tokens == 25

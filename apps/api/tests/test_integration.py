@@ -242,10 +242,11 @@ class TestSingleTurnIntegration:
         assert isinstance(result_data["total_tax_payable"], (int, float))
         assert result_data["total_tax_payable"] > 0
 
-        # content event must be present
-        content_events = [e for e in events if e["type"] == "content"]
-        assert len(content_events) == 1
-        assert "tax" in content_events[0]["text"].lower()
+        # content arrives as streamed deltas
+        deltas = [e for e in events if e["type"] == "content_delta"]
+        assert len(deltas) >= 1
+        full_text = "".join(e["text"] for e in deltas)
+        assert "tax" in full_text.lower()
 
         # done event must close the stream
         done_events = [e for e in events if e["type"] == "done"]
@@ -549,10 +550,9 @@ class TestSingleTurnIntegration:
         assert tool_events[0]["is_error"] is True
         assert "Unknown tool" in tool_events[0]["result"]
 
-        # LLM still produces a final content response
-        content_events = [e for e in events if e["type"] == "content"]
-        assert len(content_events) == 1
-        assert len(content_events[0]["text"]) > 0
+        # LLM still produces a final streamed response
+        deltas = [e for e in events if e["type"] == "content_delta"]
+        assert len("".join(e["text"] for e in deltas)) > 0
 
         # Stream ends with done
         done_events = [e for e in events if e["type"] == "done"]

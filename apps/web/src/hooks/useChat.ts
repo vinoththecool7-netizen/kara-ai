@@ -37,6 +37,7 @@ type ChatAction =
   | { type: "ADD_ASSISTANT_MESSAGE"; message: ChatMessage }
   | { type: "APPEND_CONTENT"; text: string }
   | { type: "ADD_TOOL_EVENT"; event: ToolEvent }
+  | { type: "ADD_ADVISORY"; hint: string }
   | { type: "SET_SESSION_ID"; sessionId: string }
   | { type: "SET_STREAMING"; streaming: boolean }
   | { type: "SET_ERROR"; error: string | null }
@@ -114,6 +115,17 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
       messages[idx] = {
         ...messages[idx],
         toolEvents: [...(messages[idx].toolEvents ?? []), action.event],
+      };
+      return { ...state, messages };
+    }
+
+    case "ADD_ADVISORY": {
+      const messages = [...state.messages];
+      const idx = lastAssistantIndex(messages);
+      if (idx === -1) return state;
+      messages[idx] = {
+        ...messages[idx],
+        advisoryHints: [...(messages[idx].advisoryHints ?? []), action.hint],
       };
       return { ...state, messages };
     }
@@ -276,7 +288,7 @@ export interface UseChatReturn {
 
 export function useChat(): UseChatReturn {
   const [state, dispatch] = useReducer(chatReducer, initialState);
-  const { processStream, abort } = useSSE();
+  const { processStream, beginRequest, abort } = useSSE();
 
   // Use a ref to always have the latest sessionId inside async callbacks,
   // without needing to include it in useCallback dependency arrays.
@@ -302,8 +314,8 @@ export function useChat(): UseChatReturn {
 
     if (!text.trim()) return;
 
-    // Cancel any in-flight stream before starting a new one
-    abort();
+    // Cancel any in-flight request/stream and arm the new one's signal
+    const signal = beginRequest();
 
     // 1. Clear any existing error
     dispatch({ type: "SET_ERROR", error: null });
@@ -335,8 +347,8 @@ export function useChat(): UseChatReturn {
       // 5. Call API — use the ref to get the current sessionId at call time
       const currentSessionId = sessionIdRef.current;
       const response = currentSessionId
-        ? await continueChat(currentSessionId, text)
-        : await createChat(text);
+        ? await continueChat(currentSessionId, text, signal)
+        : await createChat(text, signal);
 
       // 6. Process the SSE stream
       await processStream(response, {
@@ -372,7 +384,7 @@ export function useChat(): UseChatReturn {
           dispatch({ type: "SET_CAPITAL_GAINS", gains });
         },
         onAdvisory: (hint) => {
-          console.log("[Advisory]", hint);
+          dispatch({ type: "ADD_ADVISORY", hint });
         },
         onDone: (sessionId, profileState) => {
           dispatch({ type: "SET_DONE", sessionId, profileState });
@@ -383,12 +395,14 @@ export function useChat(): UseChatReturn {
           toast.error(message);
         },
       });
-    } catch {
+    } catch (err) {
+      // A deliberate abort (new message sent while streaming) is not an error
+      if (err instanceof DOMException && err.name === "AbortError") return;
       const message = "Unable to connect. Check your connection and try again.";
       dispatch({ type: "SET_ERROR", error: message });
       toast.error(message);
     }
-  }, [processStream, abort]);
+  }, [processStream, beginRequest]);
 
   // -------------------------------------------------------------------------
   // uploadAndProcess — upload documents and attach results as chat messages

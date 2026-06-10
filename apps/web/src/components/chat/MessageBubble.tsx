@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Copy, Check, AlertCircle, RotateCcw } from "lucide-react";
+import { Copy, Check, AlertCircle, Lightbulb, RotateCcw } from "lucide-react";
 
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -342,6 +342,27 @@ export function MessageBubble({ message, onRetry }: MessageBubbleProps) {
           </ErrorBoundary>
         </div>
       )}
+
+      {/* Advisory hints — proactive tips emitted after tool calls */}
+      {!isUser &&
+        !message.isStreaming &&
+        message.advisoryHints &&
+        message.advisoryHints.length > 0 && (
+          <div className="pl-10 w-full flex flex-col gap-1.5" role="note" aria-label="Tax tips">
+            {message.advisoryHints.map((hint, idx) => (
+              <div
+                key={idx}
+                className="flex items-start gap-2 rounded-lg border border-kara-accent/30 bg-kara-accent/5 px-3 py-2 text-sm text-foreground/90"
+              >
+                <Lightbulb
+                  className="mt-0.5 size-4 shrink-0 text-kara-accent"
+                  aria-hidden="true"
+                />
+                <span>{hint}</span>
+              </div>
+            ))}
+          </div>
+        )}
 
       {/* Timestamp + per-message actions */}
       <div
