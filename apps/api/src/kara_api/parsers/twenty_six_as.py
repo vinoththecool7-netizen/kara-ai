@@ -29,7 +29,6 @@ from __future__ import annotations
 import logging
 import re
 from datetime import date
-from typing import Any
 
 from pydantic import BaseModel
 
@@ -42,7 +41,6 @@ from kara_api.parsers._common import (
     parse_assessment_year,
     parse_date_flexible,
     parse_pan,
-    parse_tan,
     to_paise,
 )
 
@@ -210,7 +208,6 @@ def _parse_part_a(
         col_amount = _find_col(header, ["amount paid", "amount credited", "amount"])
         col_deducted = _find_col(header, ["tax deducted"])
         col_deposited = _find_col(header, ["tax deposited", "deposited"])
-        col_section = _find_col(header, ["section"])
         col_date = _find_col(header, ["date", "transaction date"])
 
         for row in table[1:]:

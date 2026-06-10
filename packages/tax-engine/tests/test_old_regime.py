@@ -12,7 +12,8 @@ Section 87A rebate: ₹12,500 if taxable income ≤ ₹5L (no marginal relief in
 Surcharge: 10% @50L, 15% @1Cr, 25% @2Cr, 37% @5Cr.
 Cess: 4% on (tax + surcharge).
 
-Note: This engine applies cess BEFORE rebate, so rebate = min(tax+cess, ₹12,500).
+Note: The 87A rebate is applied against income-tax BEFORE cess; cess is then
+levied on the post-rebate amount (per the Finance Act computation order).
 """
 
 from __future__ import annotations
@@ -234,8 +235,8 @@ def test_super_senior_higher_exemption_than_below60(computer):
 def test_old_rebate_full_below_5L(computer):
     """Taxable = 450K (well below 5L). Rebate covers everything → tax = 0.
 
-    Slab: 250K@0% + 200K@5% = 10,000. Cess: 400. Total before: 10,400.
-    Rebate = min(10400, 12500) = 10,400. Net: 0.
+    Slab: 250K@0% + 200K@5% = 10,000. Rebate = min(10000, 12500) = 10,000.
+    Cess on post-rebate tax (0) = 0. Net: 0.
     """
     r = computer.compute(gross_salary=500_000, regime="old")
     assert r.taxable_income == 450_000
@@ -245,15 +246,16 @@ def test_old_rebate_full_below_5L(computer):
 
 
 def test_old_rebate_at_5L_boundary(computer):
-    """Taxable = exactly 500K. Slab = 12,500, cess = 500, total = 13,000.
+    """Taxable = exactly 500K. Slab = 12,500, fully rebated (cap 12,500).
 
-    Rebate capped at 12,500. Remaining cess: 500.
+    Cess applies on post-rebate tax (zero) → total payable 0.
     """
     r = computer.compute(gross_salary=550_000, regime="old")
     assert r.taxable_income == 500_000
     assert r.tax_on_normal_income == 12_500
     assert r.rebate_87a == 12_500
-    assert r.total_tax_payable == 500  # cess that leaks past the rebate cap
+    assert r.cess_amount == 0
+    assert r.total_tax_payable == 0
 
 
 def test_old_no_rebate_above_5L(computer):
@@ -448,6 +450,24 @@ def test_old_surcharge_mr_at_5Cr(computer):
     assert r.total_tax_payable == 15_457_000
 
 
+def test_senior_surcharge_mr_uses_senior_slabs(computer):
+    """Senior just above 50L: threshold tax must use the SENIOR slab set.
+
+    Senior, taxable = 50,00,100. Slab tax: 10,000 + 1,00,000 + 30%×40,00,100
+    = 13,10,030. Senior threshold tax at 50L = 13,10,000; excess = 100, so
+    the marginal limit is 13,10,100 → surcharge after relief = 70.
+    Cess: 4% of 13,10,100 = 52,404. Total: 13,62,504.
+
+    (Using below-60 slabs for the threshold would inflate the limit to
+    13,12,600 and overcharge the senior by ~₹2,500.)
+    """
+    r = computer.compute(gross_salary=5_050_100, regime="old", age_category="senior")
+    assert r.taxable_income == 5_000_100
+    assert r.tax_on_normal_income == 1_310_030
+    assert r.surcharge_amount == 70
+    assert r.total_tax_payable == 1_362_504
+
+
 # ---------------------------------------------------------------------------
 # Group I: 37% surcharge — old regime exclusive (2 tests)
 # ---------------------------------------------------------------------------
@@ -561,18 +581,20 @@ def test_age_comparison_at_550K_taxable(computer):
     assert r_below.total_tax_payable > r_senior.total_tax_payable > r_super.total_tax_payable
 
 
-def test_super_senior_natural_zero_vs_below60_cess_leak(computer):
-    """At 5L taxable: super-senior pays zero (natural 0% slab), below-60 leaks ₹500 cess.
+def test_super_senior_natural_zero_vs_below60_rebated_zero(computer):
+    """At 5L taxable both pay zero, but via different mechanisms.
 
     Super-senior: 5L entirely in 0% slab → tax = 0, no rebate needed.
-    Below-60: slab 12,500 + cess 500 = 13,000. Rebate capped at 12,500 → pays ₹500.
+    Below-60: slab 12,500 fully covered by the 87A rebate (cap 12,500);
+    cess applies on the post-rebate tax of zero → total 0.
     """
     r_super = computer.compute(gross_salary=550_000, regime="old", age_category="super_senior")
     r_below = computer.compute(gross_salary=550_000, regime="old", age_category="below_60")
 
     assert r_super.tax_on_normal_income == 0
+    assert r_super.rebate_87a == 0  # nothing to rebate
     assert r_super.total_tax_payable == 0
 
     assert r_below.tax_on_normal_income == 12_500
     assert r_below.rebate_87a == 12_500
-    assert r_below.total_tax_payable == 500  # cess leaks past rebate cap
+    assert r_below.total_tax_payable == 0

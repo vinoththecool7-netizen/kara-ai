@@ -9,7 +9,8 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from kara_api.db.models import Message as DbMessage, Session as DbSession
+from kara_api.db.models import Message as DbMessage
+from kara_api.db.models import Session as DbSession
 
 
 @dataclass

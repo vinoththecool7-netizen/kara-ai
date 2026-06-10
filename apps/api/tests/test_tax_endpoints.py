@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-
 BASE = "/api/v1/tax"
 
 

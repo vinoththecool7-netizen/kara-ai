@@ -16,16 +16,17 @@ from __future__ import annotations
 
 import logging
 import re
+from collections.abc import Callable
 from datetime import date
-from typing import Any, Callable, Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel
 
 from kara_api.parsers._common import (
     BaseParsedDocument,
     ParserWarning,
-    extract_text_pages,
     extract_tables_pages,
+    extract_text_pages,
     normalize_cell,
     parse_assessment_year,
     parse_date_flexible,

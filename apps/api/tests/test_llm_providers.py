@@ -17,8 +17,6 @@ from kara_api.llm.models import (
     LLMResponse,
     Message,
     Role,
-    StreamChunk,
-    TokenUsage,
     ToolCall,
     ToolDefinition,
 )
@@ -29,7 +27,6 @@ from kara_api.llm.providers import (
     OpenAIProvider,
     get_llm_provider,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

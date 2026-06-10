@@ -1,10 +1,11 @@
 """Tests to validate tax_sections.yaml data integrity."""
 import re
 from pathlib import Path
-import yaml
-import pytest
 
-DATA_FILE = Path(__file__).parent.parent / "data" / "tax_sections.yaml"
+import pytest
+import yaml
+
+DATA_FILE = Path(__file__).parent.parent / "src" / "kara_api" / "data" / "tax_sections.yaml"
 
 class TestTaxSectionsData:
     @pytest.fixture(autouse=True)

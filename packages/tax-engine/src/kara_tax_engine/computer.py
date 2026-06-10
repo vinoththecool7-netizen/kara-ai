@@ -122,6 +122,9 @@ class TaxComputer:
                 "section_24b": "section_24b",
             }
             for key, value in deductions.items():
+                if key == "parents_senior":
+                    ded.parents_senior = bool(value)
+                    continue
                 attr = mapping.get(key)
                 if attr and hasattr(ded, attr):
                     setattr(ded, attr, value)
@@ -174,7 +177,8 @@ class TaxComputer:
             result.add_step(f"Net salary: {_fmt(net_salary)}")
 
         gti = net_salary + profile.business_income + profile.other_income
-        # House property income can be negative (loss), but set-off capped at ₹2L against other heads
+        # House property income can be negative (loss); set-off against
+        # other heads is capped at ₹2L.
         hp_income = profile.house_property_income
         if hp_income < 0:
             hp_setoff = max(hp_income, -200000)  # Loss set-off capped at ₹2L
@@ -253,7 +257,7 @@ class TaxComputer:
         # Surcharge threshold uses total income including capital gains
         surcharge_threshold_income = result.taxable_income + result.capital_gains_income
         surcharge = self._compute_surcharge(
-            surcharge_threshold_income, result.total_tax_before_surcharge, regime
+            surcharge_threshold_income, result.total_tax_before_surcharge, regime, age
         )
         result.surcharge_amount = surcharge["amount"]
         result.surcharge_rate = surcharge["rate"]
@@ -267,20 +271,12 @@ class TaxComputer:
                     f"Marginal relief on surcharge: {_fmt(surcharge['marginal_relief'])}"
                 )
 
-        tax_plus_surcharge = result.total_tax_before_surcharge + result.surcharge_amount
-
-        # --- Step 6: Cess ---
-        cess_rate = self.rules.cess_rate
-        cess = math.ceil(tax_plus_surcharge * cess_rate)
-        result.cess_rate = cess_rate
-        result.cess_amount = cess
-        if cess > 0:
-            result.add_step(f"Health & Education Cess @4%: {_fmt(cess)}")
-
-        total_before_rebate = tax_plus_surcharge + cess
-
-        # --- Step 7: Section 87A Rebate ---
-        rebate = self._compute_rebate_87a(result.taxable_income, total_before_rebate, regime)
+        # --- Step 6: Section 87A Rebate (before cess, per Finance Act order) ---
+        # The rebate offsets income-tax on normal (slab-rate) income only;
+        # it is not available against special-rate capital gains tax.
+        rebate = self._compute_rebate_87a(
+            result.taxable_income, result.tax_on_normal_income, regime
+        )
         result.rebate_87a = rebate["rebate"]
         result.marginal_relief_87a = rebate["marginal_relief"]
         if rebate["rebate"] > 0:
@@ -290,8 +286,19 @@ class TaxComputer:
                     f"Marginal relief (87A boundary): {_fmt(rebate['marginal_relief'])}"
                 )
 
+        tax_after_rebate = max(0, result.total_tax_before_surcharge - result.rebate_87a)
+        tax_plus_surcharge = tax_after_rebate + result.surcharge_amount
+
+        # --- Step 7: Cess (on post-rebate tax + surcharge) ---
+        cess_rate = self.rules.cess_rate
+        cess = math.ceil(tax_plus_surcharge * cess_rate)
+        result.cess_rate = cess_rate
+        result.cess_amount = cess
+        if cess > 0:
+            result.add_step(f"Health & Education Cess @4%: {_fmt(cess)}")
+
         # --- Step 8: Net Tax Payable ---
-        result.total_tax_payable = max(0, total_before_rebate - result.rebate_87a)
+        result.total_tax_payable = tax_plus_surcharge + cess
         if result.gross_total_income > 0:
             result.effective_tax_rate = round(
                 result.total_tax_payable / result.gross_total_income * 100, 2
@@ -338,7 +345,9 @@ class TaxComputer:
 
         return breakdown, total_tax
 
-    def _compute_surcharge(self, taxable_income: int, tax: int, regime: str) -> dict[str, Any]:
+    def _compute_surcharge(
+        self, taxable_income: int, tax: int, regime: str, age_category: str = "below_60"
+    ) -> dict[str, Any]:
         tiers = self.rules.get_surcharge_tiers(regime)
         max_rate = self.rules.get_max_surcharge_rate(regime)
 
@@ -358,20 +367,16 @@ class TaxComputer:
 
         surcharge = math.ceil(tax * applicable_rate)
 
-        # Marginal relief: total tax + surcharge should not exceed
-        # income above the threshold + tax at threshold
+        # Marginal relief: (tax + surcharge) should not exceed
+        # (tax on threshold income) + (income exceeding threshold).
+        # Threshold tax must be computed with the taxpayer's own slab set.
         _, tax_at_threshold = self._compute_slab_tax(
             applicable_threshold,
-            self.rules.get_slabs(regime, "below_60"),
+            self.rules.get_slabs(regime, age_category),
         )
         excess_income = taxable_income - applicable_threshold
-        max_surcharge = max(0, excess_income - (tax_at_threshold - tax_at_threshold))
-
-        # Marginal relief: (tax + surcharge) should not exceed
-        # (tax on threshold income) + (income exceeding threshold)
         total_with_surcharge = tax + surcharge
-        total_at_threshold = tax_at_threshold
-        marginal_limit = total_at_threshold + excess_income
+        marginal_limit = tax_at_threshold + excess_income
 
         marginal_relief = 0
         if total_with_surcharge > marginal_limit:
@@ -385,25 +390,24 @@ class TaxComputer:
         }
 
     def _compute_rebate_87a(
-        self, taxable_income: int, total_tax: int, regime: str
+        self, taxable_income: int, tax_on_normal_income: int, regime: str
     ) -> dict[str, Any]:
+        """Section 87A rebate against income-tax on slab-rate income (pre-cess)."""
         rebate_rules = self.rules.get_rebate_87a(regime)
         max_income = rebate_rules["max_taxable_income"]
         max_rebate = rebate_rules["max_rebate"]
 
         if taxable_income <= max_income:
-            # Full rebate — tax becomes zero
-            rebate = min(total_tax, max_rebate) if max_rebate else total_tax
+            # Full rebate — slab tax becomes zero (cess then applies on zero)
+            rebate = min(tax_on_normal_income, max_rebate) if max_rebate else tax_on_normal_income
             return {"rebate": rebate, "marginal_relief": 0}
 
-        # Marginal relief: if income is just above threshold,
-        # tax should not exceed the excess over threshold
+        # Marginal relief (new regime only): income-tax payable must not
+        # exceed the amount by which taxable income exceeds the threshold.
         excess = taxable_income - max_income
-        if regime == "new" and excess <= total_tax:
-            # Under new regime: marginal relief ensures tax <= excess over ₹12L
-            if total_tax > excess:
-                rebate = total_tax - excess
-                return {"rebate": rebate, "marginal_relief": rebate}
+        if regime == "new" and tax_on_normal_income > excess:
+            rebate = tax_on_normal_income - excess
+            return {"rebate": rebate, "marginal_relief": rebate}
 
         return {"rebate": 0, "marginal_relief": 0}
 
@@ -475,8 +479,8 @@ class TaxComputer:
             # Self/family: ₹25K (₹50K if senior)
             self_cap = 50000 if profile.age_category != AgeCategory.BELOW_60 else 25000
             allowed_self = min(ded.section_80d, self_cap)
-            # Parents: additional ₹25K (₹50K if parents are senior)
-            parents_cap = 50000  # Assume senior parents for max; user declares actual
+            # Parents: ₹25K, or ₹50K only when senior parents are declared
+            parents_cap = 50000 if ded.parents_senior else 25000
             allowed_parents = min(ded.section_80d_parents, parents_cap)
             total_80d = allowed_self + allowed_parents
             if total_80d > 0:
@@ -501,14 +505,21 @@ class TaxComputer:
                 )
             )
 
-        # Section 80G — donations (old regime only)
+        # Section 80G — donations (old regime only).
+        # The engine does NOT compute the 50%/100% category split or the
+        # 10%-of-adjusted-GTI qualifying limit; the caller must supply the
+        # final eligible deduction amount, not the raw donation.
         if not is_new and ded.section_80g > 0:
             applied.append(
                 DeductionResult(
                     section="80G",
                     claimed=ded.section_80g,
                     allowed=ded.section_80g,
-                    note="Donations (actual qualifying amount)",
+                    note=(
+                        "Donations — enter the eligible deduction amount; the "
+                        "50%/100% category and 10%-of-AGTI qualifying limit are "
+                        "not auto-computed"
+                    ),
                 )
             )
 

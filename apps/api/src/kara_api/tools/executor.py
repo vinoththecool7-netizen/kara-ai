@@ -3,13 +3,25 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from kara_tax_engine.models import Deductions
 
 from pydantic import BaseModel, ValidationError
 
 from kara_api.llm.models import ToolCall
 
 logger = logging.getLogger(__name__)
+
+# Attached to the output of the simplified (non-rule-engine) tools so the
+# LLM never presents their approximations as authoritative.
+_INDICATIVE_DISCLAIMER = (
+    "Indicative only: this is a simplified lookup, not the full rule engine. "
+    "Verify rates, thresholds, and eligibility against the current Finance "
+    "Act or with a qualified professional before acting."
+)
 
 
 class ToolResult(BaseModel):
@@ -115,7 +127,6 @@ class ToolRegistry:
 
     async def _handle_compute_tax(self, args: dict[str, Any]) -> dict[str, Any]:
         """Build TaxProfile from args and compute tax."""
-        from kara_tax_engine.models import Deductions, TaxProfile
 
         profile = self._build_tax_profile(args)
         result = self._computer.compute_from_profile(profile)
@@ -123,7 +134,6 @@ class ToolRegistry:
 
     async def _handle_compare_regimes(self, args: dict[str, Any]) -> dict[str, Any]:
         """Build TaxProfile and compare both regimes."""
-        from kara_tax_engine.models import TaxProfile
 
         # Comparator computes both regimes internally, so regime value doesn't matter
         profile = self._build_tax_profile(args, default_regime="new")
@@ -203,6 +213,7 @@ class ToolRegistry:
             info["rate"] = 0.20
             info["note"] = "Higher rate (20%) applied due to missing PAN"
 
+        info["disclaimer"] = _INDICATIVE_DISCLAIMER
         return info
 
     async def _handle_calculate_advance_tax(
@@ -220,6 +231,7 @@ class ToolRegistry:
                 "advance_tax_required": False,
                 "net_tax_after_tds": net,
                 "message": "No advance tax required (net tax liability below Rs 10,000)",
+                "disclaimer": _INDICATIVE_DISCLAIMER,
             }
 
         # Parse financial year for due dates
@@ -263,10 +275,17 @@ class ToolRegistry:
             "net_tax_after_tds": net,
             "financial_year": financial_year,
             "installments": installments,
+            "disclaimer": _INDICATIVE_DISCLAIMER,
         }
 
     async def _handle_select_itr_form(self, args: dict[str, Any]) -> dict[str, Any]:
         """Determine the appropriate ITR form (stub)."""
+        decision = self._itr_decision(args)
+        decision["disclaimer"] = _INDICATIVE_DISCLAIMER
+        return decision
+
+    def _itr_decision(self, args: dict[str, Any]) -> dict[str, Any]:
+        """Simplified ITR form decision tree."""
         income_sources = args.get("income_sources", [])
         is_company = args.get("is_company", False)
         is_partnership = args.get("is_partnership", False)
@@ -412,7 +431,7 @@ class ToolRegistry:
         )
         return profile
 
-    def _build_deductions(self, ded_dict: dict[str, int]) -> "Deductions":
+    def _build_deductions(self, ded_dict: dict[str, int]) -> Deductions:
         """Build Deductions from a user-friendly dict (e.g. {"80C": 150000})."""
         from kara_tax_engine.models import Deductions
 
@@ -452,6 +471,9 @@ class ToolRegistry:
 
         ded = Deductions()
         for key, value in ded_dict.items():
+            if key == "parents_senior":
+                ded.parents_senior = bool(value)
+                continue
             attr = mapping.get(key)
             if attr and hasattr(ded, attr):
                 setattr(ded, attr, value)

@@ -3,7 +3,12 @@ from __future__ import annotations
 
 import pytest
 
-from kara_api.agent.loop import AgentError, AgentLoop, AgentResponse, ToolCallRecord, _FALLBACK_MESSAGE
+from kara_api.agent.loop import (
+    _FALLBACK_MESSAGE,
+    AgentError,
+    AgentLoop,
+    AgentResponse,
+)
 from kara_api.agent.profile_builder import ProfileBuilder
 from kara_api.llm.client import LLMClient
 from kara_api.llm.models import (
@@ -15,7 +20,6 @@ from kara_api.llm.models import (
 )
 from kara_api.llm.providers import FakeLLMProvider
 from kara_api.tools.executor import ToolRegistry
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -416,7 +420,7 @@ class TestErrorHandling:
 
             async def stream(self, request):
                 raise RuntimeError("Provider exploded")
-                yield  # noqa: unreachable — makes this an async generator
+                yield  # unreachable — makes this an async generator
 
         client = LLMClient(ExplodingProvider())
         loop = AgentLoop(llm_client=client, tool_registry=registry)

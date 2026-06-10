@@ -11,22 +11,19 @@ from __future__ import annotations
 import json
 import uuid
 from contextlib import asynccontextmanager
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import patch
 
-import pytest
 from httpx import ASGITransport, AsyncClient
 
+from kara_api.agent import ENHANCED_SYSTEM_PROMPT
 from kara_api.agent.loop import AgentLoop
-from kara_api.agent.profile_builder import ProfileBuilder
 from kara_api.llm.client import LLMClient
-from kara_api.llm.models import LLMResponse, Role, ToolCall, TokenUsage
+from kara_api.llm.models import LLMResponse, Role, TokenUsage, ToolCall
 from kara_api.llm.providers import FakeLLMProvider
 from kara_api.tools.executor import ToolRegistry
-from kara_api.agent import ENHANCED_SYSTEM_PROMPT
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -95,7 +92,7 @@ class InMemorySessionManager:
 
     async def create_session(self, profile_data: dict[str, Any] | None = None) -> uuid.UUID:
         session_id = uuid.uuid4()
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         self._sessions[session_id] = InMemorySession(
             id=session_id,
             created_at=now,
@@ -122,7 +119,7 @@ class InMemorySessionManager:
         content: str | None,
         tool_calls: list[dict] | None = None,
     ) -> InMemoryMessage:
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         msg = InMemoryMessage(
             id=self._next_msg_id,
             session_id=session_id,
@@ -147,7 +144,7 @@ class InMemorySessionManager:
         if session is None:
             return False
         session.profile_json = profile_data
-        session.updated_at = datetime.now(tz=timezone.utc)
+        session.updated_at = datetime.now(tz=UTC)
         return True
 
 

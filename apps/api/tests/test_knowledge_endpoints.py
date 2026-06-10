@@ -1,12 +1,13 @@
 """Tests for knowledge base search endpoints."""
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 from httpx import ASGITransport, AsyncClient
 
-from kara_api.main import create_app
-from kara_api.db.connection import get_db_session
 from kara_api.config import get_settings
+from kara_api.db.connection import get_db_session
 from kara_api.knowledge.search import SearchResult
+from kara_api.main import create_app
 
 
 class TestSearchEndpoint:

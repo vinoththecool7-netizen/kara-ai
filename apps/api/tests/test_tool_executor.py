@@ -6,7 +6,7 @@ import json
 import pytest
 
 from kara_api.llm.models import ToolCall
-from kara_api.tools.executor import ToolExecutionError, ToolRegistry, ToolResult
+from kara_api.tools.executor import ToolRegistry
 
 
 @pytest.fixture
@@ -78,6 +78,29 @@ class TestComputeTax:
         data = json.loads(result.content)
         assert data["regime"] == "new"
         assert data["age_category"] == "below_60"
+
+    @pytest.mark.asyncio
+    async def test_execute_compute_tax_parents_senior_flag(self, registry):
+        """parents_senior in the deductions dict raises the 80D parents cap to 50K."""
+        base_args = {
+            "gross_salary": 1500000,
+            "regime": "old",
+            "deductions": {"80D_parents": 50000},
+        }
+        result_default = await registry.execute(_make_tool_call("compute_tax", base_args))
+        data_default = json.loads(result_default.content)
+        entry = next(d for d in data_default["deductions_applied"] if d["section"] == "80D")
+        assert entry["allowed"] == 25000  # conservative cap without the flag
+
+        senior_args = {
+            "gross_salary": 1500000,
+            "regime": "old",
+            "deductions": {"80D_parents": 50000, "parents_senior": True},
+        }
+        result_senior = await registry.execute(_make_tool_call("compute_tax", senior_args))
+        data_senior = json.loads(result_senior.content)
+        entry = next(d for d in data_senior["deductions_applied"] if d["section"] == "80D")
+        assert entry["allowed"] == 50000
 
 
 class TestCompareRegimes:
@@ -161,6 +184,29 @@ class TestSearchTaxLaw:
 # ---------------------------------------------------------------------------
 # Stubs — TDS Rate
 # ---------------------------------------------------------------------------
+
+
+class TestStubDisclaimers:
+    """The three simplified tools must label their output as indicative so the
+    LLM (and the user) never present approximations as authoritative."""
+
+    @pytest.mark.asyncio
+    @pytest.mark.parametrize(
+        ("tool", "args"),
+        [
+            ("get_tds_rate", {"payment_type": "rent"}),
+            ("calculate_advance_tax", {"total_estimated_tax": 200000}),
+            (
+                "select_itr_form",
+                {"income_sources": ["salary"], "total_income": 1200000},
+            ),
+        ],
+    )
+    async def test_stub_output_carries_disclaimer(self, registry, tool, args):
+        result = await registry.execute(_make_tool_call(tool, args))
+        assert result.is_error is False
+        data = json.loads(result.content)
+        assert "indicative" in data.get("disclaimer", "").lower()
 
 
 class TestGetTdsRate:

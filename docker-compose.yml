@@ -38,11 +38,13 @@ services:
       args:
         NEXT_PUBLIC_API_URL: http://localhost:8000
         NEXT_PUBLIC_SITE_URL: http://localhost:3000
+        INTERNAL_API_URL: http://api:8000
     ports:
       - "3000:3000"
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000
       - NEXT_PUBLIC_SITE_URL=http://localhost:3000
+      - INTERNAL_API_URL=http://api:8000
     depends_on:
       api:
         condition: service_healthy

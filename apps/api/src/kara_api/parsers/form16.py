@@ -146,7 +146,8 @@ LABEL_MAP: dict[str, str] = {
     "leave encashment": "sec10_exemptions.leave_encashment",
     "standard deduction": "standard_deduction",
     "professional tax": "professional_tax",
-    "total income": "taxable_income",                # after "tax on total income" and "gross total income"
+    # Matched after "tax on total income" and "gross total income":
+    "total income": "taxable_income",
     "gross salary": "gross_salary",
     "tax payable": "tax_payable",                    # after "net tax payable"
     "surcharge": "surcharge",

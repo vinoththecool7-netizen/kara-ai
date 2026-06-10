@@ -8,12 +8,15 @@ tax sections for a given user query.
 from __future__ import annotations
 
 import asyncio
+import logging
 
 from pydantic import BaseModel
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from kara_api.knowledge.embeddings import EmbeddingProvider
+
+logger = logging.getLogger(__name__)
 
 __all__ = [
     "SearchResult",
@@ -186,9 +189,22 @@ async def hybrid_search(
     """
     fetch_k = min(k * 3, 50)  # over-fetch for better fusion
 
+    async def _semantic_or_empty() -> list[SearchResult]:
+        # Embeddings may be unavailable (no embedding key, provider down,
+        # or sections seeded without vectors). Degrade to keyword-only
+        # search rather than failing the whole query.
+        try:
+            return await semantic_search(query, fetch_k, session, provider)
+        except Exception:
+            logger.warning(
+                "Semantic search unavailable; falling back to keyword-only search",
+                exc_info=True,
+            )
+            return []
+
     # Run semantic and keyword searches concurrently
     semantic_results, keyword_results = await asyncio.gather(
-        semantic_search(query, fetch_k, session, provider),
+        _semantic_or_empty(),
         keyword_search(query, fetch_k, session),
     )
 

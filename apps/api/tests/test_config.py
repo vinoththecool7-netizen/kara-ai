@@ -25,7 +25,8 @@ def test_default_cors_origins():
 
 
 def test_llm_base_url_default():
-    settings = Settings()
+    # _env_file=None isolates the test from any local apps/api/.env
+    settings = Settings(_env_file=None)
     assert settings.LLM_BASE_URL == ""
 
 

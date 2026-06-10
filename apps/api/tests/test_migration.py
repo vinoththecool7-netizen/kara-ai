@@ -24,8 +24,9 @@ def _run_alembic(command: str, database_url: str) -> None:
     """Run an alembic command programmatically."""
     import os
 
-    from alembic import command as alembic_cmd
     from alembic.config import Config
+
+    from alembic import command as alembic_cmd
 
     # Set env var so get_settings() in env.py picks up the test URL
     old_url = os.environ.get("DATABASE_URL")
@@ -210,7 +211,6 @@ class TestMigration:
         await session.commit()
 
         # Duplicate should fail
-        from asyncpg.exceptions import UniqueViolationError
 
         with pytest.raises(Exception):
             await session.execute(

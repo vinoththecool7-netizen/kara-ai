@@ -43,7 +43,7 @@ class AutofillDiff(BaseModel):
 
 
 def _set_slot(
-    builder: "ProfileBuilder",
+    builder: ProfileBuilder,
     diff: AutofillDiff,
     slot_name: str,
     value: Any,
@@ -60,7 +60,7 @@ def _set_slot(
 
 
 def _add_to_slot(
-    builder: "ProfileBuilder",
+    builder: ProfileBuilder,
     diff: AutofillDiff,
     slot_name: str,
     amount: int,
@@ -82,8 +82,8 @@ def _add_to_slot(
 
 
 def apply_form16(
-    builder: "ProfileBuilder",
-    doc: "Form16Document",
+    builder: ProfileBuilder,
+    doc: Form16Document,
 ) -> AutofillDiff:
     """Map Form16Document fields onto *builder* slots.
 
@@ -171,8 +171,8 @@ def apply_form16(
 
 
 def apply_ais(
-    builder: "ProfileBuilder",
-    doc: "AISDocument",
+    builder: ProfileBuilder,
+    doc: AISDocument,
 ) -> AutofillDiff:
     """Map AISDocument fields onto *builder* slots.
 
@@ -239,8 +239,8 @@ def apply_ais(
 
 
 def apply_26as(
-    builder: "ProfileBuilder",
-    doc: "Form26ASDocument",
+    builder: ProfileBuilder,
+    doc: Form26ASDocument,
 ) -> AutofillDiff:
     """Map Form26ASDocument fields onto *builder* slots.
 
@@ -285,7 +285,7 @@ def apply_26as(
 
 
 def _check_tds_reconciliation(
-    builder: "ProfileBuilder",
+    builder: ProfileBuilder,
     diff: AutofillDiff,
 ) -> None:
     """If both tds_form16 and tds_26as are set and differ by > ₹100, warn."""

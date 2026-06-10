@@ -11,7 +11,6 @@ from typing import Any
 
 from kara_api.llm.models import ToolCall, ToolDefinition
 
-
 # ---------------------------------------------------------------------------
 # Internal -> Provider wire format
 # ---------------------------------------------------------------------------

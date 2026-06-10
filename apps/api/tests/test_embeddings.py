@@ -1,11 +1,12 @@
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, patch
 
 from kara_api.config import Settings
 from kara_api.knowledge.embeddings import (
     FakeEmbeddingProvider,
-    OpenAIEmbeddingProvider,
     OllamaEmbeddingProvider,
+    OpenAIEmbeddingProvider,
     get_embedding_provider,
 )
 
@@ -72,16 +73,15 @@ class TestOpenAIEmbeddingProvider:
         provider = OpenAIEmbeddingProvider(api_key="test-key", model="text-embedding-3-small")
 
         # Mock httpx.AsyncClient
-        mock_response = AsyncMock()
-        mock_response.json = AsyncMock(
-            return_value={
-                "data": [
-                    {"index": 0, "embedding": [0.1] * 1536},
-                    {"index": 1, "embedding": [0.2] * 1536},
-                ]
-            }
-        )
-        mock_response.raise_for_status = lambda: None  # Non-async mock
+        # Real httpx Response.json() is synchronous — model that faithfully.
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "data": [
+                {"index": 0, "embedding": [0.1] * 1536},
+                {"index": 1, "embedding": [0.2] * 1536},
+            ]
+        }
+        mock_response.raise_for_status = lambda: None
 
         with patch("kara_api.knowledge.embeddings.httpx.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
@@ -118,11 +118,9 @@ class TestOpenAIEmbeddingProvider:
         """Test that embed_single returns a single embedding."""
         provider = OpenAIEmbeddingProvider(api_key="test-key")
 
-        mock_response = AsyncMock()
-        mock_response.json = AsyncMock(
-            return_value={"data": [{"index": 0, "embedding": [0.5] * 1536}]}
-        )
-        mock_response.raise_for_status = lambda: None  # Non-async mock
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"data": [{"index": 0, "embedding": [0.5] * 1536}]}
+        mock_response.raise_for_status = lambda: None
 
         with patch("kara_api.knowledge.embeddings.httpx.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
@@ -145,9 +143,9 @@ class TestOllamaEmbeddingProvider:
         provider = OllamaEmbeddingProvider()
 
         # Mock successful response with correct dimensions
-        mock_response = AsyncMock()
-        mock_response.json = AsyncMock(return_value={"embedding": [0.1] * 1536})
-        mock_response.raise_for_status = lambda: None  # Non-async mock
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"embedding": [0.1] * 1536}
+        mock_response.raise_for_status = lambda: None
 
         with patch("kara_api.knowledge.embeddings.httpx.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()
@@ -165,9 +163,9 @@ class TestOllamaEmbeddingProvider:
         provider = OllamaEmbeddingProvider()
 
         # Mock response with wrong dimensions
-        mock_response = AsyncMock()
-        mock_response.json = AsyncMock(return_value={"embedding": [0.1] * 768})  # Wrong size
-        mock_response.raise_for_status = lambda: None  # Non-async mock
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"embedding": [0.1] * 768}  # Wrong size
+        mock_response.raise_for_status = lambda: None
 
         with patch("kara_api.knowledge.embeddings.httpx.AsyncClient") as mock_client_class:
             mock_client = AsyncMock()

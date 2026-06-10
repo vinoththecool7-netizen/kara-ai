@@ -85,6 +85,7 @@ class Deductions(BaseModel):
     section_80ccd_2: int = 0  # NPS employer (both regimes)
     section_80d: int = 0  # Health insurance
     section_80d_parents: int = 0  # Parents health insurance
+    parents_senior: bool = False  # Parents aged 60+ (raises 80D parents cap to ₹50K)
     section_80e: int = 0  # Education loan interest
     section_80g: int = 0  # Donations
     section_80tta: int = 0  # Savings interest (₹10K)

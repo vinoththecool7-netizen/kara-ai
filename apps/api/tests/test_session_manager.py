@@ -2,13 +2,10 @@
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import pytest
-
 from kara_api.agent.session import SessionManager, SessionSummaryRow
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -285,7 +282,7 @@ def _make_dated_fake_session(
     updated_at: datetime | None = None,
 ):
     fake = _make_fake_session(session_id=session_id)
-    ts = created_at or datetime(2026, 4, 8, 10, 0, 0, tzinfo=timezone.utc)
+    ts = created_at or datetime(2026, 4, 8, 10, 0, 0, tzinfo=UTC)
     fake.created_at = ts
     fake.updated_at = updated_at or ts
     return fake
@@ -312,11 +309,11 @@ class TestListSessions:
         sid2 = uuid.UUID("22222222-2222-2222-2222-222222222222")
         newer = _make_dated_fake_session(
             session_id=sid1,
-            updated_at=datetime(2026, 4, 8, 12, 0, 0, tzinfo=timezone.utc),
+            updated_at=datetime(2026, 4, 8, 12, 0, 0, tzinfo=UTC),
         )
         older = _make_dated_fake_session(
             session_id=sid2,
-            updated_at=datetime(2026, 4, 7, 12, 0, 0, tzinfo=timezone.utc),
+            updated_at=datetime(2026, 4, 7, 12, 0, 0, tzinfo=UTC),
         )
         mock_db.execute = AsyncMock(
             side_effect=[

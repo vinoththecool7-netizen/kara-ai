@@ -2,7 +2,7 @@
 
 Section 80D — Health insurance premium deduction (old regime only):
   Self/family cap: ₹25,000 (below_60) or ₹50,000 (senior/super_senior).
-  Parents cap: ₹50,000 (code assumes senior parents).
+  Parents cap: ₹25,000, or ₹50,000 when parents_senior=True is declared.
   Combined into a single DeductionResult entry with section="80D".
 
 HRA exemption — Section 10(13A) (old regime only):
@@ -119,8 +119,12 @@ def test_80d_self_50k_super_senior(computer):
 # ---------------------------------------------------------------------------
 
 
-def test_80d_parents_50k(computer):
-    """Parents only, 80D_parents=50000 — allowed=50000."""
+def test_80d_parents_below60_capped_25k(computer):
+    """Parents below 60 (default), 80D_parents=50000 — capped at ₹25K.
+
+    Without an explicit parents_senior declaration the engine must use the
+    conservative ₹25,000 cap, never over-allowing the deduction.
+    """
     r = computer.compute(
         gross_salary=1_000_000,
         regime="old",
@@ -129,15 +133,28 @@ def test_80d_parents_50k(computer):
     entry = next((d for d in r.deductions_applied if d.section == "80D"), None)
     assert entry is not None
     assert entry.claimed == 50_000
-    assert entry.allowed == 50_000
+    assert entry.allowed == 25_000
 
 
-def test_80d_parents_exceeds_cap(computer):
-    """Parents only, 80D_parents=60000 — capped at 50K."""
+def test_80d_parents_senior_50k(computer):
+    """Senior parents declared, 80D_parents=50000 — allowed=50000."""
     r = computer.compute(
         gross_salary=1_000_000,
         regime="old",
-        deductions={"80D_parents": 60_000},
+        deductions={"80D_parents": 50_000, "parents_senior": True},
+    )
+    entry = next((d for d in r.deductions_applied if d.section == "80D"), None)
+    assert entry is not None
+    assert entry.claimed == 50_000
+    assert entry.allowed == 50_000
+
+
+def test_80d_parents_senior_exceeds_cap(computer):
+    """Senior parents, 80D_parents=60000 — capped at 50K."""
+    r = computer.compute(
+        gross_salary=1_000_000,
+        regime="old",
+        deductions={"80D_parents": 60_000, "parents_senior": True},
     )
     entry = next((d for d in r.deductions_applied if d.section == "80D"), None)
     assert entry is not None
@@ -159,11 +176,11 @@ def test_80d_self_plus_parents_below60(computer):
 
 
 def test_80d_self_below60_parents_senior(computer):
-    """Below-60, self=25K + parents=50K — claimed=75K, allowed=75K (25K+50K)."""
+    """Below-60, self=25K + senior parents=50K — claimed=75K, allowed=75K."""
     r = computer.compute(
         gross_salary=1_000_000,
         regime="old",
-        deductions={"80D": 25_000, "80D_parents": 50_000},
+        deductions={"80D": 25_000, "80D_parents": 50_000, "parents_senior": True},
     )
     entry = next((d for d in r.deductions_applied if d.section == "80D"), None)
     assert entry is not None

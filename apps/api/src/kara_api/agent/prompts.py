@@ -510,7 +510,10 @@ applicable.
 - Default regime is the new regime for FY 2025-26 unless the user specifies \
 the old regime.
 - If the user's query is ambiguous, ask a clarifying question rather than \
-guessing.\
+guessing.
+- TDS rates, advance tax schedules, and ITR form suggestions come from \
+simplified lookups and are indicative; relay their disclaimer and advise \
+verification before acting on them.\
 """
 
 

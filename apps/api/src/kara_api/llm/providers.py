@@ -8,7 +8,8 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from typing import AsyncIterator, Protocol
+from collections.abc import AsyncIterator
+from typing import Protocol
 
 import httpx
 
@@ -16,7 +17,6 @@ from kara_api.config import Settings
 from kara_api.llm.models import (
     LLMRequest,
     LLMResponse,
-    Message,
     Role,
     StreamChunk,
     TokenUsage,
