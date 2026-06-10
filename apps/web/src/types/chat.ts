@@ -21,6 +21,13 @@ export interface MessageResponse {
   content: string | null;
   tool_calls: ToolCallRecord[] | null;
   created_at: string;
+  /** Structured card payloads rebuilt server-side from persisted tool results. */
+  cards?: {
+    tax_breakdown?: TaxBreakdown;
+    regime_comparison?: RegimeComparison;
+    deduction_gaps?: OptimizationResult;
+    capital_gains?: CapitalGainsDetail[];
+  } | null;
 }
 
 export interface ProfileState {

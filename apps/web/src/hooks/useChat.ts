@@ -506,6 +506,11 @@ export function useChat(): UseChatReturn {
           role: m.role as "user" | "assistant",
           content: m.content ?? "",
           timestamp: new Date(m.created_at),
+          // Restore rich cards from persisted tool results
+          taxBreakdown: m.cards?.tax_breakdown,
+          regimeComparison: m.cards?.regime_comparison,
+          deductionGaps: m.cards?.deduction_gaps,
+          capitalGains: m.cards?.capital_gains,
         }));
       dispatch({
         type: "LOAD_HISTORY",

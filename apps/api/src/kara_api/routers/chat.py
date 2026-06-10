@@ -28,6 +28,7 @@ from kara_api.agent import (
     AgentResponse,
     ProfileBuilder,
     SessionManager,
+    ToolCallRecord,
 )
 from kara_api.config import Settings, get_settings
 from kara_api.db.connection import get_session_factory
@@ -58,6 +59,10 @@ class MessageResponse(BaseModel):
     content: str | None
     tool_calls: list[dict] | None = None
     created_at: str
+    # Structured card payloads rebuilt from persisted tool results, keyed by
+    # SSE event type (tax_breakdown / regime_comparison / deduction_gaps /
+    # capital_gains) so the UI can restore cards after a reload.
+    cards: dict[str, Any] | None = None
 
 
 class ProfileState(BaseModel):
@@ -155,6 +160,31 @@ def _build_profile_state(profile: ProfileBuilder) -> ProfileState:
     )
 
 
+def _cards_from_tool_calls(tool_calls_json: list[dict] | None) -> dict[str, Any] | None:
+    """Rebuild structured card payloads from persisted tool calls.
+
+    Older rows (persisted before results were stored) simply yield no cards.
+    When a tool was called multiple times in one turn, the last result wins.
+    """
+    if not tool_calls_json:
+        return None
+    cards: dict[str, Any] = {}
+    for tc in tool_calls_json:
+        record = ToolCallRecord(
+            tool_name=tc.get("name", ""),
+            arguments=tc.get("args") or {},
+            result=tc.get("result") or "",
+            is_error=bool(tc.get("is_error", False)),
+        )
+        if not record.result:
+            continue
+        for payload in _card_events(record):
+            event_type = payload["type"]
+            value = next(v for k, v in payload.items() if k != "type")
+            cards[event_type] = value
+    return cards or None
+
+
 def _db_messages_to_response(db_msgs: list[DbMessage]) -> list[MessageResponse]:
     """Convert DB message rows to API response models."""
     return [
@@ -163,6 +193,7 @@ def _db_messages_to_response(db_msgs: list[DbMessage]) -> list[MessageResponse]:
             content=m.content,
             tool_calls=m.tool_calls_json,
             created_at=m.created_at.isoformat() if m.created_at else "",
+            cards=_cards_from_tool_calls(m.tool_calls_json),
         )
         for m in db_msgs
     ]
@@ -273,13 +304,21 @@ async def _sse_generator(
         for hint in advisory.check(tool_names):
             yield _sse({"type": "advisory", "hint": hint})
 
-        # Persist assistant message
+        # Persist assistant message (results included so cards survive reload)
         await session_manager.add_message(
             session_id,
             "assistant",
             result.content,
             (
-                [{"name": r.tool_name, "args": r.arguments} for r in result.tool_calls_made]
+                [
+                    {
+                        "name": r.tool_name,
+                        "args": r.arguments,
+                        "result": r.result,
+                        "is_error": r.is_error,
+                    }
+                    for r in result.tool_calls_made
+                ]
                 or None
             ),
         )
@@ -328,7 +367,15 @@ async def _run_json_response(
         "assistant",
         result.content,
         (
-            [{"name": r.tool_name, "args": r.arguments} for r in result.tool_calls_made]
+            [
+                {
+                    "name": r.tool_name,
+                    "args": r.arguments,
+                    "result": r.result,
+                    "is_error": r.is_error,
+                }
+                for r in result.tool_calls_made
+            ]
             or None
         ),
     )

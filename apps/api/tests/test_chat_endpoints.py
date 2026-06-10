@@ -916,3 +916,83 @@ class TestStreamingRobustness:
         assert len(error_events) == 1
         assert "hunter2" not in error_events[0]["message"]
         assert "RuntimeError" not in error_events[0]["message"]
+
+
+# ---------------------------------------------------------------------------
+# Card restoration on session reload
+# ---------------------------------------------------------------------------
+
+
+class TestSessionCards:
+    """GET /chat/{id} must include structured card payloads derived from
+    persisted tool results so the UI can rebuild cards after a reload."""
+
+    @staticmethod
+    def _breakdown_json() -> str:
+        from kara_tax_engine import TaxComputer
+
+        return TaxComputer("2025-26").compute(gross_salary=1_500_000).model_dump_json()
+
+    async def test_get_session_rebuilds_tax_breakdown_card(
+        self, client, mock_session_manager
+    ):
+        mock_session_manager.get_messages = AsyncMock(
+            return_value=[
+                _FakeDbMessage(role="user", content="tax on 15L?"),
+                _FakeDbMessage(
+                    role="assistant",
+                    content="Here you go.",
+                    tool_calls_json=[
+                        {
+                            "name": "compute_tax",
+                            "args": {"gross_salary": 1_500_000},
+                            "result": self._breakdown_json(),
+                            "is_error": False,
+                        }
+                    ],
+                ),
+            ]
+        )
+
+        resp = await client.get(f"/api/v1/chat/{_SESSION_ID}")
+        assert resp.status_code == 200
+        messages = resp.json()["messages"]
+        assistant = messages[1]
+        assert assistant["cards"] is not None
+        assert assistant["cards"]["tax_breakdown"]["total_tax_payable"] == 97_500
+
+    async def test_get_session_no_cards_for_plain_messages(
+        self, client, mock_session_manager
+    ):
+        mock_session_manager.get_messages = AsyncMock(
+            return_value=[_FakeDbMessage(role="assistant", content="Hi there")]
+        )
+        resp = await client.get(f"/api/v1/chat/{_SESSION_ID}")
+        assert resp.json()["messages"][0]["cards"] is None
+
+    async def test_persisted_tool_calls_include_results(
+        self, client, mock_session_manager, mock_agent_loop
+    ):
+        """The SSE path must store tool results so cards survive a reload."""
+        record = ToolCallRecord(
+            tool_name="compute_tax",
+            arguments={"gross_salary": 1},
+            result='{"x": 1}',
+            is_error=False,
+        )
+        mock_agent_loop.run = AsyncMock(
+            return_value=_make_agent_response(tool_calls=[record])
+        )
+
+        await client.post("/api/v1/chat", json={"message": "Hi"})
+
+        assistant_calls = [
+            c
+            for c in mock_session_manager.add_message.call_args_list
+            if c.args[1] == "assistant"
+        ]
+        assert len(assistant_calls) == 1
+        stored = assistant_calls[0].args[3]
+        assert stored[0]["name"] == "compute_tax"
+        assert stored[0]["result"] == '{"x": 1}'
+        assert stored[0]["is_error"] is False
