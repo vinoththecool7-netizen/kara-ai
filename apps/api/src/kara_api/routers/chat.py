@@ -32,6 +32,8 @@ from kara_api.agent import (
 from kara_api.config import Settings, get_settings
 from kara_api.db.connection import get_session_factory
 from kara_api.db.models import Message as DbMessage
+from kara_api.knowledge.embeddings import get_embedding_provider
+from kara_api.knowledge.search import hybrid_search
 from kara_api.llm.client import LLMClient
 from kara_api.llm.models import Message, Role, ToolCall
 from kara_api.llm.providers import get_llm_provider
@@ -94,10 +96,23 @@ class ChatResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+def _lazy_db_session():
+    """Open an AsyncSession, resolving the factory at call time.
+
+    The engine/session factory only exists after app startup (init_db), so
+    the ToolRegistry gets this thin indirection instead of the factory itself.
+    """
+    return get_session_factory()()
+
+
 def _create_agent_loop(settings: Settings) -> AgentLoop:
     provider = get_llm_provider(settings)
     client = LLMClient(provider, system_prompt=ENHANCED_SYSTEM_PROMPT)
-    registry = ToolRegistry()
+    registry = ToolRegistry(
+        search_fn=hybrid_search,
+        db_session_factory=_lazy_db_session,
+        embedding_provider=get_embedding_provider(settings),
+    )
     return AgentLoop(llm_client=client, tool_registry=registry)
 
 
