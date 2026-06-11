@@ -10,7 +10,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from kara_api.agent.prompts import INTENT_SPECS, Intent
+from kara_api.agent.prompts import ALL_SLOTS, INTENT_SPECS, Intent
+from kara_api.tools.executor import DEDUCTION_KEY_MAP
+
+# Tools whose arguments describe the taxpayer (not one-off lookups);
+# their args are captured into the profile so it accumulates from
+# conversation, not just document uploads.
+_PROFILE_BEARING_TOOLS = {"compute_tax", "compare_regimes", "find_deduction_gaps"}
 
 
 class ProfileBuilder:
@@ -55,6 +61,24 @@ class ProfileBuilder:
     def slot_count(self) -> int:
         """Number of currently filled slots."""
         return len(self._slots)
+
+    def capture_tool_args(self, tool_name: str, arguments: dict[str, Any]) -> None:
+        """Capture taxpayer facts from a profile-bearing tool call's arguments.
+
+        Only known slots are stored; zero/empty values are skipped so the
+        "what Kara knows" view shows meaningful facts, not LLM defaults.
+        """
+        if tool_name not in _PROFILE_BEARING_TOOLS:
+            return
+        for key, value in arguments.items():
+            if key == "deductions" and isinstance(value, dict):
+                for ded_key, ded_value in value.items():
+                    slot = DEDUCTION_KEY_MAP.get(ded_key)
+                    if slot and slot in ALL_SLOTS and ded_value:
+                        self.add_slot(slot, ded_value)
+                continue
+            if key in ALL_SLOTS and value:
+                self.add_slot(key, value)
 
     # ------------------------------------------------------------------
     # Intent readiness

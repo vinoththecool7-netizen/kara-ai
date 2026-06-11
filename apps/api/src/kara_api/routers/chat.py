@@ -528,3 +528,22 @@ async def delete_session(session_id: uuid.UUID):
         raise HTTPException(status_code=404, detail="Session not found")
 
     return {"status": "deleted", "session_id": str(session_id)}
+
+
+@router.delete("/{session_id}/profile")
+async def clear_profile(session_id: uuid.UUID):
+    """Clear everything Kara has learned about the taxpayer in this session."""
+    sm = _create_session_manager()
+
+    db_session = await sm.get_session(session_id)
+    if db_session is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    empty = ProfileBuilder()
+    await sm.update_profile(session_id, empty.to_dict())
+
+    return {
+        "status": "cleared",
+        "session_id": str(session_id),
+        "profile_state": _build_profile_state(empty).model_dump(),
+    }

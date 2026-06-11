@@ -2,7 +2,7 @@
 
 import { useReducer, useRef, useCallback, useEffect } from "react";
 import { useSSE } from "@/hooks/useSSE";
-import { createChat, continueChat, fetchSession, deleteSession, uploadDocument, HttpError } from "@/lib/api";
+import { createChat, continueChat, fetchSession, deleteSession, clearProfile as apiClearProfile, uploadDocument, HttpError } from "@/lib/api";
 import { toast } from "@/hooks/useToast";
 import type {
   CapitalGainsDetail,
@@ -38,6 +38,7 @@ type ChatAction =
   | { type: "APPEND_CONTENT"; text: string }
   | { type: "ADD_TOOL_EVENT"; event: ToolEvent }
   | { type: "ADD_ADVISORY"; hint: string }
+  | { type: "SET_PROFILE_STATE"; profileState: ProfileState | null }
   | { type: "SET_SESSION_ID"; sessionId: string }
   | { type: "SET_STREAMING"; streaming: boolean }
   | { type: "SET_ERROR"; error: string | null }
@@ -246,6 +247,9 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
       return { ...state, messages };
     }
 
+    case "SET_PROFILE_STATE":
+      return { ...state, profileState: action.profileState };
+
     case "SET_LOADING":
       return { ...state, isLoading: action.loading };
 
@@ -280,6 +284,7 @@ export interface UseChatReturn {
   loadSession: (sessionId: string) => Promise<void>;
   dismissError: () => void;
   retryMessage: (id: string) => Promise<void>;
+  clearProfile: () => Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -535,6 +540,22 @@ export function useChat(): UseChatReturn {
   }, []);
 
   // -------------------------------------------------------------------------
+  // clearProfile — forget everything Kara has learned in this session
+  // -------------------------------------------------------------------------
+
+  const clearProfile = useCallback(async (): Promise<void> => {
+    const currentSessionId = sessionIdRef.current;
+    if (!currentSessionId) return;
+    try {
+      const result = await apiClearProfile(currentSessionId);
+      dispatch({ type: "SET_PROFILE_STATE", profileState: result.profile_state });
+      toast.success("Kara's memory of your details has been cleared.");
+    } catch {
+      toast.error("Couldn't clear the profile. Please try again.");
+    }
+  }, []);
+
+  // -------------------------------------------------------------------------
   // dismissError
   // -------------------------------------------------------------------------
 
@@ -587,5 +608,6 @@ export function useChat(): UseChatReturn {
     loadSession,
     dismissError,
     retryMessage,
+    clearProfile,
   };
 }

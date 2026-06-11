@@ -8,7 +8,7 @@
  * response.body as a ReadableStream for streaming events.
  */
 
-import type { SessionResponse, SessionSummary } from "@/types/chat";
+import type { ProfileState, SessionResponse, SessionSummary } from "@/types/chat";
 import { reportNetworkError } from "@/hooks/useOnlineStatus";
 
 const API_PREFIX = "/api/v1/chat";
@@ -173,6 +173,22 @@ export async function deleteSession(sessionId: string): Promise<void> {
   });
 
   await assertOk(response, "deleteSession");
+}
+
+/**
+ * Clear everything Kara has learned about the taxpayer in this session.
+ * Returns the (now empty) profile state.
+ */
+export async function clearProfile(
+  sessionId: string,
+): Promise<{ profile_state: ProfileState }> {
+  const response = await fetch(`${API_PREFIX}/${sessionId}/profile`, {
+    method: "DELETE",
+    headers: buildJsonHeaders(),
+  });
+
+  await assertOk(response, "clearProfile");
+  return response.json() as Promise<{ profile_state: ProfileState }>;
 }
 
 /**

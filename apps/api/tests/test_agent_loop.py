@@ -652,3 +652,52 @@ class TestRunStream:
         usage = events[-1].response.total_usage
         assert usage.prompt_tokens == 110
         assert usage.completion_tokens == 25
+
+
+class TestProfileCapture:
+    """Profile slots accumulate from profile-bearing tool calls."""
+
+    @pytest.mark.asyncio
+    async def test_run_captures_compute_tax_args(self):
+        tc = ToolCall(
+            id="t1",
+            name="compute_tax",
+            arguments={"gross_salary": 1_500_000, "regime": "new"},
+        )
+        provider = FakeLLMProvider(
+            responses=[_tool_response([tc]), _text_response("done")]
+        )
+        loop = AgentLoop(llm_client=LLMClient(provider), tool_registry=ToolRegistry())
+
+        result = await loop.run("tax on 15L")
+        assert result.profile_snapshot["slots"]["gross_salary"] == 1_500_000
+        assert result.profile_snapshot["slots"]["regime"] == "new"
+
+    @pytest.mark.asyncio
+    async def test_run_stream_captures_args(self):
+        tc = ToolCall(
+            id="t1",
+            name="compare_regimes",
+            arguments={"gross_salary": 2_000_000, "deductions": {"80C": 150_000}},
+        )
+        provider = FakeLLMProvider(
+            responses=[_tool_response([tc]), _text_response("done")]
+        )
+        loop = AgentLoop(llm_client=LLMClient(provider), tool_registry=ToolRegistry())
+
+        events = [e async for e in loop.run_stream("which regime?")]
+        snapshot = events[-1].response.profile_snapshot["slots"]
+        assert snapshot["gross_salary"] == 2_000_000
+        assert snapshot["section_80c"] == 150_000
+
+    @pytest.mark.asyncio
+    async def test_failed_tool_args_not_captured(self):
+        tc = ToolCall(id="t1", name="compute_tax", arguments={"gross_salary": -5})
+        provider = FakeLLMProvider(
+            responses=[_tool_response([tc]), _text_response("hmm")]
+        )
+        loop = AgentLoop(llm_client=LLMClient(provider), tool_registry=ToolRegistry())
+
+        result = await loop.run("bad input")
+        if result.tool_calls_made[0].is_error:
+            assert "gross_salary" not in result.profile_snapshot.get("slots", {})

@@ -996,3 +996,23 @@ class TestSessionCards:
         assert stored[0]["name"] == "compute_tax"
         assert stored[0]["result"] == '{"x": 1}'
         assert stored[0]["is_error"] is False
+
+
+# ---------------------------------------------------------------------------
+# Profile clearing
+# ---------------------------------------------------------------------------
+
+
+class TestClearProfile:
+    async def test_clear_profile_resets_slots(self, client, mock_session_manager):
+        resp = await client.delete(f"/api/v1/chat/{_SESSION_ID}/profile")
+        assert resp.status_code == 200
+        assert resp.json()["profile_state"]["slots"] == {}
+        mock_session_manager.update_profile.assert_awaited_once()
+        args = mock_session_manager.update_profile.await_args.args
+        assert args[1] == {"slots": {}}
+
+    async def test_clear_profile_unknown_session_404(self, client, mock_session_manager):
+        mock_session_manager.get_session = AsyncMock(return_value=None)
+        resp = await client.delete(f"/api/v1/chat/{uuid.uuid4()}/profile")
+        assert resp.status_code == 404

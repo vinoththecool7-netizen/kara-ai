@@ -200,6 +200,8 @@ class AgentLoop:
                             is_error=result.is_error,
                         )
                     )
+                    if not result.is_error:
+                        profile.capture_tool_args(tc.name, tc.arguments)
 
                 continue  # loop back for the LLM to process tool results
 
@@ -293,6 +295,8 @@ class AgentLoop:
                         is_error=result.is_error,
                     )
                     tool_call_records.append(record)
+                    if not result.is_error:
+                        profile.capture_tool_args(tc.name, tc.arguments)
                     yield AgentStreamEvent(type="tool_result", record=record)
 
                 continue  # loop back for the LLM to process tool results

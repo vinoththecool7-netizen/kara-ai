@@ -15,6 +15,42 @@ from kara_api.llm.models import ToolCall
 
 logger = logging.getLogger(__name__)
 
+# Canonical mapping of user/LLM-friendly deduction keys to Deductions fields.
+DEDUCTION_KEY_MAP = {
+    "80C": "section_80c",
+    "80c": "section_80c",
+    "section_80c": "section_80c",
+    "80CCC": "section_80ccc",
+    "80CCD1": "section_80ccd_1",
+    "80CCD1B": "section_80ccd_1b",
+    "80CCD(1B)": "section_80ccd_1b",
+    "80ccd_1b": "section_80ccd_1b",
+    "section_80ccd_1b": "section_80ccd_1b",
+    "80CCD2": "section_80ccd_2",
+    "80CCD(2)": "section_80ccd_2",
+    "section_80ccd_2": "section_80ccd_2",
+    "80D": "section_80d",
+    "80d": "section_80d",
+    "section_80d": "section_80d",
+    "80D_parents": "section_80d_parents",
+    "section_80d_parents": "section_80d_parents",
+    "80E": "section_80e",
+    "section_80e": "section_80e",
+    "80G": "section_80g",
+    "section_80g": "section_80g",
+    "80TTA": "section_80tta",
+    "section_80tta": "section_80tta",
+    "80TTB": "section_80ttb",
+    "section_80ttb": "section_80ttb",
+    "80U": "section_80u",
+    "section_80u": "section_80u",
+    "80DD": "section_80dd",
+    "section_80dd": "section_80dd",
+    "24b": "section_24b",
+    "section_24b": "section_24b",
+}
+
+
 
 class ToolResult(BaseModel):
     """Result of executing a tool."""
@@ -371,46 +407,12 @@ class ToolRegistry:
         """Build Deductions from a user-friendly dict (e.g. {"80C": 150000})."""
         from kara_tax_engine.models import Deductions
 
-        mapping = {
-            "80C": "section_80c",
-            "80c": "section_80c",
-            "section_80c": "section_80c",
-            "80CCC": "section_80ccc",
-            "80CCD1": "section_80ccd_1",
-            "80CCD1B": "section_80ccd_1b",
-            "80CCD(1B)": "section_80ccd_1b",
-            "80ccd_1b": "section_80ccd_1b",
-            "section_80ccd_1b": "section_80ccd_1b",
-            "80CCD2": "section_80ccd_2",
-            "80CCD(2)": "section_80ccd_2",
-            "section_80ccd_2": "section_80ccd_2",
-            "80D": "section_80d",
-            "80d": "section_80d",
-            "section_80d": "section_80d",
-            "80D_parents": "section_80d_parents",
-            "section_80d_parents": "section_80d_parents",
-            "80E": "section_80e",
-            "section_80e": "section_80e",
-            "80G": "section_80g",
-            "section_80g": "section_80g",
-            "80TTA": "section_80tta",
-            "section_80tta": "section_80tta",
-            "80TTB": "section_80ttb",
-            "section_80ttb": "section_80ttb",
-            "80U": "section_80u",
-            "section_80u": "section_80u",
-            "80DD": "section_80dd",
-            "section_80dd": "section_80dd",
-            "24b": "section_24b",
-            "section_24b": "section_24b",
-        }
-
         ded = Deductions()
         for key, value in ded_dict.items():
             if key == "parents_senior":
                 ded.parents_senior = bool(value)
                 continue
-            attr = mapping.get(key)
+            attr = DEDUCTION_KEY_MAP.get(key)
             if attr and hasattr(ded, attr):
                 setattr(ded, attr, value)
         return ded
