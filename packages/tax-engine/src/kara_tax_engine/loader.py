@@ -84,3 +84,39 @@ class RuleSet:
 
     def load_capital_gains_rule(self, asset_class: str) -> dict[str, Any]:
         return self._load(f"capital_gains/{asset_class}.yaml")
+
+    def deduction_caps(self) -> dict[str, Any]:
+        """Normalized deduction caps assembled from the deduction YAML files.
+
+        Read on every call (the underlying file loads are cached) so that
+        adding a financial year — or testing a cap change — is purely a
+        data change.
+        """
+        d80c = self.load_deduction_rule("section_80c")
+        d80ccd = self.load_deduction_rule("section_80ccd")
+        d80d = self.load_deduction_rule("section_80d")
+        tta_ttb = self.load_deduction_rule("section_80tta_80ttb")
+        u_dd = self.load_deduction_rule("section_80u_80dd")
+        d24b = self.load_deduction_rule("section_24b")
+        hra = self.load_deduction_rule("hra")
+
+        ccd_1b_cap = next(
+            sub["cap"]
+            for sub in d80ccd["sub_sections"]
+            if sub["section"] == "80CCD(1B)"
+        )
+
+        return {
+            "80c_combined": d80c["combined_cap"],
+            "80ccd_1b": ccd_1b_cap,
+            "80d_self": d80d["limits"]["self_family"],  # keyed by age category
+            "80d_parents": d80d["limits"]["parents"],  # below_60 / senior
+            "80tta": tta_ttb["section_80tta"]["cap"],
+            "80ttb": tta_ttb["section_80ttb"]["cap"],
+            "80u": u_dd["section_80u"]["limits"],  # normal/severe_disability
+            "80dd": u_dd["section_80dd"]["limits"],
+            "24b_self_occupied": d24b["limits"]["self_occupied"]["cap"],
+            "hra_metro_percent": hra["metro_percent"],
+            "hra_non_metro_percent": hra["non_metro_percent"],
+            "hra_basic_offset_percent": hra["basic_offset_percent"],
+        }

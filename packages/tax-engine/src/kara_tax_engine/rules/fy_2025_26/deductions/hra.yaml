@@ -1,0 +1,18 @@
+# HRA exemption — Section 10(13A) read with Rule 2A (FY 2025-26)
+#
+# Exemption = min(
+#   actual HRA received,
+#   metro_percent (or non_metro_percent) x basic salary,
+#   rent paid - basic_offset_percent x basic salary
+# )
+section: "10(13A)"
+title: "House Rent Allowance exemption"
+financial_year: "2025-26"
+regime: old_only
+
+metro_percent: 0.50       # Mumbai, Delhi, Kolkata, Chennai
+non_metro_percent: 0.40
+basic_offset_percent: 0.10  # rent minus 10% of basic
+
+metro_cities: ["Mumbai", "Delhi", "Kolkata", "Chennai"]
+note: "Basic salary means basic + dearness allowance (if it forms part of retirement benefits)."

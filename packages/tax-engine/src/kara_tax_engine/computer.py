@@ -412,10 +412,11 @@ class TaxComputer:
         return {"rebate": 0, "marginal_relief": 0}
 
     def _apply_deductions(self, profile: TaxProfile, result: TaxBreakdown) -> list[DeductionResult]:
-        """Apply deductions respecting caps and regime rules."""
+        """Apply deductions respecting caps and regime rules (caps from YAML)."""
         applied: list[DeductionResult] = []
         regime = profile.regime.value
         ded = profile.deductions
+        caps = self.rules.deduction_caps()
 
         # In new regime, most deductions are NOT allowed
         is_new = regime == "new"
@@ -436,7 +437,7 @@ class TaxComputer:
         # Section 80C + 80CCC + 80CCD(1) — combined cap ₹1,50,000 (old regime only)
         if not is_new:
             combined_80c = ded.section_80c + ded.section_80ccc + ded.section_80ccd_1
-            cap_80c = 150000
+            cap_80c = caps["80c_combined"]
             allowed_80c = min(combined_80c, cap_80c)
             if allowed_80c > 0:
                 applied.append(
@@ -451,13 +452,14 @@ class TaxComputer:
 
         # Section 80CCD(1B) — additional ₹50,000 NPS (old regime only)
         if not is_new and ded.section_80ccd_1b > 0:
-            allowed = min(ded.section_80ccd_1b, 50000)
+            cap_1b = caps["80ccd_1b"]
+            allowed = min(ded.section_80ccd_1b, cap_1b)
             applied.append(
                 DeductionResult(
                     section="80CCD(1B)",
                     claimed=ded.section_80ccd_1b,
                     allowed=allowed,
-                    cap=50000,
+                    cap=cap_1b,
                     note="Additional NPS deduction (old regime only)",
                 )
             )
@@ -476,11 +478,11 @@ class TaxComputer:
 
         # Section 80D — health insurance (old regime only)
         if not is_new and (ded.section_80d > 0 or ded.section_80d_parents > 0):
-            # Self/family: ₹25K (₹50K if senior)
-            self_cap = 50000 if profile.age_category != AgeCategory.BELOW_60 else 25000
+            # Self/family cap depends on the taxpayer's age category
+            self_cap = caps["80d_self"][profile.age_category.value]
             allowed_self = min(ded.section_80d, self_cap)
-            # Parents: ₹25K, or ₹50K only when senior parents are declared
-            parents_cap = 50000 if ded.parents_senior else 25000
+            # Parents: higher cap only when senior parents are declared
+            parents_cap = caps["80d_parents"]["senior" if ded.parents_senior else "below_60"]
             allowed_parents = min(ded.section_80d_parents, parents_cap)
             total_80d = allowed_self + allowed_parents
             if total_80d > 0:
@@ -527,32 +529,36 @@ class TaxComputer:
         if not is_new:
             if profile.age_category in (AgeCategory.SENIOR, AgeCategory.SUPER_SENIOR):
                 if ded.section_80ttb > 0:
-                    allowed = min(ded.section_80ttb, 50000)
+                    cap_ttb = caps["80ttb"]
+                    allowed = min(ded.section_80ttb, cap_ttb)
                     applied.append(
                         DeductionResult(
                             section="80TTB",
                             claimed=ded.section_80ttb,
                             allowed=allowed,
-                            cap=50000,
+                            cap=cap_ttb,
                             note="Senior citizen savings interest",
                         )
                     )
             else:
                 if ded.section_80tta > 0:
-                    allowed = min(ded.section_80tta, 10000)
+                    cap_tta = caps["80tta"]
+                    allowed = min(ded.section_80tta, cap_tta)
                     applied.append(
                         DeductionResult(
                             section="80TTA",
                             claimed=ded.section_80tta,
                             allowed=allowed,
-                            cap=10000,
+                            cap=cap_tta,
                             note="Savings account interest",
                         )
                     )
 
         # Section 80U — disability (old regime only)
         if not is_new and ded.section_80u > 0:
-            cap = 125000 if ded.section_80u >= 125000 else 75000
+            severe = caps["80u"]["severe_disability"]
+            normal = caps["80u"]["normal_disability"]
+            cap = severe if ded.section_80u >= severe else normal
             allowed = min(ded.section_80u, cap)
             applied.append(
                 DeductionResult(
@@ -566,7 +572,9 @@ class TaxComputer:
 
         # Section 80DD — dependent disability (old regime only)
         if not is_new and ded.section_80dd > 0:
-            cap = 125000 if ded.section_80dd >= 125000 else 75000
+            severe = caps["80dd"]["severe_disability"]
+            normal = caps["80dd"]["normal_disability"]
+            cap = severe if ded.section_80dd >= severe else normal
             allowed = min(ded.section_80dd, cap)
             applied.append(
                 DeductionResult(
@@ -580,7 +588,7 @@ class TaxComputer:
 
         # Section 24(b) — home loan interest (old regime only for deduction)
         if not is_new and ded.section_24b > 0:
-            cap_24b = 200000  # Self-occupied
+            cap_24b = caps["24b_self_occupied"]  # Self-occupied
             allowed = min(ded.section_24b, cap_24b)
             applied.append(
                 DeductionResult(
@@ -595,19 +603,22 @@ class TaxComputer:
         return applied
 
     def _compute_hra_exemption(self, hra: HRADetails) -> int:
-        """Compute HRA exemption under Section 10(13A) + Rule 2A."""
+        """Compute HRA exemption under Section 10(13A) + Rule 2A (YAML-driven)."""
         if hra.hra_received <= 0 or hra.rent_paid <= 0:
             return 0
 
+        caps = self.rules.deduction_caps()
         basic = hra.basic_salary
-        metro_pct = 0.50 if hra.is_metro else 0.40
+        metro_pct = (
+            caps["hra_metro_percent"] if hra.is_metro else caps["hra_non_metro_percent"]
+        )
 
         # Exemption = min of:
         # 1. Actual HRA received
-        # 2. 50%/40% of basic (metro/non-metro)
-        # 3. Rent paid - 10% of basic
+        # 2. metro/non-metro percent of basic
+        # 3. Rent paid minus the basic-offset percent of basic
         option1 = hra.hra_received
         option2 = math.floor(basic * metro_pct)
-        option3 = max(0, hra.rent_paid - math.floor(basic * 0.10))
+        option3 = max(0, hra.rent_paid - math.floor(basic * caps["hra_basic_offset_percent"]))
 
         return min(option1, option2, option3)
