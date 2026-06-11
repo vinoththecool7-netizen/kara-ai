@@ -164,7 +164,7 @@ class TestApplyForm16:
         builder = ProfileBuilder()
         doc = _make_form16(employee_pan="ABCDE1234F", employer_tan="AABC12345D")
         apply_form16(builder, doc)
-        assert builder.get_slot("pan") == "ABCDE1234F"
+        assert builder.get_slot("pan") == "XXXXXX234F"  # masked — never stored raw
         assert builder.get_slot("employer_tan") == "AABC12345D"
 
     def test_sets_tds_form16(self):
@@ -277,7 +277,7 @@ class TestApplyAIS:
         builder = ProfileBuilder()
         doc = _make_ais()
         apply_ais(builder, doc)
-        assert builder.get_slot("pan") == "ABCDE1234F"
+        assert builder.get_slot("pan") == "XXXXXX234F"  # masked — never stored raw
 
     def test_no_change_when_all_zero(self):
         builder = ProfileBuilder()
@@ -315,7 +315,7 @@ class TestApply26AS:
         builder = ProfileBuilder()
         doc = _make_26as(tds_salary_paise=60_000_00)
         apply_26as(builder, doc)
-        assert builder.get_slot("pan") == "ABCDE1234F"
+        assert builder.get_slot("pan") == "XXXXXX234F"  # masked — never stored raw
 
     def test_zero_tds_not_stored(self):
         builder = ProfileBuilder()
@@ -378,3 +378,21 @@ class TestConflictPolicy:
         assert isinstance(diff.slots_added, dict)
         assert isinstance(diff.slots_overridden, dict)
         assert isinstance(diff.warnings, list)
+
+
+class TestPanIsMasked:
+    """PAN must never be stored or returned unmasked (system prompt promise)."""
+
+    def test_form16_pan_slot_is_masked(self):
+        from kara_api.agent.profile_builder import ProfileBuilder
+        from kara_api.parsers import parse_form16
+        from tests.fixtures.form16_factory import make_form16_standard
+
+        doc = parse_form16(make_form16_standard())
+        assert doc.part_a.employee_pan  # parser still extracts the real one
+        builder = ProfileBuilder()
+        apply_form16(builder, doc)
+        stored = builder.get_slot("pan")
+        if stored is not None:
+            assert "X" in stored
+            assert stored != doc.part_a.employee_pan

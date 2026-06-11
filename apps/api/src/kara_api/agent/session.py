@@ -3,10 +3,10 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from kara_api.db.models import Message as DbMessage
@@ -97,6 +97,19 @@ class SessionManager:
             session.profile_json = profile_data
             await db.commit()
             return True
+
+    async def delete_sessions_older_than(self, days: int) -> int:
+        """Delete sessions (and their messages, via FK cascade) not updated
+        in the last *days* days. Returns the number of sessions removed."""
+        if days <= 0:
+            raise ValueError("days must be positive; use SESSION_TTL_DAYS=0 to disable")
+        cutoff = datetime.now(tz=UTC) - timedelta(days=days)
+        async with self._factory() as db:
+            result = await db.execute(
+                delete(DbSession).where(DbSession.updated_at < cutoff)
+            )
+            await db.commit()
+            return result.rowcount or 0
 
     async def list_sessions(self) -> list[SessionSummaryRow]:
         """Return a summary of every session, newest first.

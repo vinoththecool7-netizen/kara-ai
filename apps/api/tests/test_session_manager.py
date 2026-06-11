@@ -428,3 +428,27 @@ class TestListSessions:
         assert result[0].id == str(sid)
         assert result[0].created_at == sess.created_at
         assert result[0].updated_at == sess.updated_at
+
+
+class TestDeleteSessionsOlderThan:
+    async def test_deletes_and_returns_rowcount(self):
+        mock_factory, mock_db = _make_mock_factory()
+        result = MagicMock()
+        result.rowcount = 7
+        mock_db.execute = AsyncMock(return_value=result)
+
+        mgr = SessionManager(mock_factory)
+        deleted = await mgr.delete_sessions_older_than(30)
+
+        assert deleted == 7
+        mock_db.execute.assert_awaited_once()
+        mock_db.commit.assert_awaited_once()
+
+    async def test_zero_days_is_rejected(self):
+        mock_factory, _ = _make_mock_factory()
+        mgr = SessionManager(mock_factory)
+        try:
+            await mgr.delete_sessions_older_than(0)
+            raise AssertionError("expected ValueError")
+        except ValueError:
+            pass

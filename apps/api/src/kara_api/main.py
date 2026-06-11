@@ -22,6 +22,28 @@ from kara_api.routers import chat_router, documents_router, knowledge_router, ta
 logger = logging.getLogger(__name__)
 
 
+async def _cleanup_expired_sessions_once(ttl_days: int) -> None:
+    """Delete sessions past their TTL; failures are logged, never fatal."""
+    from kara_api.agent.session import SessionManager
+    from kara_api.db.connection import get_session_factory
+
+    try:
+        deleted = await SessionManager(get_session_factory()).delete_sessions_older_than(
+            ttl_days
+        )
+        if deleted:
+            logger.info("Session TTL cleanup: removed %d expired sessions", deleted)
+    except Exception:
+        logger.exception("Session TTL cleanup failed")
+
+
+async def _session_cleanup_loop(ttl_days: int) -> None:
+    """Run TTL cleanup once a day for the lifetime of the app."""
+    while True:
+        await _cleanup_expired_sessions_once(ttl_days)
+        await asyncio.sleep(24 * 60 * 60)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Startup
@@ -34,8 +56,18 @@ async def lifespan(app: FastAPI):
         # The app is still useful without the knowledge base (tax computation,
         # chat); log and continue rather than failing startup.
         logger.exception("Knowledge base seeding failed; continuing without it")
+
+    cleanup_task: asyncio.Task | None = None
+    if settings.SESSION_TTL_DAYS > 0:
+        cleanup_task = asyncio.create_task(
+            _session_cleanup_loop(settings.SESSION_TTL_DAYS)
+        )
+
     yield
+
     # Shutdown
+    if cleanup_task is not None:
+        cleanup_task.cancel()
     await close_db()
 
 

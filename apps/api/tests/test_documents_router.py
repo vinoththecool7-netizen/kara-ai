@@ -163,7 +163,7 @@ class TestUploadDocumentHappyPath:
 
         summary = data["parsed_summary"]
         assert summary["document_type"] == "form16"
-        assert summary["pan"] == "ABCDE1234F"
+        assert summary["pan"] == "XXXXXX234F"  # masked — never returned raw
         assert summary["employer_name"] == "Acme Corp"
         assert summary["key_amounts"]["gross_salary"] == 1_200_000
         assert summary["key_amounts"]["total_tds"] == 60_000
@@ -408,3 +408,26 @@ class TestUploadDocumentProfileUpdate:
         assert updated_slots["age_category"] == "below_60"
         # New slots from Form 16 should be added
         assert updated_slots["gross_salary"] == 1_200_000
+
+
+class TestUploadPanMasked:
+    async def test_upload_response_masks_pan(self, client):
+        fake_doc = _mock_parse_form16(gross_salary=1_000_000)
+        session_id = str(uuid.uuid4())
+        sm = _mock_session_manager(session_found=True)
+
+        with (
+            patch("kara_api.routers.documents.parse_form16", return_value=fake_doc),
+            patch("kara_api.routers.documents._create_session_manager", return_value=sm),
+        ):
+            resp = await client.post(
+                "/api/v1/documents/upload",
+                data={"session_id": session_id, "document_type": "form16"},
+                files={"file": ("form16.pdf", b"%PDF-1.4 fake", "application/pdf")},
+            )
+
+        assert resp.status_code == 200
+        pan = resp.json()["parsed_summary"]["pan"]
+        if pan is not None:
+            assert "X" in pan
+            assert pan != fake_doc.part_a.employee_pan

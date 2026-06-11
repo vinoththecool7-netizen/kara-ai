@@ -157,3 +157,13 @@ class TestRateLimitInstalled:
         _, app = bare_client
         names = [m.cls.__name__ for m in app.user_middleware]
         assert "RateLimitMiddleware" in names
+
+
+class TestPanMasking:
+    def test_mask_pan_shows_last_four_only(self):
+        from kara_api.privacy import mask_pan
+
+        assert mask_pan("ABCPE1234F") == "XXXXXX234F"
+        assert mask_pan(None) is None
+        assert mask_pan("") == ""
+        assert mask_pan("AB") == "XX"
