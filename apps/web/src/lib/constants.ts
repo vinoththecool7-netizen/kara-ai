@@ -1,4 +1,4 @@
-export const GITHUB_URL = "https://github.com/kara-project/kara"
+export const GITHUB_URL = "https://github.com/vinoththecool7-netizen/kara-ai"
 
 export const SITE_URL =
   process.env.NEXT_PUBLIC_SITE_URL ?? "https://kara.example"
