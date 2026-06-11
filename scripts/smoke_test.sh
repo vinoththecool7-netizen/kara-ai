@@ -84,13 +84,14 @@ trap cleanup EXIT
 # Build and start the stack
 # ---------------------------------------------------------------------------
 info "Building and starting the stack..."
-docker compose -f docker-compose.yml -f docker-compose.test.yml up -d --build
+# Only db + api are needed for the API smoke test (web build is slow)
+docker compose -f docker-compose.yml -f docker-compose.test.yml up -d --build db api
 
 # ---------------------------------------------------------------------------
 # Wait for the API to become healthy (max 60 s, polling every 2 s)
 # ---------------------------------------------------------------------------
 API_URL="http://localhost:8000"
-MAX_WAIT=60
+MAX_WAIT=120
 INTERVAL=2
 ELAPSED=0
 

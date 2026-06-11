@@ -14,6 +14,8 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel
 
+from kara_api.privacy import mask_pan, sanitize_text
+
 if TYPE_CHECKING:
     from kara_api.agent.profile_builder import ProfileBuilder
     from kara_api.parsers.ais import AISDocument
@@ -106,11 +108,11 @@ def apply_form16(
 
     # employee_pan → metadata
     if part_a.employee_pan and part_a.employee_pan != "UNKNOWN0000X":
-        _set_slot(builder, diff, "pan", part_a.employee_pan)
+        _set_slot(builder, diff, "pan", mask_pan(part_a.employee_pan))
 
     # employer_name → metadata
     if part_a.employer_name and part_a.employer_name != "Unknown Employer":
-        _set_slot(builder, diff, "employer_name", part_a.employer_name)
+        _set_slot(builder, diff, "employer_name", sanitize_text(part_a.employer_name))
 
     # total_tds_deposited → internal tds_form16 (rupees from Form 16)
     if part_a.total_tds_deposited:
@@ -187,7 +189,7 @@ def apply_ais(
 
     # --- PAN ---
     if doc.pan:
-        _set_slot(builder, diff, "pan", doc.pan)
+        _set_slot(builder, diff, "pan", mask_pan(doc.pan))
 
     # --- Interest (savings + FD) → other_income (rupees) ---
     total_interest_paise = sum(e.amount for e in doc.interest_savings) + sum(
@@ -255,7 +257,7 @@ def apply_26as(
 
     # --- PAN ---
     if doc.pan:
-        _set_slot(builder, diff, "pan", doc.pan)
+        _set_slot(builder, diff, "pan", mask_pan(doc.pan))
 
     # --- TDS on salary → tds_26as (rupees) ---
     total_tds_salary_paise = doc.totals.total_tds_salary

@@ -27,6 +27,7 @@ from kara_api.parsers import (
     parse_form16,
     parse_form_26as,
 )
+from kara_api.privacy import mask_pan, sanitize_text
 
 logger = logging.getLogger(__name__)
 
@@ -230,8 +231,8 @@ def _build_summary(
     return ParsedDocumentSummary(
         document_id=document_id,
         document_type=doc_type,
-        pan=pan,
-        employer_name=employer_name,
+        pan=mask_pan(pan),
+        employer_name=sanitize_text(employer_name),
         period=period,
         key_amounts=key_amounts,
         fields_filled=fields_filled,
