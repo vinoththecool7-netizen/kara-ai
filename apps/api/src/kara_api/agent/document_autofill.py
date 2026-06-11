@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel
 
-from kara_api.privacy import mask_pan
+from kara_api.privacy import mask_pan, sanitize_text
 
 if TYPE_CHECKING:
     from kara_api.agent.profile_builder import ProfileBuilder
@@ -112,7 +112,7 @@ def apply_form16(
 
     # employer_name → metadata
     if part_a.employer_name and part_a.employer_name != "Unknown Employer":
-        _set_slot(builder, diff, "employer_name", part_a.employer_name)
+        _set_slot(builder, diff, "employer_name", sanitize_text(part_a.employer_name))
 
     # total_tds_deposited → internal tds_form16 (rupees from Form 16)
     if part_a.total_tds_deposited:
