@@ -440,8 +440,8 @@ class TestSingleTurnIntegration:
     # Test 6: get_tds_rate stub
     # ------------------------------------------------------------------
 
-    async def test_stub_tools_tds_rate(self):
-        """get_tds_rate stub returns section and rate information."""
+    async def test_tds_rate_tool(self):
+        """get_tds_rate returns section and rate information from the rate table."""
         fake = FakeLLMProvider(
             responses=[
                 _fake_response(
@@ -477,8 +477,8 @@ class TestSingleTurnIntegration:
     # Test 7: calculate_advance_tax stub
     # ------------------------------------------------------------------
 
-    async def test_stub_tools_advance_tax(self):
-        """calculate_advance_tax stub returns installment schedule."""
+    async def test_advance_tax_tool(self):
+        """calculate_advance_tax returns the s.211 installment schedule."""
         fake = FakeLLMProvider(
             responses=[
                 _fake_response(
@@ -508,14 +508,14 @@ class TestSingleTurnIntegration:
         assert tool_events[0]["is_error"] is False
 
         result_data = json.loads(tool_events[0]["result"])
-        assert result_data["advance_tax_required"] is True
+        assert result_data["required"] is True
         assert "installments" in result_data
         assert len(result_data["installments"]) == 4
         # Verify Q1 installment structure
         q1 = result_data["installments"][0]
         assert q1["quarter"] == "Q1"
-        assert "due_date" in q1
-        assert "amount" in q1
+        assert q1["due_date"] == "2025-06-15"
+        assert q1["amount_due"] == 30000  # 15% of 200K
 
     # ------------------------------------------------------------------
     # Test 8: unknown tool → error in tool_result, then content

@@ -186,190 +186,231 @@ class TestSearchTaxLaw:
 # ---------------------------------------------------------------------------
 
 
-class TestStubDisclaimers:
-    """The three simplified tools must label their output as indicative so the
-    LLM (and the user) never present approximations as authoritative."""
-
-    @pytest.mark.asyncio
-    @pytest.mark.parametrize(
-        ("tool", "args"),
-        [
-            ("get_tds_rate", {"payment_type": "rent"}),
-            ("calculate_advance_tax", {"total_estimated_tax": 200000}),
-            (
-                "select_itr_form",
-                {"income_sources": ["salary"], "total_income": 1200000},
-            ),
-        ],
-    )
-    async def test_stub_output_carries_disclaimer(self, registry, tool, args):
-        result = await registry.execute(_make_tool_call(tool, args))
-        assert result.is_error is False
-        data = json.loads(result.content)
-        assert "indicative" in data.get("disclaimer", "").lower()
-
-
 class TestGetTdsRate:
+    """get_tds_rate is backed by the FY 2025-26 YAML rate table."""
+
     @pytest.mark.asyncio
-    async def test_execute_get_tds_rate_salary(self, registry):
+    async def test_salary_is_slab(self, registry):
         tc = _make_tool_call("get_tds_rate", {"payment_type": "salary"})
         result = await registry.execute(tc)
         assert result.is_error is False
         data = json.loads(result.content)
         assert data["section"] == "192"
-        assert data["rate"] == "as per slab"
+        assert data["rate"] is None
+        assert data["rate_description"] == "as per slab"
 
     @pytest.mark.asyncio
-    async def test_execute_get_tds_rate_interest(self, registry):
+    async def test_bank_interest_fa2025_threshold(self, registry):
         tc = _make_tool_call(
             "get_tds_rate", {"payment_type": "interest", "amount": 100000}
         )
         result = await registry.execute(tc)
-        assert result.is_error is False
         data = json.loads(result.content)
         assert data["section"] == "194A"
         assert data["rate"] == 0.10
-        assert data["threshold"] == 40000
+        assert data["threshold"] == 50000  # FA 2025 (was 40K)
+        assert data["applicable"] is True
+        assert data["tds_amount"] == 10000
 
     @pytest.mark.asyncio
-    async def test_execute_get_tds_rate_no_pan(self, registry):
+    async def test_senior_threshold(self, registry):
         tc = _make_tool_call(
             "get_tds_rate",
-            {"payment_type": "interest", "has_pan": False},
+            {"payment_type": "interest", "amount": 80000, "is_senior": True},
         )
-        result = await registry.execute(tc)
-        assert result.is_error is False
-        data = json.loads(result.content)
-        assert data["rate"] == 0.20
-        assert "note" in data
-        assert "20%" in data["note"]
+        data = json.loads((await registry.execute(tc)).content)
+        assert data["threshold"] == 100000
+        assert data["applicable"] is False
 
     @pytest.mark.asyncio
-    async def test_execute_get_tds_rate_unknown_type(self, registry):
-        tc = _make_tool_call("get_tds_rate", {"payment_type": "crypto_payment"})
+    async def test_no_pan(self, registry):
+        tc = _make_tool_call(
+            "get_tds_rate", {"payment_type": "interest", "has_pan": False}
+        )
+        data = json.loads((await registry.execute(tc)).content)
+        assert data["rate"] == 0.20
+        assert "PAN" in data["note"]
+
+    @pytest.mark.asyncio
+    async def test_commission_rate_cut(self, registry):
+        tc = _make_tool_call("get_tds_rate", {"payment_type": "commission"})
+        data = json.loads((await registry.execute(tc)).content)
+        assert data["rate"] == 0.02  # cut from 5% effective Oct 2024
+
+    @pytest.mark.asyncio
+    async def test_unknown_type_is_error_listing_known_types(self, registry):
+        tc = _make_tool_call("get_tds_rate", {"payment_type": "bribes"})
         result = await registry.execute(tc)
-        assert result.is_error is False
-        data = json.loads(result.content)
-        assert "error" in data
-        assert "known_types" in data
-        assert "salary" in data["known_types"]
-        assert "rent" in data["known_types"]
+        assert result.is_error is True
+        assert "professional_fees" in result.content
 
 
 # ---------------------------------------------------------------------------
-# Stubs — Advance Tax
+# Advance Tax (real scheduler)
 # ---------------------------------------------------------------------------
 
 
 class TestCalculateAdvanceTax:
     @pytest.mark.asyncio
-    async def test_execute_advance_tax_basic(self, registry):
+    async def test_quarterly_schedule(self, registry):
         tc = _make_tool_call(
             "calculate_advance_tax", {"total_estimated_tax": 200000}
         )
         result = await registry.execute(tc)
         assert result.is_error is False
         data = json.loads(result.content)
-        assert data["advance_tax_required"] is True
-        assert len(data["installments"]) == 4
-        # Check installment percentages
-        pcts = [inst["percentage"] for inst in data["installments"]]
-        assert pcts == [15, 30, 30, 25]
-        # Check quarter labels
-        quarters = [inst["quarter"] for inst in data["installments"]]
-        assert quarters == ["Q1", "Q2", "Q3", "Q4"]
+        assert data["required"] is True
+        assert [i["cumulative_pct"] for i in data["installments"]] == [15, 45, 75, 100]
+        assert [i["quarter"] for i in data["installments"]] == ["Q1", "Q2", "Q3", "Q4"]
+        assert data["installments"][0]["due_date"] == "2025-06-15"
 
     @pytest.mark.asyncio
-    async def test_execute_advance_tax_below_10k(self, registry):
-        tc = _make_tool_call(
-            "calculate_advance_tax", {"total_estimated_tax": 8000}
-        )
-        result = await registry.execute(tc)
-        assert result.is_error is False
-        data = json.loads(result.content)
-        assert data["advance_tax_required"] is False
-        assert "No advance tax" in data["message"]
+    async def test_below_10k_not_required(self, registry):
+        tc = _make_tool_call("calculate_advance_tax", {"total_estimated_tax": 8000})
+        data = json.loads((await registry.execute(tc)).content)
+        assert data["required"] is False
+        assert "10,000" in data["reason"]
 
     @pytest.mark.asyncio
-    async def test_execute_advance_tax_with_tds_offset(self, registry):
+    async def test_tds_offset(self, registry):
         tc = _make_tool_call(
             "calculate_advance_tax",
             {"total_estimated_tax": 300000, "tds_already_deducted": 250000},
         )
-        result = await registry.execute(tc)
-        assert result.is_error is False
-        data = json.loads(result.content)
-        assert data["net_tax_after_tds"] == 50000
-        assert data["advance_tax_required"] is True
-        # Total of installment amounts should equal net
-        total_installments = sum(inst["amount"] for inst in data["installments"])
-        # Allow small rounding difference (floor of percentages)
-        assert abs(total_installments - 50000) <= 4
+        data = json.loads((await registry.execute(tc)).content)
+        assert data["net_liability"] == 50000
+        assert sum(i["amount_due"] for i in data["installments"]) == 50000
+
+    @pytest.mark.asyncio
+    async def test_presumptive_single_installment(self, registry):
+        tc = _make_tool_call(
+            "calculate_advance_tax",
+            {"total_estimated_tax": 100000, "is_presumptive": True},
+        )
+        data = json.loads((await registry.execute(tc)).content)
+        assert len(data["installments"]) == 1
+        assert data["installments"][0]["due_date"] == "2026-03-15"
+
+    @pytest.mark.asyncio
+    async def test_senior_exemption(self, registry):
+        tc = _make_tool_call(
+            "calculate_advance_tax",
+            {"total_estimated_tax": 500000, "is_senior_without_business": True},
+        )
+        data = json.loads((await registry.execute(tc)).content)
+        assert data["required"] is False
+        assert "senior" in data["reason"].lower()
 
 
 # ---------------------------------------------------------------------------
-# Stubs — ITR Form
+# Interest 234A/B/C (new tool)
 # ---------------------------------------------------------------------------
 
 
-class TestSelectItrForm:
+class TestCalculateInterest234:
     @pytest.mark.asyncio
-    async def test_execute_select_itr_form_salary(self, registry):
+    async def test_234b_and_234c_for_unpaid_advance_tax(self, registry):
         tc = _make_tool_call(
-            "select_itr_form",
-            {"income_sources": ["salary"], "total_income": 1200000},
-        )
-        result = await registry.execute(tc)
-        assert result.is_error is False
-        data = json.loads(result.content)
-        assert data["form"] == "ITR-1"
-
-    @pytest.mark.asyncio
-    async def test_execute_select_itr_form_capital_gains(self, registry):
-        tc = _make_tool_call(
-            "select_itr_form",
-            {"income_sources": ["salary", "capital_gains"], "total_income": 2000000},
-        )
-        result = await registry.execute(tc)
-        assert result.is_error is False
-        data = json.loads(result.content)
-        assert data["form"] == "ITR-2"
-
-    @pytest.mark.asyncio
-    async def test_execute_select_itr_form_business(self, registry):
-        tc = _make_tool_call(
-            "select_itr_form",
-            {"income_sources": ["business"], "total_income": 3000000},
-        )
-        result = await registry.execute(tc)
-        assert result.is_error is False
-        data = json.loads(result.content)
-        assert data["form"] in ("ITR-3", "ITR-4")
-
-    @pytest.mark.asyncio
-    async def test_execute_select_itr_form_company(self, registry):
-        tc = _make_tool_call(
-            "select_itr_form",
-            {"income_sources": ["business"], "total_income": 10000000, "is_company": True},
-        )
-        result = await registry.execute(tc)
-        assert result.is_error is False
-        data = json.loads(result.content)
-        assert data["form"] == "ITR-6"
-
-    @pytest.mark.asyncio
-    async def test_execute_select_itr_form_foreign(self, registry):
-        tc = _make_tool_call(
-            "select_itr_form",
+            "calculate_interest_234",
             {
-                "income_sources": ["salary", "foreign_income"],
-                "total_income": 2000000,
-                "has_foreign_assets": True,
+                "total_tax_liability": 100000,
+                "tds_deducted": 0,
+                "advance_tax_paid": 0,
+                "as_of_date": "2026-07-31",
             },
         )
         result = await registry.execute(tc)
         assert result.is_error is False
         data = json.loads(result.content)
+        assert data["interest_234b"]["interest"] == 4000  # 4 months x 1% on 100K
+        assert data["interest_234c"]["interest"] == 5050
+        assert data["total_interest"] == 9050
+
+    @pytest.mark.asyncio
+    async def test_234a_when_filed_late(self, registry):
+        tc = _make_tool_call(
+            "calculate_interest_234",
+            {
+                "total_tax_liability": 100000,
+                "tds_deducted": 0,
+                "advance_tax_paid": 100000,
+                "filing_date": "2026-09-15",
+            },
+        )
+        data = json.loads((await registry.execute(tc)).content)
+        # Fully paid in advance: no 234B/C; unpaid tax is zero so no 234A either
+        assert data["total_interest"] == 0
+
+    @pytest.mark.asyncio
+    async def test_no_interest_when_fully_paid_on_time(self, registry):
+        tc = _make_tool_call(
+            "calculate_interest_234",
+            {
+                "total_tax_liability": 100000,
+                "advance_tax_paid": 100000,
+                "cumulative_paid": {"q1": 15000, "q2": 45000, "q3": 75000, "q4": 100000},
+            },
+        )
+        data = json.loads((await registry.execute(tc)).content)
+        assert data["total_interest"] == 0
+
+
+# ---------------------------------------------------------------------------
+# ITR selector (real decision tree)
+# ---------------------------------------------------------------------------
+
+
+class TestSelectItrForm:
+    @pytest.mark.asyncio
+    async def test_simple_salaried_itr1(self, registry):
+        tc = _make_tool_call(
+            "select_itr_form",
+            {"total_income": 1200000, "has_salary": True},
+        )
+        data = json.loads((await registry.execute(tc)).content)
+        assert data["form"] == "ITR-1"
+
+    @pytest.mark.asyncio
+    async def test_capital_gains_itr2(self, registry):
+        tc = _make_tool_call(
+            "select_itr_form",
+            {"total_income": 2000000, "has_salary": True, "has_other_capital_gains": True},
+        )
+        data = json.loads((await registry.execute(tc)).content)
+        assert data["form"] == "ITR-2"
+
+    @pytest.mark.asyncio
+    async def test_small_112a_ltcg_still_itr1(self, registry):
+        """AY 2025-26 change the old stub got wrong: small 112A LTCG fits ITR-1."""
+        tc = _make_tool_call(
+            "select_itr_form",
+            {"total_income": 1200000, "has_salary": True, "ltcg_112a_amount": 100000},
+        )
+        data = json.loads((await registry.execute(tc)).content)
+        assert data["form"] == "ITR-1"
+
+    @pytest.mark.asyncio
+    async def test_presumptive_business_itr4(self, registry):
+        tc = _make_tool_call(
+            "select_itr_form",
+            {"total_income": 2000000, "has_business": True, "is_presumptive": True},
+        )
+        data = json.loads((await registry.execute(tc)).content)
+        assert data["form"] == "ITR-4"
+
+    @pytest.mark.asyncio
+    async def test_company_itr6(self, registry):
+        tc = _make_tool_call("select_itr_form", {"entity_type": "company"})
+        data = json.loads((await registry.execute(tc)).content)
+        assert data["form"] == "ITR-6"
+
+    @pytest.mark.asyncio
+    async def test_foreign_assets_itr2(self, registry):
+        tc = _make_tool_call(
+            "select_itr_form",
+            {"total_income": 2000000, "has_salary": True, "has_foreign_assets": True},
+        )
+        data = json.loads((await registry.execute(tc)).content)
         assert data["form"] == "ITR-2"
 
 

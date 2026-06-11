@@ -199,7 +199,7 @@ class TestSingleToolCall:
         tool_msgs = [m for m in req.messages if m.role == Role.tool]
         assert len(tool_msgs) == 1
         assert tool_msgs[0].tool_call_id == "call_1"
-        assert "194I" in tool_msgs[0].content  # rent TDS section
+        assert "194-I" in tool_msgs[0].content  # rent TDS section
 
     async def test_assistant_message_ordering(self, registry):
         """Assistant message with tool_calls precedes tool result messages."""
