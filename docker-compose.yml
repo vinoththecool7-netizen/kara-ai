@@ -3,10 +3,11 @@ services:
     image: pgvector/pgvector:pg16
     environment:
       POSTGRES_USER: kara
-      POSTGRES_PASSWORD: kara
+      POSTGRES_PASSWORD: ${KARA_DB_PASSWORD:-kara}
       POSTGRES_DB: kara
     ports:
-      - "5432:5432"
+      # Bound to loopback only — set KARA_DB_PASSWORD before exposing wider.
+      - "127.0.0.1:5432:5432"
     volumes:
       - kara-db-data:/var/lib/postgresql/data
     healthcheck:
@@ -25,7 +26,7 @@ services:
     env_file:
       - apps/api/.env
     environment:
-      - DATABASE_URL=postgresql+asyncpg://kara:kara@db:5432/kara
+      - DATABASE_URL=postgresql+asyncpg://kara:${KARA_DB_PASSWORD:-kara}@db:5432/kara
     depends_on:
       db:
         condition: service_healthy

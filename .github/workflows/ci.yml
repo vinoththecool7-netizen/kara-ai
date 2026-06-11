@@ -69,3 +69,11 @@ jobs:
         run: npm test
       - name: Build
         run: npm run build
+
+  smoke:
+    name: Docker smoke test (fake LLM)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run smoke test
+        run: bash scripts/smoke_test.sh
