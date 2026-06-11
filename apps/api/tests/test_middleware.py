@@ -86,3 +86,74 @@ class TestHealth:
 
         assert resp.status_code == 200
         assert resp.json() == {"status": "ok", "database": "ok"}
+
+
+class TestRateLimit:
+    """Unit tests against the middleware directly with tiny limits."""
+
+    def _make_app(self, **kwargs):
+        from kara_api.middleware import RateLimitMiddleware
+
+        async def ok_app(scope, receive, send):
+            await send(
+                {"type": "http.response.start", "status": 200, "headers": []}
+            )
+            await send({"type": "http.response.body", "body": b'{"ok":true}'})
+
+        return RateLimitMiddleware(ok_app, **kwargs)
+
+    async def _get(self, app, path, ip="1.2.3.4", headers=None):
+        transport = ASGITransport(app=app, client=(ip, 1234))
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            return await ac.post(path, headers=headers or {})
+
+    @pytest.mark.asyncio
+    async def test_blocks_after_limit(self):
+        app = self._make_app(chat_per_minute=2)
+        assert (await self._get(app, "/api/v1/chat")).status_code == 200
+        assert (await self._get(app, "/api/v1/chat")).status_code == 200
+        resp = await self._get(app, "/api/v1/chat")
+        assert resp.status_code == 429
+        assert "retry-after" in resp.headers
+
+    @pytest.mark.asyncio
+    async def test_limits_are_per_ip(self):
+        app = self._make_app(chat_per_minute=1)
+        assert (await self._get(app, "/api/v1/chat", ip="1.1.1.1")).status_code == 200
+        assert (await self._get(app, "/api/v1/chat", ip="2.2.2.2")).status_code == 200
+        assert (await self._get(app, "/api/v1/chat", ip="1.1.1.1")).status_code == 429
+
+    @pytest.mark.asyncio
+    async def test_buckets_are_independent(self):
+        app = self._make_app(chat_per_minute=1, compute_per_minute=5)
+        assert (await self._get(app, "/api/v1/chat")).status_code == 200
+        assert (await self._get(app, "/api/v1/chat")).status_code == 429
+        # compute bucket unaffected
+        assert (await self._get(app, "/api/v1/tax/compute")).status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_health_is_never_limited(self):
+        app = self._make_app(chat_per_minute=1)
+        for _ in range(5):
+            assert (await self._get(app, "/health")).status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_disabled_passes_everything(self):
+        app = self._make_app(enabled=False, chat_per_minute=1)
+        for _ in range(5):
+            assert (await self._get(app, "/api/v1/chat")).status_code == 200
+
+    @pytest.mark.asyncio
+    async def test_x_forwarded_for_is_honoured(self):
+        app = self._make_app(chat_per_minute=1)
+        h = {"X-Forwarded-For": "9.9.9.9, 10.0.0.1"}
+        assert (await self._get(app, "/api/v1/chat", headers=h)).status_code == 200
+        resp = await self._get(app, "/api/v1/chat", headers=h)
+        assert resp.status_code == 429
+
+
+class TestRateLimitInstalled:
+    async def test_app_has_rate_limit_middleware(self, bare_client):
+        _, app = bare_client
+        names = [m.cls.__name__ for m in app.user_middleware]
+        assert "RateLimitMiddleware" in names

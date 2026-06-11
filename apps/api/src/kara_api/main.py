@@ -12,6 +12,7 @@ from kara_api.db import close_db, init_db
 from kara_api.db.connection import get_engine
 from kara_api.knowledge.seeding import seed_if_empty
 from kara_api.middleware import (
+    RateLimitMiddleware,
     RequestIDMiddleware,
     SecurityHeadersMiddleware,
     setup_logging,
@@ -69,6 +70,13 @@ def create_app() -> FastAPI:
     # Pure-ASGI middleware — safe for streaming SSE responses
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(RequestIDMiddleware)
+    app.add_middleware(
+        RateLimitMiddleware,
+        enabled=settings.RATE_LIMIT_ENABLED,
+        chat_per_minute=settings.RATE_LIMIT_CHAT_PER_MINUTE,
+        upload_per_minute=settings.RATE_LIMIT_UPLOAD_PER_MINUTE,
+        compute_per_minute=settings.RATE_LIMIT_COMPUTE_PER_MINUTE,
+    )
 
     @app.exception_handler(Exception)
     async def unhandled_exception_handler(request, exc):
