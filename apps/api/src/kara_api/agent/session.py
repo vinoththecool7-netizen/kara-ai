@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from kara_api.db.models import Message as DbMessage
@@ -104,24 +104,41 @@ class SessionManager:
         Each row carries a derived ``title`` (the first user message, truncated
         to 60 characters with an ellipsis, or ``"New Chat"`` when the session
         has no user message yet) and a total ``message_count``.
+
+        Issues a constant three queries regardless of the number of sessions
+        (sessions, message counts, first user message per session).
         """
         async with self._factory() as db:
             sessions_result = await db.execute(
                 select(DbSession).order_by(DbSession.updated_at.desc())
             )
             sessions = list(sessions_result.scalars().all())
+            if not sessions:
+                return []
+
+            counts_result = await db.execute(
+                select(DbMessage.session_id, func.count(DbMessage.id)).group_by(
+                    DbMessage.session_id
+                )
+            )
+            counts: dict[uuid.UUID, int] = dict(counts_result.all())
+
+            first_user_msg_ids = (
+                select(func.min(DbMessage.id))
+                .where(DbMessage.role == "user")
+                .group_by(DbMessage.session_id)
+                .scalar_subquery()
+            )
+            titles_result = await db.execute(
+                select(DbMessage.session_id, DbMessage.content).where(
+                    DbMessage.id.in_(first_user_msg_ids)
+                )
+            )
+            first_messages: dict[uuid.UUID, str | None] = dict(titles_result.all())
 
             summaries: list[SessionSummaryRow] = []
             for sess in sessions:
-                msgs_result = await db.execute(
-                    select(DbMessage)
-                    .where(DbMessage.session_id == sess.id)
-                    .order_by(DbMessage.id)
-                )
-                msgs = list(msgs_result.scalars().all())
-
-                first_user = next((m for m in msgs if m.role == "user"), None)
-                raw_content = (first_user.content if first_user else None) or ""
+                raw_content = first_messages.get(sess.id) or ""
                 if not raw_content:
                     title = "New Chat"
                 elif len(raw_content) > 60:
@@ -135,7 +152,7 @@ class SessionManager:
                         created_at=sess.created_at,
                         updated_at=sess.updated_at,
                         title=title,
-                        message_count=len(msgs),
+                        message_count=counts.get(sess.id, 0),
                     )
                 )
             return summaries
