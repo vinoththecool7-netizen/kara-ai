@@ -2,7 +2,7 @@
 
 import { useReducer, useRef, useCallback, useEffect } from "react";
 import { useSSE } from "@/hooks/useSSE";
-import { createChat, continueChat, fetchSession, deleteSession, uploadDocument, HttpError } from "@/lib/api";
+import { createChat, continueChat, fetchSession, deleteSession, clearProfile as apiClearProfile, uploadDocument, HttpError } from "@/lib/api";
 import { toast } from "@/hooks/useToast";
 import type {
   CapitalGainsDetail,
@@ -37,6 +37,8 @@ type ChatAction =
   | { type: "ADD_ASSISTANT_MESSAGE"; message: ChatMessage }
   | { type: "APPEND_CONTENT"; text: string }
   | { type: "ADD_TOOL_EVENT"; event: ToolEvent }
+  | { type: "ADD_ADVISORY"; hint: string }
+  | { type: "SET_PROFILE_STATE"; profileState: ProfileState | null }
   | { type: "SET_SESSION_ID"; sessionId: string }
   | { type: "SET_STREAMING"; streaming: boolean }
   | { type: "SET_ERROR"; error: string | null }
@@ -114,6 +116,17 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
       messages[idx] = {
         ...messages[idx],
         toolEvents: [...(messages[idx].toolEvents ?? []), action.event],
+      };
+      return { ...state, messages };
+    }
+
+    case "ADD_ADVISORY": {
+      const messages = [...state.messages];
+      const idx = lastAssistantIndex(messages);
+      if (idx === -1) return state;
+      messages[idx] = {
+        ...messages[idx],
+        advisoryHints: [...(messages[idx].advisoryHints ?? []), action.hint],
       };
       return { ...state, messages };
     }
@@ -234,6 +247,9 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
       return { ...state, messages };
     }
 
+    case "SET_PROFILE_STATE":
+      return { ...state, profileState: action.profileState };
+
     case "SET_LOADING":
       return { ...state, isLoading: action.loading };
 
@@ -268,6 +284,7 @@ export interface UseChatReturn {
   loadSession: (sessionId: string) => Promise<void>;
   dismissError: () => void;
   retryMessage: (id: string) => Promise<void>;
+  clearProfile: () => Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -276,7 +293,7 @@ export interface UseChatReturn {
 
 export function useChat(): UseChatReturn {
   const [state, dispatch] = useReducer(chatReducer, initialState);
-  const { processStream, abort } = useSSE();
+  const { processStream, beginRequest, abort } = useSSE();
 
   // Use a ref to always have the latest sessionId inside async callbacks,
   // without needing to include it in useCallback dependency arrays.
@@ -302,8 +319,8 @@ export function useChat(): UseChatReturn {
 
     if (!text.trim()) return;
 
-    // Cancel any in-flight stream before starting a new one
-    abort();
+    // Cancel any in-flight request/stream and arm the new one's signal
+    const signal = beginRequest();
 
     // 1. Clear any existing error
     dispatch({ type: "SET_ERROR", error: null });
@@ -335,8 +352,8 @@ export function useChat(): UseChatReturn {
       // 5. Call API — use the ref to get the current sessionId at call time
       const currentSessionId = sessionIdRef.current;
       const response = currentSessionId
-        ? await continueChat(currentSessionId, text)
-        : await createChat(text);
+        ? await continueChat(currentSessionId, text, signal)
+        : await createChat(text, signal);
 
       // 6. Process the SSE stream
       await processStream(response, {
@@ -372,7 +389,7 @@ export function useChat(): UseChatReturn {
           dispatch({ type: "SET_CAPITAL_GAINS", gains });
         },
         onAdvisory: (hint) => {
-          console.log("[Advisory]", hint);
+          dispatch({ type: "ADD_ADVISORY", hint });
         },
         onDone: (sessionId, profileState) => {
           dispatch({ type: "SET_DONE", sessionId, profileState });
@@ -383,12 +400,14 @@ export function useChat(): UseChatReturn {
           toast.error(message);
         },
       });
-    } catch {
+    } catch (err) {
+      // A deliberate abort (new message sent while streaming) is not an error
+      if (err instanceof DOMException && err.name === "AbortError") return;
       const message = "Unable to connect. Check your connection and try again.";
       dispatch({ type: "SET_ERROR", error: message });
       toast.error(message);
     }
-  }, [processStream, abort]);
+  }, [processStream, beginRequest]);
 
   // -------------------------------------------------------------------------
   // uploadAndProcess — upload documents and attach results as chat messages
@@ -492,6 +511,11 @@ export function useChat(): UseChatReturn {
           role: m.role as "user" | "assistant",
           content: m.content ?? "",
           timestamp: new Date(m.created_at),
+          // Restore rich cards from persisted tool results
+          taxBreakdown: m.cards?.tax_breakdown,
+          regimeComparison: m.cards?.regime_comparison,
+          deductionGaps: m.cards?.deduction_gaps,
+          capitalGains: m.cards?.capital_gains,
         }));
       dispatch({
         type: "LOAD_HISTORY",
@@ -512,6 +536,22 @@ export function useChat(): UseChatReturn {
         err instanceof Error ? err.message : "Failed to load session.";
       dispatch({ type: "SET_ERROR", error: message });
       toast.error(message);
+    }
+  }, []);
+
+  // -------------------------------------------------------------------------
+  // clearProfile — forget everything Kara has learned in this session
+  // -------------------------------------------------------------------------
+
+  const clearProfile = useCallback(async (): Promise<void> => {
+    const currentSessionId = sessionIdRef.current;
+    if (!currentSessionId) return;
+    try {
+      const result = await apiClearProfile(currentSessionId);
+      dispatch({ type: "SET_PROFILE_STATE", profileState: result.profile_state });
+      toast.success("Kara's memory of your details has been cleared.");
+    } catch {
+      toast.error("Couldn't clear the profile. Please try again.");
     }
   }, []);
 
@@ -568,5 +608,6 @@ export function useChat(): UseChatReturn {
     loadSession,
     dismissError,
     retryMessage,
+    clearProfile,
   };
 }

@@ -47,11 +47,24 @@ export interface UseSSECallbacks {
  */
 export function useSSE(): {
   processStream: (response: Response, callbacks: UseSSECallbacks) => Promise<void>;
+  beginRequest: () => AbortSignal;
   abort: () => void;
   isStreaming: boolean;
 } {
   const abortControllerRef = useRef<AbortController | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
+
+  /**
+   * Create the AbortController BEFORE the fetch so abort() can cancel the
+   * in-flight HTTP request itself, not just stop reading the stream.
+   * Pass the returned signal into the fetch call.
+   */
+  function beginRequest(): AbortSignal {
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    return controller.signal;
+  }
 
   // -------------------------------------------------------------------------
   // dispatch — route a parsed SSEEvent to the appropriate callback
@@ -106,8 +119,9 @@ export function useSSE(): {
     response: Response,
     callbacks: UseSSECallbacks
   ): Promise<void> {
-    // Create a fresh AbortController for this stream.
-    const controller = new AbortController();
+    // Reuse the controller from beginRequest() (which also aborts the
+    // underlying fetch); fall back to a fresh one for direct callers.
+    const controller = abortControllerRef.current ?? new AbortController();
     abortControllerRef.current = controller;
 
     if (!response.body) {
@@ -180,5 +194,5 @@ export function useSSE(): {
     abortControllerRef.current?.abort();
   }
 
-  return { processStream, abort, isStreaming };
+  return { processStream, beginRequest, abort, isStreaming };
 }

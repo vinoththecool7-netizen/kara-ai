@@ -492,6 +492,9 @@ general questions about tax law, sections, rules, or definitions.
 asks about TDS on salary, rent, professional fees, etc.
 - **calculate_advance_tax**: Compute advance tax installments and due dates. \
 Use when the user asks about advance tax obligations.
+- **calculate_interest_234**: Compute interest under sections 234A/234B/234C \
+for late filing or shortfall in advance tax. Use when the user asks about \
+penalties or interest for missed tax payments.
 - **select_itr_form**: Determine which ITR form to file. Use when the user \
 asks which form to use based on their income sources.
 
@@ -510,10 +513,7 @@ applicable.
 - Default regime is the new regime for FY 2025-26 unless the user specifies \
 the old regime.
 - If the user's query is ambiguous, ask a clarifying question rather than \
-guessing.
-- TDS rates, advance tax schedules, and ITR form suggestions come from \
-simplified lookups and are indicative; relay their disclaimer and advise \
-verification before acting on them.\
+guessing.\
 """
 
 

@@ -242,10 +242,11 @@ class TestSingleTurnIntegration:
         assert isinstance(result_data["total_tax_payable"], (int, float))
         assert result_data["total_tax_payable"] > 0
 
-        # content event must be present
-        content_events = [e for e in events if e["type"] == "content"]
-        assert len(content_events) == 1
-        assert "tax" in content_events[0]["text"].lower()
+        # content arrives as streamed deltas
+        deltas = [e for e in events if e["type"] == "content_delta"]
+        assert len(deltas) >= 1
+        full_text = "".join(e["text"] for e in deltas)
+        assert "tax" in full_text.lower()
 
         # done event must close the stream
         done_events = [e for e in events if e["type"] == "done"]
@@ -439,8 +440,8 @@ class TestSingleTurnIntegration:
     # Test 6: get_tds_rate stub
     # ------------------------------------------------------------------
 
-    async def test_stub_tools_tds_rate(self):
-        """get_tds_rate stub returns section and rate information."""
+    async def test_tds_rate_tool(self):
+        """get_tds_rate returns section and rate information from the rate table."""
         fake = FakeLLMProvider(
             responses=[
                 _fake_response(
@@ -476,8 +477,8 @@ class TestSingleTurnIntegration:
     # Test 7: calculate_advance_tax stub
     # ------------------------------------------------------------------
 
-    async def test_stub_tools_advance_tax(self):
-        """calculate_advance_tax stub returns installment schedule."""
+    async def test_advance_tax_tool(self):
+        """calculate_advance_tax returns the s.211 installment schedule."""
         fake = FakeLLMProvider(
             responses=[
                 _fake_response(
@@ -507,14 +508,14 @@ class TestSingleTurnIntegration:
         assert tool_events[0]["is_error"] is False
 
         result_data = json.loads(tool_events[0]["result"])
-        assert result_data["advance_tax_required"] is True
+        assert result_data["required"] is True
         assert "installments" in result_data
         assert len(result_data["installments"]) == 4
         # Verify Q1 installment structure
         q1 = result_data["installments"][0]
         assert q1["quarter"] == "Q1"
-        assert "due_date" in q1
-        assert "amount" in q1
+        assert q1["due_date"] == "2025-06-15"
+        assert q1["amount_due"] == 30000  # 15% of 200K
 
     # ------------------------------------------------------------------
     # Test 8: unknown tool → error in tool_result, then content
@@ -549,10 +550,9 @@ class TestSingleTurnIntegration:
         assert tool_events[0]["is_error"] is True
         assert "Unknown tool" in tool_events[0]["result"]
 
-        # LLM still produces a final content response
-        content_events = [e for e in events if e["type"] == "content"]
-        assert len(content_events) == 1
-        assert len(content_events[0]["text"]) > 0
+        # LLM still produces a final streamed response
+        deltas = [e for e in events if e["type"] == "content_delta"]
+        assert len("".join(e["text"] for e in deltas)) > 0
 
         # Stream ends with done
         done_events = [e for e in events if e["type"] == "done"]

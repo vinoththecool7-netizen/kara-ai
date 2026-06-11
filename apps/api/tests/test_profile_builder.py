@@ -247,3 +247,58 @@ class TestSerialization:
         assert restored.get_slot("section_80d") == 25000
         assert restored.get_slot("section_80ccd_1b") == 50000
         assert restored.get_slot("section_24b") == 200000
+
+
+# ---------------------------------------------------------------------------
+# Conversational capture from tool arguments
+# ---------------------------------------------------------------------------
+
+
+class TestCaptureToolArgs:
+    """Slots fill from the arguments of profile-bearing tool calls, so the
+    profile accumulates from conversation — not just document uploads."""
+
+    def test_compute_tax_args_fill_slots(self):
+        pb = ProfileBuilder()
+        pb.capture_tool_args(
+            "compute_tax",
+            {
+                "gross_salary": 1_500_000,
+                "regime": "new",
+                "age_category": "below_60",
+                "other_income": 20_000,
+            },
+        )
+        assert pb.get_slot("gross_salary") == 1_500_000
+        assert pb.get_slot("regime") == "new"
+        assert pb.get_slot("age_category") == "below_60"
+        assert pb.get_slot("other_income") == 20_000
+
+    def test_deduction_dict_maps_to_section_slots(self):
+        pb = ProfileBuilder()
+        pb.capture_tool_args(
+            "compare_regimes",
+            {"gross_salary": 1_200_000, "deductions": {"80C": 150_000, "80D": 25_000}},
+        )
+        assert pb.get_slot("section_80c") == 150_000
+        assert pb.get_slot("section_80d") == 25_000
+
+    def test_zero_and_empty_values_are_not_captured(self):
+        pb = ProfileBuilder()
+        pb.capture_tool_args(
+            "compute_tax",
+            {"gross_salary": 1_000_000, "business_income": 0, "deductions": {}},
+        )
+        assert pb.get_slot("gross_salary") == 1_000_000
+        assert pb.get_slot("business_income") is None
+
+    def test_non_profile_tools_are_ignored(self):
+        pb = ProfileBuilder()
+        pb.capture_tool_args("search_tax_law", {"query": "80C"})
+        pb.capture_tool_args("get_tds_rate", {"payment_type": "rent"})
+        assert pb.slot_count == 0
+
+    def test_unknown_keys_are_ignored(self):
+        pb = ProfileBuilder()
+        pb.capture_tool_args("compute_tax", {"gross_salary": 1, "bogus_field": 42})
+        assert pb.get_slot("bogus_field") is None

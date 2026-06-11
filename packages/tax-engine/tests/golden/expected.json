@@ -1,0 +1,222 @@
+{
+  "new_regime_15L_salaried": {
+    "gross_total_income": 1425000,
+    "total_deductions": 0,
+    "taxable_income": 1425000,
+    "tax_on_normal_income": 93750,
+    "tax_on_special_rates": 0,
+    "surcharge_amount": 0,
+    "rebate_87a": 0,
+    "cess_amount": 3750,
+    "total_tax_payable": 97500
+  },
+  "new_regime_rebate_zone_10L": {
+    "gross_total_income": 925000,
+    "total_deductions": 0,
+    "taxable_income": 925000,
+    "tax_on_normal_income": 32500,
+    "tax_on_special_rates": 0,
+    "surcharge_amount": 0,
+    "rebate_87a": 32500,
+    "cess_amount": 0,
+    "total_tax_payable": 0
+  },
+  "new_regime_rebate_boundary_1275000": {
+    "gross_total_income": 1200000,
+    "total_deductions": 0,
+    "taxable_income": 1200000,
+    "tax_on_normal_income": 60000,
+    "tax_on_special_rates": 0,
+    "surcharge_amount": 0,
+    "rebate_87a": 60000,
+    "cess_amount": 0,
+    "total_tax_payable": 0
+  },
+  "new_regime_marginal_relief_1325000": {
+    "gross_total_income": 1250000,
+    "total_deductions": 0,
+    "taxable_income": 1250000,
+    "tax_on_normal_income": 67500,
+    "tax_on_special_rates": 0,
+    "surcharge_amount": 0,
+    "rebate_87a": 17500,
+    "cess_amount": 2000,
+    "total_tax_payable": 52000
+  },
+  "new_regime_50L_high_earner": {
+    "gross_total_income": 4925000,
+    "total_deductions": 0,
+    "taxable_income": 4925000,
+    "tax_on_normal_income": 1057500,
+    "tax_on_special_rates": 0,
+    "surcharge_amount": 0,
+    "rebate_87a": 0,
+    "cess_amount": 42300,
+    "total_tax_payable": 1099800
+  },
+  "new_regime_surcharge_60L": {
+    "gross_total_income": 5925000,
+    "total_deductions": 0,
+    "taxable_income": 5925000,
+    "tax_on_normal_income": 1357500,
+    "tax_on_special_rates": 0,
+    "surcharge_amount": 135750,
+    "rebate_87a": 0,
+    "cess_amount": 59730,
+    "total_tax_payable": 1552980
+  },
+  "new_regime_surcharge_cap_6cr": {
+    "gross_total_income": 59925000,
+    "total_deductions": 0,
+    "taxable_income": 59925000,
+    "tax_on_normal_income": 17557500,
+    "tax_on_special_rates": 0,
+    "surcharge_amount": 4389375,
+    "rebate_87a": 0,
+    "cess_amount": 877875,
+    "total_tax_payable": 22824750
+  },
+  "old_regime_12L_full_80c": {
+    "gross_total_income": 1150000,
+    "total_deductions": 175000,
+    "taxable_income": 975000,
+    "tax_on_normal_income": 107500,
+    "tax_on_special_rates": 0,
+    "surcharge_amount": 0,
+    "rebate_87a": 0,
+    "cess_amount": 4300,
+    "total_tax_payable": 111800
+  },
+  "old_regime_rebate_5L_boundary": {
+    "gross_total_income": 500000,
+    "total_deductions": 0,
+    "taxable_income": 500000,
+    "tax_on_normal_income": 12500,
+    "tax_on_special_rates": 0,
+    "surcharge_amount": 0,
+    "rebate_87a": 12500,
+    "cess_amount": 0,
+    "total_tax_payable": 0
+  },
+  "old_regime_senior_pension_8L": {
+    "gross_total_income": 750000,
+    "total_deductions": 100000,
+    "taxable_income": 650000,
+    "tax_on_normal_income": 40000,
+    "tax_on_special_rates": 0,
+    "surcharge_amount": 0,
+    "rebate_87a": 0,
+    "cess_amount": 1600,
+    "total_tax_payable": 41600
+  },
+  "old_regime_super_senior_11L": {
+    "gross_total_income": 1050000,
+    "total_deductions": 0,
+    "taxable_income": 1050000,
+    "tax_on_normal_income": 115000,
+    "tax_on_special_rates": 0,
+    "surcharge_amount": 0,
+    "rebate_87a": 0,
+    "cess_amount": 4600,
+    "total_tax_payable": 119600
+  },
+  "old_regime_senior_surcharge_marginal_relief": {
+    "gross_total_income": 5000100,
+    "total_deductions": 0,
+    "taxable_income": 5000100,
+    "tax_on_normal_income": 1310030,
+    "tax_on_special_rates": 0,
+    "surcharge_amount": 70,
+    "rebate_87a": 0,
+    "cess_amount": 52404,
+    "total_tax_payable": 1362504
+  },
+  "old_regime_kitchen_sink_25L": {
+    "gross_total_income": 2450000,
+    "total_deductions": 785000,
+    "taxable_income": 1665000,
+    "tax_on_normal_income": 312000,
+    "tax_on_special_rates": 0,
+    "surcharge_amount": 0,
+    "rebate_87a": 0,
+    "cess_amount": 12480,
+    "total_tax_payable": 324480
+  },
+  "old_regime_hra_metro": {
+    "gross_total_income": 1750000,
+    "total_deductions": 438000,
+    "taxable_income": 1312000,
+    "tax_on_normal_income": 206100,
+    "tax_on_special_rates": 0,
+    "surcharge_amount": 0,
+    "rebate_87a": 0,
+    "cess_amount": 8244,
+    "total_tax_payable": 214344
+  },
+  "business_plus_salary_new": {
+    "gross_total_income": 1325000,
+    "total_deductions": 0,
+    "taxable_income": 1325000,
+    "tax_on_normal_income": 78750,
+    "tax_on_special_rates": 0,
+    "surcharge_amount": 0,
+    "rebate_87a": 0,
+    "cess_amount": 3150,
+    "total_tax_payable": 81900
+  },
+  "house_property_loss_capped": {
+    "gross_total_income": 1350000,
+    "total_deductions": 150000,
+    "taxable_income": 1200000,
+    "tax_on_normal_income": 172500,
+    "tax_on_special_rates": 0,
+    "surcharge_amount": 0,
+    "rebate_87a": 0,
+    "cess_amount": 6900,
+    "total_tax_payable": 179400
+  },
+  "equity_ltcg_above_exemption": {
+    "gross_total_income": 1125000,
+    "total_deductions": 0,
+    "taxable_income": 1125000,
+    "tax_on_normal_income": 52500,
+    "tax_on_special_rates": 34375,
+    "surcharge_amount": 0,
+    "rebate_87a": 52500,
+    "cess_amount": 1375,
+    "total_tax_payable": 35750
+  },
+  "equity_stcg_short_hold": {
+    "gross_total_income": 825000,
+    "total_deductions": 0,
+    "taxable_income": 825000,
+    "tax_on_normal_income": 22500,
+    "tax_on_special_rates": 20000,
+    "surcharge_amount": 0,
+    "rebate_87a": 22500,
+    "cess_amount": 800,
+    "total_tax_payable": 20800
+  },
+  "crypto_flat_30": {
+    "gross_total_income": 625000,
+    "total_deductions": 0,
+    "taxable_income": 625000,
+    "tax_on_normal_income": 11250,
+    "tax_on_special_rates": 90000,
+    "surcharge_amount": 0,
+    "rebate_87a": 11250,
+    "cess_amount": 3600,
+    "total_tax_payable": 93600
+  },
+  "debt_mf_slab_rate": {
+    "gross_total_income": 925000,
+    "total_deductions": 0,
+    "taxable_income": 925000,
+    "tax_on_normal_income": 44500,
+    "tax_on_special_rates": 0,
+    "surcharge_amount": 0,
+    "rebate_87a": 44500,
+    "cess_amount": 0,
+    "total_tax_payable": 0
+  }
+}

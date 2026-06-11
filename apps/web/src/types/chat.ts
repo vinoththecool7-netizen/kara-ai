@@ -21,6 +21,13 @@ export interface MessageResponse {
   content: string | null;
   tool_calls: ToolCallRecord[] | null;
   created_at: string;
+  /** Structured card payloads rebuilt server-side from persisted tool results. */
+  cards?: {
+    tax_breakdown?: TaxBreakdown;
+    regime_comparison?: RegimeComparison;
+    deduction_gaps?: OptimizationResult;
+    capital_gains?: CapitalGainsDetail[];
+  } | null;
 }
 
 export interface ProfileState {
@@ -229,6 +236,8 @@ export interface ChatMessage {
   deductionGaps?: OptimizationResult;
   capitalGains?: CapitalGainsDetail[];
   parsedDocument?: ParsedDocumentSummary;
+  /** Proactive advisory tips emitted by the backend after tool calls. */
+  advisoryHints?: string[];
   /**
    * Delivery status. Only populated for user messages that failed to send;
    * absent (undefined) means "sent successfully".

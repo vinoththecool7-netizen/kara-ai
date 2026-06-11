@@ -1,0 +1,195 @@
+# TDS rate table — FY 2025-26 (AY 2026-27)
+#
+# Reflects:
+#   - Finance (No. 2) Act 2024 rate cuts effective 1 Oct 2024
+#     (194D/194H 5%→2%, 194-IB 5%→2%, 194O 1%→0.1%)
+#   - Finance Act 2025 threshold increases effective 1 Apr 2025
+#     (194A 40K→50K bank / 50K→1L senior, 194 dividend 5K→10K,
+#      194J 30K→50K, 194H 15K→20K, 194-I 2.4L/yr→50K/month,
+#      194K 5K→10K, 194B/194BB per-single-transaction, 193 10K,
+#      194D 15K→20K, 194LA 2.5L→5L)
+#
+# rate: decimal fraction; null means "as per slab" (s.192) or "varies".
+# threshold: TDS applies when the payment EXCEEDS this amount.
+# threshold_period: annual | monthly | per_transaction
+
+financial_year: "2025-26"
+no_pan_rate: 0.20  # s.206AA — higher of the applicable rate or 20%
+
+payment_types:
+  salary:
+    section: "192"
+    description: "Salary"
+    rate: null
+    rate_description: "as per slab"
+    threshold: 0
+    threshold_period: annual
+    note: "Deducted monthly on estimated annual tax under the chosen regime"
+
+  epf_withdrawal:
+    section: "192A"
+    description: "Premature EPF withdrawal"
+    rate: 0.10
+    threshold: 50000
+    threshold_period: per_transaction
+    note: "No TDS after 5 years of continuous service"
+
+  interest_securities:
+    section: "193"
+    description: "Interest on securities/debentures"
+    rate: 0.10
+    threshold: 10000
+    threshold_period: annual
+
+  dividend:
+    section: "194"
+    description: "Dividend"
+    rate: 0.10
+    threshold: 10000
+    threshold_period: annual
+
+  interest_bank:
+    section: "194A"
+    description: "Interest from bank/co-op/post office deposits"
+    rate: 0.10
+    threshold: 50000
+    threshold_senior: 100000
+    threshold_period: annual
+
+  interest_other:
+    section: "194A"
+    description: "Interest from other payers"
+    rate: 0.10
+    threshold: 10000
+    threshold_period: annual
+
+  lottery:
+    section: "194B"
+    description: "Lottery/crossword/game winnings"
+    rate: 0.30
+    threshold: 10000
+    threshold_period: per_transaction
+
+  horse_race:
+    section: "194BB"
+    description: "Horse race winnings"
+    rate: 0.30
+    threshold: 10000
+    threshold_period: per_transaction
+
+  contractor_individual:
+    section: "194C"
+    description: "Payment to contractor (individual/HUF)"
+    rate: 0.01
+    threshold: 30000
+    threshold_period: per_transaction
+    note: "Also applies if annual aggregate exceeds ₹1,00,000"
+
+  contractor_other:
+    section: "194C"
+    description: "Payment to contractor (firm/company)"
+    rate: 0.02
+    threshold: 30000
+    threshold_period: per_transaction
+    note: "Also applies if annual aggregate exceeds ₹1,00,000"
+
+  insurance_commission:
+    section: "194D"
+    description: "Insurance commission"
+    rate: 0.02
+    threshold: 20000
+    threshold_period: annual
+
+  commission:
+    section: "194H"
+    description: "Commission or brokerage"
+    rate: 0.02
+    threshold: 20000
+    threshold_period: annual
+
+  rent_plant_machinery:
+    section: "194-I"
+    description: "Rent — plant, machinery, equipment"
+    rate: 0.02
+    threshold: 50000
+    threshold_period: monthly
+
+  rent_land_building:
+    section: "194-I"
+    description: "Rent — land, building, furniture"
+    rate: 0.10
+    threshold: 50000
+    threshold_period: monthly
+
+  property_purchase:
+    section: "194-IA"
+    description: "Purchase of immovable property"
+    rate: 0.01
+    threshold: 5000000
+    threshold_period: per_transaction
+
+  rent_by_individual:
+    section: "194-IB"
+    description: "Rent paid by individual/HUF not under tax audit"
+    rate: 0.02
+    threshold: 50000
+    threshold_period: monthly
+
+  professional_fees:
+    section: "194J"
+    description: "Professional fees"
+    rate: 0.10
+    threshold: 50000
+    threshold_period: annual
+
+  technical_fees:
+    section: "194J"
+    description: "Technical services / call centre / film royalty"
+    rate: 0.02
+    threshold: 50000
+    threshold_period: annual
+
+  mutual_fund_income:
+    section: "194K"
+    description: "Income from mutual fund units"
+    rate: 0.10
+    threshold: 10000
+    threshold_period: annual
+
+  land_acquisition:
+    section: "194LA"
+    description: "Compensation on compulsory land acquisition"
+    rate: 0.10
+    threshold: 500000
+    threshold_period: annual
+
+  ecommerce:
+    section: "194O"
+    description: "E-commerce operator to participant"
+    rate: 0.001
+    threshold: 500000
+    threshold_period: annual
+    note: "Threshold applies to individuals/HUF with PAN"
+
+  goods_purchase:
+    section: "194Q"
+    description: "Purchase of goods"
+    rate: 0.001
+    threshold: 5000000
+    threshold_period: annual
+
+  vda_transfer:
+    section: "194S"
+    description: "Transfer of virtual digital assets (crypto/NFT)"
+    rate: 0.01
+    threshold: 10000
+    threshold_period: annual
+    note: "Threshold ₹50,000 for specified persons (small individuals/HUF)"
+
+aliases:
+  interest: interest_bank
+  rent: rent_land_building
+  professional: professional_fees
+  brokerage: commission
+  crypto: vda_transfer
+  contractor: contractor_other

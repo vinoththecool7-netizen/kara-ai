@@ -22,7 +22,7 @@ class TestToolSchemaStructure:
     """Verify overall shape and consistency of the tool catalogue."""
 
     def test_all_tools_count(self):
-        assert len(ALL_TOOLS) == 11
+        assert len(ALL_TOOLS) == 12
 
     def test_tool_map_keys(self):
         expected_names = {
@@ -33,6 +33,7 @@ class TestToolSchemaStructure:
             "search_tax_law",
             "get_tds_rate",
             "calculate_advance_tax",
+            "calculate_interest_234",
             "select_itr_form",
             "parse_form16",
             "parse_ais",
@@ -94,10 +95,8 @@ class TestIndividualTools:
         ]
 
     def test_select_itr_form_required_fields(self):
-        assert SELECT_ITR_FORM.parameters["required"] == [
-            "income_sources",
-            "total_income",
-        ]
+        assert SELECT_ITR_FORM.parameters["required"] == ["total_income"]
+        assert "entity_type" in SELECT_ITR_FORM.parameters["properties"]
 
     def test_capital_gains_transaction_schema(self):
         items = (

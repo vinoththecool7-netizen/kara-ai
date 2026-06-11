@@ -15,13 +15,41 @@ from kara_api.llm.models import ToolCall
 
 logger = logging.getLogger(__name__)
 
-# Attached to the output of the simplified (non-rule-engine) tools so the
-# LLM never presents their approximations as authoritative.
-_INDICATIVE_DISCLAIMER = (
-    "Indicative only: this is a simplified lookup, not the full rule engine. "
-    "Verify rates, thresholds, and eligibility against the current Finance "
-    "Act or with a qualified professional before acting."
-)
+# Canonical mapping of user/LLM-friendly deduction keys to Deductions fields.
+DEDUCTION_KEY_MAP = {
+    "80C": "section_80c",
+    "80c": "section_80c",
+    "section_80c": "section_80c",
+    "80CCC": "section_80ccc",
+    "80CCD1": "section_80ccd_1",
+    "80CCD1B": "section_80ccd_1b",
+    "80CCD(1B)": "section_80ccd_1b",
+    "80ccd_1b": "section_80ccd_1b",
+    "section_80ccd_1b": "section_80ccd_1b",
+    "80CCD2": "section_80ccd_2",
+    "80CCD(2)": "section_80ccd_2",
+    "section_80ccd_2": "section_80ccd_2",
+    "80D": "section_80d",
+    "80d": "section_80d",
+    "section_80d": "section_80d",
+    "80D_parents": "section_80d_parents",
+    "section_80d_parents": "section_80d_parents",
+    "80E": "section_80e",
+    "section_80e": "section_80e",
+    "80G": "section_80g",
+    "section_80g": "section_80g",
+    "80TTA": "section_80tta",
+    "section_80tta": "section_80tta",
+    "80TTB": "section_80ttb",
+    "section_80ttb": "section_80ttb",
+    "80U": "section_80u",
+    "section_80u": "section_80u",
+    "80DD": "section_80dd",
+    "section_80dd": "section_80dd",
+    "24b": "section_24b",
+    "section_24b": "section_24b",
+}
+
 
 
 class ToolResult(BaseModel):
@@ -56,16 +84,22 @@ class ToolRegistry:
         embedding_provider=None,
     ):
         from kara_tax_engine import (
+            AdvanceTaxCalculator,
             CapitalGainsCalculator,
             DeductionOptimizer,
+            ITRSelector,
             RegimeComparator,
             TaxComputer,
+            TDSCalculator,
         )
 
         self._computer = computer or TaxComputer(fy="2025-26")
         self._comparator = comparator or RegimeComparator(fy="2025-26")
         self._optimizer = optimizer or DeductionOptimizer(fy="2025-26")
         self._cg_calc = cg_calculator or CapitalGainsCalculator(fy="2025-26")
+        self._tds = TDSCalculator(fy="2025-26")
+        self._advance_tax = AdvanceTaxCalculator(fy="2025-26")
+        self._itr = ITRSelector(fy="2025-26")
         self._search_fn = search_fn
         self._db_session_factory = db_session_factory
         self._embedding_provider = embedding_provider
@@ -78,6 +112,7 @@ class ToolRegistry:
             "search_tax_law": self._handle_search_tax_law,
             "get_tds_rate": self._handle_get_tds_rate,
             "calculate_advance_tax": self._handle_calculate_advance_tax,
+            "calculate_interest_234": self._handle_calculate_interest_234,
             "select_itr_form": self._handle_select_itr_form,
             "parse_form16": self._handle_parse_form16,
             "parse_ais": self._handle_parse_ais,
@@ -180,179 +215,116 @@ class ToolRegistry:
             return [r.model_dump() for r in results]
 
     async def _handle_get_tds_rate(self, args: dict[str, Any]) -> dict[str, Any]:
-        """Look up TDS rate for a payment type (stub)."""
-        tds_rates = {
-            "salary": {"section": "192", "rate": "as per slab", "threshold": 0},
-            "interest": {"section": "194A", "rate": 0.10, "threshold": 40000},
-            "rent": {"section": "194I", "rate": 0.10, "threshold": 240000},
-            "professional_fees": {
-                "section": "194J",
-                "rate": 0.10,
-                "threshold": 30000,
-            },
-            "commission": {"section": "194H", "rate": 0.05, "threshold": 15000},
-            "dividend": {"section": "194", "rate": 0.10, "threshold": 5000},
-            "contractor": {"section": "194C", "rate": 0.02, "threshold": 30000},
-        }
-
-        payment_type = args["payment_type"]
-        has_pan = args.get("has_pan", True)
-        amount = args.get("amount", 0)
-
-        if payment_type not in tds_rates:
-            return {
-                "error": f"Unknown payment type: {payment_type}",
-                "known_types": list(tds_rates.keys()),
-            }
-
-        info = dict(tds_rates[payment_type])
-        info["payment_type"] = payment_type
-        info["amount"] = amount
-
-        if not has_pan:
-            info["rate"] = 0.20
-            info["note"] = "Higher rate (20%) applied due to missing PAN"
-
-        info["disclaimer"] = _INDICATIVE_DISCLAIMER
-        return info
+        """Look up TDS rate from the FY 2025-26 rate table."""
+        result = self._tds.lookup(
+            args["payment_type"],
+            amount=args.get("amount"),
+            has_pan=args.get("has_pan", True),
+            is_senior=args.get("is_senior", False),
+        )
+        return result.model_dump()
 
     async def _handle_calculate_advance_tax(
         self, args: dict[str, Any]
     ) -> dict[str, Any]:
-        """Calculate advance tax installments (stub)."""
-        total_estimated_tax = args["total_estimated_tax"]
-        tds_already_deducted = args.get("tds_already_deducted", 0)
-        financial_year = args.get("financial_year", "2025-26")
+        """Build the advance tax installment schedule (s.208/211)."""
+        schedule = self._advance_tax.schedule(
+            total_estimated_tax=args["total_estimated_tax"],
+            tds_deducted=args.get("tds_already_deducted", 0),
+            is_presumptive=args.get("is_presumptive", False),
+            is_senior_without_business=args.get("is_senior_without_business", False),
+        )
+        return schedule.model_dump(mode="json")
 
-        net = max(0, total_estimated_tax - tds_already_deducted)
+    async def _handle_calculate_interest_234(
+        self, args: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Compute interest under sections 234A, 234B, and 234C."""
+        from datetime import date
 
-        if net < 10000:
-            return {
-                "advance_tax_required": False,
-                "net_tax_after_tds": net,
-                "message": "No advance tax required (net tax liability below Rs 10,000)",
-                "disclaimer": _INDICATIVE_DISCLAIMER,
-            }
+        from kara_tax_engine import interest_234a, interest_234b, interest_234c
 
-        # Parse financial year for due dates
-        start_year = int(financial_year.split("-")[0])
+        fy = args.get("financial_year", "2025-26")
+        start_year = int(fy.split("-")[0])
+        total_tax = args["total_tax_liability"]
+        tds = args.get("tds_deducted", 0)
+        advance_paid = args.get("advance_tax_paid", 0)
 
-        installments = [
-            {
-                "quarter": "Q1",
-                "due_date": f"{start_year}-06-15",
-                "percentage": 15,
-                "cumulative_percentage": 15,
-                "amount": int(net * 0.15),
-            },
-            {
-                "quarter": "Q2",
-                "due_date": f"{start_year}-09-15",
-                "percentage": 30,
-                "cumulative_percentage": 45,
-                "amount": int(net * 0.30),
-            },
-            {
-                "quarter": "Q3",
-                "due_date": f"{start_year}-12-15",
-                "percentage": 30,
-                "cumulative_percentage": 75,
-                "amount": int(net * 0.30),
-            },
-            {
-                "quarter": "Q4",
-                "due_date": f"{start_year + 1}-03-15",
-                "percentage": 25,
-                "cumulative_percentage": 100,
-                "amount": int(net * 0.25),
-            },
-        ]
+        due_date = date(start_year + 1, 7, 31)  # non-audit individual due date
+        filing_date = (
+            date.fromisoformat(args["filing_date"]) if args.get("filing_date") else due_date
+        )
+        as_of = (
+            date.fromisoformat(args["as_of_date"]) if args.get("as_of_date") else filing_date
+        )
+
+        unpaid = max(0, total_tax - tds - advance_paid)
+        r_234a = interest_234a(unpaid, due_date=due_date, filing_date=filing_date)
+        r_234b = interest_234b(
+            assessed_tax=total_tax,
+            tds_deducted=tds,
+            advance_tax_paid=advance_paid,
+            until=as_of,
+            fy=fy,
+        )
+        # Without per-quarter data, assume the total advance tax was paid
+        # evenly available by each due date only if explicitly provided.
+        cumulative_paid = args.get("cumulative_paid") or {
+            "q1": advance_paid,
+            "q2": advance_paid,
+            "q3": advance_paid,
+            "q4": advance_paid,
+        }
+        r_234c = interest_234c(
+            total_tax_liability=total_tax,
+            tds_deducted=tds,
+            cumulative_paid=cumulative_paid,
+            fy=fy,
+            is_presumptive=args.get("is_presumptive", False),
+        )
 
         return {
-            "advance_tax_required": True,
-            "total_estimated_tax": total_estimated_tax,
-            "tds_already_deducted": tds_already_deducted,
-            "net_tax_after_tds": net,
-            "financial_year": financial_year,
-            "installments": installments,
-            "disclaimer": _INDICATIVE_DISCLAIMER,
+            "financial_year": fy,
+            "interest_234a": r_234a.model_dump(),
+            "interest_234b": r_234b.model_dump(),
+            "interest_234c": r_234c.model_dump(),
+            "total_interest": r_234a.interest + r_234b.interest + r_234c.interest,
         }
 
     async def _handle_select_itr_form(self, args: dict[str, Any]) -> dict[str, Any]:
-        """Determine the appropriate ITR form (stub)."""
-        decision = self._itr_decision(args)
-        decision["disclaimer"] = _INDICATIVE_DISCLAIMER
-        return decision
+        """Recommend the correct ITR form via the decision tree."""
+        # Back-compat mapping for older argument shapes
+        if args.get("is_company"):
+            args.setdefault("entity_type", "company")
+        if args.get("is_partnership"):
+            args.setdefault("entity_type", "firm")
+        sources = args.get("income_sources") or []
+        if "business" in sources:
+            args.setdefault("has_business", True)
+        if "capital_gains" in sources:
+            args.setdefault("has_other_capital_gains", True)
+        if "foreign_income" in sources:
+            args.setdefault("has_foreign_assets", True)
+        if "salary" in sources:
+            args.setdefault("has_salary", True)
 
-    def _itr_decision(self, args: dict[str, Any]) -> dict[str, Any]:
-        """Simplified ITR form decision tree."""
-        income_sources = args.get("income_sources", [])
-        is_company = args.get("is_company", False)
-        is_partnership = args.get("is_partnership", False)
-        has_foreign_assets = args.get("has_foreign_assets", False)
-        is_resident = args.get("is_resident", True)
-        total_income = args.get("total_income", 0)
-
-        # Decision tree
-        if is_company:
-            return {
-                "form": "ITR-6",
-                "reason": "Companies must file ITR-6",
-            }
-
-        if is_partnership:
-            return {
-                "form": "ITR-5",
-                "reason": "Partnership firms must file ITR-5",
-            }
-
-        if has_foreign_assets or not is_resident or "foreign_income" in income_sources:
-            return {
-                "form": "ITR-2",
-                "reason": "Required for non-residents, foreign income, or foreign assets",
-            }
-
-        if "business" in income_sources:
-            # Presumptive taxation (44AD/44ADA) -> ITR-4, else ITR-3
-            if total_income <= 5000000:
-                return {
-                    "form": "ITR-4",
-                    "reason": (
-                        "Business income eligible for presumptive taxation "
-                        "(Section 44AD/44ADA) with total income up to Rs 50L"
-                    ),
-                }
-            return {
-                "form": "ITR-3",
-                "reason": "Business/professional income above presumptive limits",
-            }
-
-        if "capital_gains" in income_sources:
-            return {
-                "form": "ITR-2",
-                "reason": "Capital gains income requires ITR-2",
-            }
-
-        # Salary / house property / other sources only
-        salary_only_sources = {"salary", "house_property", "other_sources"}
-        if set(income_sources).issubset(salary_only_sources):
-            if total_income <= 5000000:
-                return {
-                    "form": "ITR-1",
-                    "reason": (
-                        "Salary/pension, one house property, and other sources "
-                        "with total income up to Rs 50L"
-                    ),
-                }
-            return {
-                "form": "ITR-2",
-                "reason": "Total income exceeds Rs 50L limit for ITR-1",
-            }
-
-        return {
-            "form": "ITR-2",
-            "reason": "Default form for individuals with multiple income sources",
-        }
+        recommendation = self._itr.select(
+            entity_type=args.get("entity_type", "individual"),
+            residential_status=args.get("residential_status", "resident"),
+            total_income=args.get("total_income", 0),
+            has_salary=args.get("has_salary", False),
+            house_property_count=args.get("house_property_count", 0),
+            has_business=args.get("has_business", False),
+            is_presumptive=args.get("is_presumptive", False),
+            ltcg_112a_amount=args.get("ltcg_112a_amount", 0),
+            has_other_capital_gains=args.get("has_other_capital_gains", False),
+            has_foreign_assets=args.get("has_foreign_assets", False),
+            has_crypto_income=args.get("has_crypto_income", False),
+            is_director=args.get("is_director", False),
+            has_unlisted_shares=args.get("has_unlisted_shares", False),
+            agricultural_income=args.get("agricultural_income", 0),
+        )
+        return recommendation.model_dump()
 
     async def _handle_parse_form16(self, args: dict[str, Any]) -> dict:
         """Parse a Base64-encoded Form 16 PDF and return structured data."""
@@ -435,46 +407,12 @@ class ToolRegistry:
         """Build Deductions from a user-friendly dict (e.g. {"80C": 150000})."""
         from kara_tax_engine.models import Deductions
 
-        mapping = {
-            "80C": "section_80c",
-            "80c": "section_80c",
-            "section_80c": "section_80c",
-            "80CCC": "section_80ccc",
-            "80CCD1": "section_80ccd_1",
-            "80CCD1B": "section_80ccd_1b",
-            "80CCD(1B)": "section_80ccd_1b",
-            "80ccd_1b": "section_80ccd_1b",
-            "section_80ccd_1b": "section_80ccd_1b",
-            "80CCD2": "section_80ccd_2",
-            "80CCD(2)": "section_80ccd_2",
-            "section_80ccd_2": "section_80ccd_2",
-            "80D": "section_80d",
-            "80d": "section_80d",
-            "section_80d": "section_80d",
-            "80D_parents": "section_80d_parents",
-            "section_80d_parents": "section_80d_parents",
-            "80E": "section_80e",
-            "section_80e": "section_80e",
-            "80G": "section_80g",
-            "section_80g": "section_80g",
-            "80TTA": "section_80tta",
-            "section_80tta": "section_80tta",
-            "80TTB": "section_80ttb",
-            "section_80ttb": "section_80ttb",
-            "80U": "section_80u",
-            "section_80u": "section_80u",
-            "80DD": "section_80dd",
-            "section_80dd": "section_80dd",
-            "24b": "section_24b",
-            "section_24b": "section_24b",
-        }
-
         ded = Deductions()
         for key, value in ded_dict.items():
             if key == "parents_senior":
                 ded.parents_senior = bool(value)
                 continue
-            attr = mapping.get(key)
+            attr = DEDUCTION_KEY_MAP.get(key)
             if attr and hasattr(ded, attr):
                 setattr(ded, attr, value)
         return ded
