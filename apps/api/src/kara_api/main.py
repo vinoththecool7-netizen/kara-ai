@@ -6,6 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from kara_api.config import get_settings
 from kara_api.db import close_db, init_db
@@ -17,7 +18,13 @@ from kara_api.middleware import (
     SecurityHeadersMiddleware,
     setup_logging,
 )
-from kara_api.routers import chat_router, documents_router, knowledge_router, tax_router
+from kara_api.routers import (
+    chat_router,
+    documents_router,
+    knowledge_router,
+    setup_router,
+    tax_router,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -108,7 +115,12 @@ def create_app() -> FastAPI:
         chat_per_minute=settings.RATE_LIMIT_CHAT_PER_MINUTE,
         upload_per_minute=settings.RATE_LIMIT_UPLOAD_PER_MINUTE,
         compute_per_minute=settings.RATE_LIMIT_COMPUTE_PER_MINUTE,
+        trust_proxy_headers=settings.TRUST_PROXY_HEADERS,
     )
+    # Outermost (added last): reject unknown Host headers before any other
+    # processing — blocks DNS-rebinding access to this unauthenticated API.
+    # Pure ASGI, so SSE streaming is unaffected.
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=settings.ALLOWED_HOSTS)
 
     @app.exception_handler(Exception)
     async def unhandled_exception_handler(request, exc):
@@ -121,6 +133,7 @@ def create_app() -> FastAPI:
     app.include_router(tax_router, prefix=settings.API_V1_PREFIX)
     app.include_router(knowledge_router, prefix=settings.API_V1_PREFIX)
     app.include_router(documents_router, prefix=settings.API_V1_PREFIX)
+    app.include_router(setup_router, prefix=settings.API_V1_PREFIX)
 
     @app.get("/health")
     async def health_check():
