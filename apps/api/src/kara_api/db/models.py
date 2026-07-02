@@ -170,3 +170,24 @@ class Message(Base):
 
     # Relationships
     session: Mapped["Session"] = relationship("Session", back_populates="messages")
+
+
+# ---------------------------------------------------------------------------
+# Runtime settings (first-run setup wizard)
+# ---------------------------------------------------------------------------
+
+
+class RuntimeSetting(Base):
+    """Key/value config written by the setup wizard.
+
+    Only consulted when the environment does not already configure an LLM
+    (see kara_api.runtime_config.is_env_configured).
+    """
+
+    __tablename__ = "runtime_settings"
+
+    key: Mapped[str] = mapped_column(String(100), primary_key=True)
+    value: Mapped[str] = mapped_column(Text, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
