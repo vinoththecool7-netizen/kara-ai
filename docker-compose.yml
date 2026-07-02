@@ -59,5 +59,33 @@ services:
       retries: 3
       start_period: 15s
 
+  # Fully-local LLM (opt-in): docker compose --profile local up -d
+  # Pulls ${OLLAMA_MODEL:-llama3.1} on first start; the setup wizard
+  # auto-detects it at http://ollama:11434.
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["local"]
+    volumes:
+      - kara-ollama-data:/root/.ollama
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  ollama-init:
+    image: ollama/ollama:latest
+    profiles: ["local"]
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    entrypoint: ["/bin/sh", "-c", "ollama pull ${OLLAMA_MODEL:-llama3.1}"]
+    restart: "no"
+
 volumes:
   kara-db-data:
+  kara-ollama-data:
