@@ -65,12 +65,6 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 cd "${PROJECT_ROOT}"
 info "Working directory: ${PROJECT_ROOT}"
 
-# Ensure .env exists (fresh clones only have .env.example)
-if [ ! -f "apps/api/.env" ]; then
-    info "apps/api/.env not found — copying from .env.example for smoke test"
-    cp apps/api/.env.example apps/api/.env
-fi
-
 # ---------------------------------------------------------------------------
 # Cleanup trap — always bring the stack down on exit (pass or fail)
 # ---------------------------------------------------------------------------

@@ -10,6 +10,7 @@ services:
       - "127.0.0.1:5432:5432"
     volumes:
       - kara-db-data:/var/lib/postgresql/data
+    restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U kara -d kara"]
       interval: 5s
@@ -18,13 +19,18 @@ services:
       start_period: 10s
 
   api:
-    build:
-      context: .
-      dockerfile: apps/api/Dockerfile
+    image: ghcr.io/vinoththecool7-netizen/kara-api:latest
     ports:
-      - "8000:8000"
+      # Loopback only by default — the API has no authentication, so binding
+      # wider exposes every chat session to the whole network. The web UI
+      # reaches it through the internal network (http://api:8000) regardless.
+      # Set KARA_BIND_HOST=0.0.0.0 only behind your own auth/reverse proxy.
+      - "${KARA_BIND_HOST:-127.0.0.1}:8000:8000"
     env_file:
-      - apps/api/.env
+      # Optional: without it Kara boots unconfigured and the web UI shows
+      # the first-run setup wizard.
+      - path: apps/api/.env
+        required: false
     environment:
       - DATABASE_URL=postgresql+asyncpg://kara:${KARA_DB_PASSWORD:-kara}@db:5432/kara
     depends_on:
@@ -33,15 +39,11 @@ services:
     restart: unless-stopped
 
   web:
-    build:
-      context: .
-      dockerfile: apps/web/Dockerfile
-      args:
-        NEXT_PUBLIC_API_URL: http://localhost:8000
-        NEXT_PUBLIC_SITE_URL: http://localhost:3000
-        INTERNAL_API_URL: http://api:8000
+    image: ghcr.io/vinoththecool7-netizen/kara-web:latest
     ports:
-      - "3000:3000"
+      # Loopback only by default: the UI proxies straight to the
+      # unauthenticated API, so exposing it wider exposes all data too.
+      - "${KARA_BIND_HOST:-127.0.0.1}:3000:3000"
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000
       - NEXT_PUBLIC_SITE_URL=http://localhost:3000
