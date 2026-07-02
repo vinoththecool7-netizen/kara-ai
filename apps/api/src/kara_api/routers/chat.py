@@ -5,6 +5,7 @@ ProfileBuilder into HTTP endpoints with Server-Sent Events streaming.
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import uuid
@@ -30,7 +31,7 @@ from kara_api.agent import (
     SessionManager,
     ToolCallRecord,
 )
-from kara_api.config import Settings, get_settings
+from kara_api.config import Settings
 from kara_api.db.connection import get_session_factory
 from kara_api.db.models import Message as DbMessage
 from kara_api.knowledge.embeddings import get_embedding_provider
@@ -38,6 +39,7 @@ from kara_api.knowledge.search import hybrid_search
 from kara_api.llm.client import LLMClient
 from kara_api.llm.models import Message, Role, ToolCall
 from kara_api.llm.providers import get_llm_provider
+from kara_api.runtime_config import get_effective_settings
 from kara_api.tools.executor import ToolRegistry
 
 logger = logging.getLogger(__name__)
@@ -273,7 +275,13 @@ async def _sse_generator(
 
         # Persist the user message BEFORE running the agent so a provider
         # failure or client disconnect can never silently swallow it.
-        await session_manager.add_message(session_id, "user", user_message)
+        # Shielded: a client disconnect cancels this generator, and a
+        # CancelledError landing mid-query corrupts the pooled asyncpg
+        # connection (it re-enters the pool in a stuck protocol state and
+        # freezes whichever request checks it out next).
+        await asyncio.shield(
+            session_manager.add_message(session_id, "user", user_message)
+        )
 
         result: AgentResponse | None = None
         async for event in agent_loop.run_stream(
@@ -304,27 +312,32 @@ async def _sse_generator(
         for hint in advisory.check(tool_names):
             yield _sse({"type": "advisory", "hint": hint})
 
-        # Persist assistant message (results included so cards survive reload)
-        await session_manager.add_message(
-            session_id,
-            "assistant",
-            result.content,
-            (
-                [
-                    {
-                        "name": r.tool_name,
-                        "args": r.arguments,
-                        "result": r.result,
-                        "is_error": r.is_error,
-                    }
-                    for r in result.tool_calls_made
-                ]
-                or None
-            ),
+        # Persist assistant message (results included so cards survive reload).
+        # Shielded for the same reason as the user message above.
+        await asyncio.shield(
+            session_manager.add_message(
+                session_id,
+                "assistant",
+                result.content,
+                (
+                    [
+                        {
+                            "name": r.tool_name,
+                            "args": r.arguments,
+                            "result": r.result,
+                            "is_error": r.is_error,
+                        }
+                        for r in result.tool_calls_made
+                    ]
+                    or None
+                ),
+            )
         )
 
         # Update profile
-        await session_manager.update_profile(session_id, result.profile_snapshot)
+        await asyncio.shield(
+            session_manager.update_profile(session_id, result.profile_snapshot)
+        )
 
         # Done event
         profile_state = _build_profile_state(profile)
@@ -412,7 +425,7 @@ async def create_chat(body: ChatRequest, request: Request):
 
     Returns SSE stream by default, or JSON if ``Accept: application/json``.
     """
-    settings = get_settings()
+    settings = await get_effective_settings()
     agent_loop = _create_agent_loop(settings)
     sm = _create_session_manager()
     advisory = AdvisoryTriggers()
@@ -440,7 +453,7 @@ async def continue_chat(session_id: uuid.UUID, body: ChatRequest, request: Reque
 
     Returns SSE stream by default, or JSON if ``Accept: application/json``.
     """
-    settings = get_settings()
+    settings = await get_effective_settings()
     agent_loop = _create_agent_loop(settings)
     sm = _create_session_manager()
     advisory = AdvisoryTriggers()

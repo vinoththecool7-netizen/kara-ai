@@ -1016,3 +1016,56 @@ class TestClearProfile:
         mock_session_manager.get_session = AsyncMock(return_value=None)
         resp = await client.delete(f"/api/v1/chat/{uuid.uuid4()}/profile")
         assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Effective (wizard-aware) settings
+# ---------------------------------------------------------------------------
+
+
+async def test_chat_uses_effective_settings(
+    mock_session_manager, mock_agent_loop, monkeypatch
+):
+    """Wizard-saved (DB) config must reach the provider factory."""
+    from contextlib import asynccontextmanager
+
+    from kara_api import runtime_config
+    from kara_api.config import get_settings
+    from kara_api.main import create_app
+
+    # setenv("", ...) rather than delenv: pydantic-settings also reads
+    # apps/api/.env, and only a real (even empty) env var overrides it.
+    monkeypatch.setenv("LLM_API_KEY", "")
+    monkeypatch.setenv("LLM_PROVIDER", "openai")
+    get_settings.cache_clear()
+
+    async def overrides() -> dict:
+        return {"LLM_PROVIDER": "fake"}
+
+    monkeypatch.setattr(runtime_config, "get_runtime_overrides", overrides)
+
+    @asynccontextmanager
+    async def _noop_lifespan(app):
+        yield
+
+    create_loop = MagicMock(return_value=mock_agent_loop)
+    with (
+        patch(
+            "kara_api.routers.chat._create_session_manager",
+            return_value=mock_session_manager,
+        ),
+        patch("kara_api.routers.chat._create_agent_loop", create_loop),
+        patch("kara_api.main.lifespan", _noop_lifespan),
+    ):
+        app = create_app()
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            resp = await ac.post(
+                "/api/v1/chat",
+                json={"message": "Hello"},
+                headers={"Accept": "application/json"},
+            )
+    assert resp.status_code == 200
+    settings_passed = create_loop.call_args.args[0]
+    assert settings_passed.LLM_PROVIDER == "fake"
+    get_settings.cache_clear()

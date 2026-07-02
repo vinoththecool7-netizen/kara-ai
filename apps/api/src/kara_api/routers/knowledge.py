@@ -4,10 +4,10 @@ from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from kara_api.config import Settings, get_settings
 from kara_api.db.connection import get_db_session
 from kara_api.knowledge.embeddings import get_embedding_provider
 from kara_api.knowledge.search import SearchResult, hybrid_search
+from kara_api.runtime_config import get_effective_settings
 
 router = APIRouter(prefix="/knowledge", tags=["knowledge"])
 
@@ -26,9 +26,9 @@ class SearchResponse(BaseModel):
 async def search_knowledge_base(
     request: SearchRequest,
     session: AsyncSession = Depends(get_db_session),
-    settings: Settings = Depends(get_settings),
 ) -> SearchResponse:
     """Search the tax knowledge base using hybrid search."""
+    settings = await get_effective_settings()
     provider = get_embedding_provider(settings)
     results = await hybrid_search(
         query=request.query,
