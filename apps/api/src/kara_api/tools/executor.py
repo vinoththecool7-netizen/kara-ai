@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 from pydantic import BaseModel, ValidationError
 
 from kara_api.llm.models import ToolCall
+from kara_api.privacy import mask_document_pii
 
 logger = logging.getLogger(__name__)
 
@@ -336,7 +337,7 @@ class ToolRegistry:
         password = args.get("password")
         try:
             doc = parse_form16(pdf_bytes, password=password)
-            return doc.model_dump(mode="json")
+            return mask_document_pii(doc.model_dump(mode="json"))
         except Form16ParseError as exc:
             raise ValueError(str(exc)) from exc
 
@@ -356,7 +357,7 @@ class ToolRegistry:
         else:
             doc = parse_ais_pdf(raw_bytes)
 
-        return doc.model_dump(mode="json")
+        return mask_document_pii(doc.model_dump(mode="json"))
 
     async def _handle_parse_26as(self, args: dict[str, Any]) -> dict:
         """Parse a Base64-encoded Form 26AS PDF and return structured data."""
@@ -366,7 +367,7 @@ class ToolRegistry:
 
         pdf_bytes = base64.b64decode(args["content_b64"])
         doc = parse_form_26as(pdf_bytes)
-        return doc.model_dump(mode="json")
+        return mask_document_pii(doc.model_dump(mode="json"))
 
     # ------------------------------------------------------------------
     # Helpers

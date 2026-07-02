@@ -15,9 +15,21 @@ class Settings(BaseSettings):
     LLM_MODEL: str = "gpt-4o"
     LLM_PROVIDER: str = "openai"
     LLM_BASE_URL: str = ""
+    # Comma-separated fallback models, used only with OpenRouter: when the
+    # primary model's pool is congested or rate-limited, OpenRouter reroutes
+    # to these in order instead of holding the request open.
+    LLM_FALLBACK_MODELS: str = ""
     LLM_MAX_TOKENS: int = 4096
     LLM_TEMPERATURE: float = 0.3
     CORS_ORIGINS: list[str] = ["http://localhost:3000"]
+    # Host-header allowlist: blocks DNS-rebinding access to the
+    # unauthenticated API. "api" is the compose-internal hostname the web
+    # proxy uses; "test"/"testserver" are IANA-reserved names (RFC 6761/2606)
+    # that cannot be publicly registered, kept so test clients work.
+    ALLOWED_HOSTS: list[str] = ["localhost", "127.0.0.1", "api", "test", "testserver"]
+    # Honour X-Forwarded-For for rate limiting only when a trusted reverse
+    # proxy sits in front of the API (the header is client-spoofable).
+    TRUST_PROXY_HEADERS: bool = False
     DEBUG: bool = False
     # Sessions older than this (by last update) are deleted daily; 0 disables.
     SESSION_TTL_DAYS: int = 30

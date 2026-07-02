@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import contextvars
 import logging
+import re
 import uuid
 
 # Exposed so log filters/handlers can annotate records with the request id.
@@ -46,9 +47,16 @@ class SecurityHeadersMiddleware:
         await self.app(scope, receive, send_with_headers)
 
 
+# Client-supplied request IDs are reflected in the response and in every log
+# line — restrict to a safe charset and bounded length before trusting them.
+_REQUEST_ID_UNSAFE_RE = re.compile(r"[^A-Za-z0-9_-]")
+_REQUEST_ID_MAX_LEN = 64
+
+
 class RequestIDMiddleware:
-    """Attach a request ID to every request: honoured from X-Request-ID or
-    generated, stored in a contextvar for logging, echoed in the response."""
+    """Attach a request ID to every request: honoured from X-Request-ID
+    (sanitized), or generated; stored in a contextvar for logging, echoed
+    in the response."""
 
     def __init__(self, app):
         self.app = app
@@ -59,7 +67,13 @@ class RequestIDMiddleware:
             return
 
         incoming = dict(scope.get("headers", [])).get(b"x-request-id")
-        request_id = incoming.decode("latin-1") if incoming else uuid.uuid4().hex[:16]
+        request_id = ""
+        if incoming:
+            request_id = _REQUEST_ID_UNSAFE_RE.sub(
+                "", incoming.decode("latin-1")
+            )[:_REQUEST_ID_MAX_LEN]
+        if not request_id:
+            request_id = uuid.uuid4().hex[:16]
         token = request_id_var.set(request_id)
 
         async def send_with_id(message):
@@ -91,9 +105,14 @@ class RateLimitMiddleware:
         chat_per_minute: int = 20,
         upload_per_minute: int = 10,
         compute_per_minute: int = 60,
+        trust_proxy_headers: bool = False,
     ):
         self.app = app
         self.enabled = enabled
+        # X-Forwarded-For is client-controlled; honouring it without a
+        # trusted reverse proxy in front lets any caller reset their bucket
+        # per request. Off unless TRUST_PROXY_HEADERS is set.
+        self.trust_proxy_headers = trust_proxy_headers
         self._buckets = {
             "/api/v1/chat": ("chat", chat_per_minute),
             "/api/v1/documents": ("upload", upload_per_minute),
@@ -109,12 +128,12 @@ class RateLimitMiddleware:
                 return bucket
         return None
 
-    @staticmethod
-    def _client_ip(scope) -> str:
-        headers = dict(scope.get("headers", []))
-        forwarded = headers.get(b"x-forwarded-for")
-        if forwarded:
-            return forwarded.decode("latin-1").split(",")[0].strip()
+    def _client_ip(self, scope) -> str:
+        if self.trust_proxy_headers:
+            headers = dict(scope.get("headers", []))
+            forwarded = headers.get(b"x-forwarded-for")
+            if forwarded:
+                return forwarded.decode("latin-1").split(",")[0].strip()
         client = scope.get("client")
         return client[0] if client else "unknown"
 

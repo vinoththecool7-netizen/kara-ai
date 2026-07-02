@@ -452,3 +452,65 @@ class TestErrorHandling:
         assert result.is_error is False
         parsed = json.loads(result.content)
         assert isinstance(parsed, dict)
+
+
+# ---------------------------------------------------------------------------
+# PII masking on parse_* tool results
+# ---------------------------------------------------------------------------
+
+
+class TestParseToolPIIMasking:
+    """Parse-tool results are streamed to clients, persisted in
+    tool_calls_json, and fed to the LLM — the raw PAN must never appear."""
+
+    @pytest.mark.asyncio
+    async def test_parse_form16_masks_pans(self, registry):
+        import base64
+        import re
+
+        from tests.fixtures.form16_factory import make_form16_standard
+
+        b64 = base64.b64encode(make_form16_standard()).decode()
+        result = await registry._handle_parse_form16({"pdf_base64": b64})
+        assert re.fullmatch(r"X+[A-Z0-9]{4}", result["part_a"]["employee_pan"])
+        assert re.fullmatch(r"X+[A-Z0-9]{4}", result["part_a"]["employer_pan"])
+        # The raw text excerpt must not leak the unmasked PANs either.
+        excerpt = result.get("raw_text_excerpt") or ""
+        assert "ABCDE1234F" not in excerpt
+        assert "AABCA1234C" not in excerpt
+
+    @pytest.mark.asyncio
+    async def test_parse_form16_execute_content_has_no_raw_pan(self, registry):
+        import base64
+
+        from tests.fixtures.form16_factory import make_form16_standard
+
+        b64 = base64.b64encode(make_form16_standard()).decode()
+        tc = _make_tool_call("parse_form16", {"pdf_base64": b64})
+        tool_result = await registry.execute(tc)
+        assert tool_result.is_error is False
+        assert "ABCDE1234F" not in tool_result.content
+        assert "AABCA1234C" not in tool_result.content
+
+    @pytest.mark.asyncio
+    async def test_parse_ais_masks_pan(self, registry):
+        import base64
+
+        from tests.fixtures.ais_factory import build_ais_json
+
+        blob = build_ais_json()
+        b64 = base64.b64encode(json.dumps(blob).encode()).decode()
+        result = await registry._handle_parse_ais(
+            {"content_b64": b64, "content_type": "json"}
+        )
+        assert result["pan"] == "XXXXXX234F"
+
+    @pytest.mark.asyncio
+    async def test_parse_26as_masks_pan(self, registry):
+        import base64
+
+        from tests.fixtures.twenty_six_as_factory import build_26as_pdf
+
+        b64 = base64.b64encode(build_26as_pdf()).decode()
+        result = await registry._handle_parse_26as({"content_b64": b64})
+        assert result["pan"] == "XXXXXX234F"

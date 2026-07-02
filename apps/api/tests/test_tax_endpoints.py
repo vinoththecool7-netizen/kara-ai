@@ -294,3 +294,52 @@ class TestCapitalGains:
         assert len(data) == 1
         assert data[0]["total_gain"] < 0
         assert data[0]["tax_amount"] == 0
+
+
+# ---------------------------------------------------------------------------
+# Engine exception → HTTP detail translation
+# ---------------------------------------------------------------------------
+
+
+class TestEngineErrorDetails:
+    """KeyError/IndexError/TypeError carry internal context (dict keys,
+    attribute names) — clients must get a generic message, not str(exc)."""
+
+    def _raise(self, exc):
+        def boom():
+            raise exc
+        return boom
+
+    def test_keyerror_detail_is_generic(self):
+        import pytest as _pytest
+        from fastapi import HTTPException
+
+        from kara_api.routers.tax import _handle_engine_call
+
+        with _pytest.raises(HTTPException) as exc_info:
+            _handle_engine_call(self._raise(KeyError("internal_rule_key")))
+        assert exc_info.value.status_code == 400
+        assert "internal_rule_key" not in str(exc_info.value.detail)
+
+    def test_typeerror_detail_is_generic(self):
+        import pytest as _pytest
+        from fastapi import HTTPException
+
+        from kara_api.routers.tax import _handle_engine_call
+
+        with _pytest.raises(HTTPException) as exc_info:
+            _handle_engine_call(self._raise(TypeError("unsupported operand secret")))
+        assert exc_info.value.status_code == 400
+        assert "secret" not in str(exc_info.value.detail)
+
+    def test_valueerror_detail_is_preserved(self):
+        """ValueError is the engine's user-facing validation channel."""
+        import pytest as _pytest
+        from fastapi import HTTPException
+
+        from kara_api.routers.tax import _handle_engine_call
+
+        with _pytest.raises(HTTPException) as exc_info:
+            _handle_engine_call(self._raise(ValueError("gross_salary must be >= 0")))
+        assert exc_info.value.status_code == 400
+        assert "gross_salary must be >= 0" in str(exc_info.value.detail)

@@ -49,9 +49,15 @@ def _handle_engine_call(func: Callable[..., Any], *args: Any, **kwargs: Any) -> 
     try:
         return func(*args, **kwargs)
     except ValueError as exc:
+        # ValueError is the engine's user-facing validation channel.
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except (KeyError, IndexError, TypeError) as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        # These carry internal context (dict keys, attribute names) —
+        # log the specifics, return a generic message.
+        logger.warning("Malformed tax engine request: %r", exc)
+        raise HTTPException(
+            status_code=400, detail="Invalid request for tax computation."
+        ) from exc
     except Exception as exc:
         logger.exception("Unexpected error in tax engine")
         raise HTTPException(status_code=500, detail="Internal computation error") from exc

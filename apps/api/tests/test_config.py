@@ -38,3 +38,16 @@ def test_llm_max_tokens_default():
 def test_llm_temperature_default():
     settings = Settings()
     assert settings.LLM_TEMPERATURE == 0.3
+
+
+def test_allowed_hosts_default_localhost_only():
+    settings = Settings(_env_file=None)
+    assert "localhost" in settings.ALLOWED_HOSTS
+    assert "127.0.0.1" in settings.ALLOWED_HOSTS
+    assert "api" in settings.ALLOWED_HOSTS  # compose-internal proxy hostname
+    assert "*" not in settings.ALLOWED_HOSTS
+
+
+def test_trust_proxy_headers_default_off():
+    settings = Settings(_env_file=None)
+    assert settings.TRUST_PROXY_HEADERS is False
