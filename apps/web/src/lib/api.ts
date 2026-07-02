@@ -273,3 +273,63 @@ export async function uploadDocument(
   await assertOk(response, "uploadDocument");
   return response.json() as Promise<DocumentUploadResponse>;
 }
+
+// ---------------------------------------------------------------------------
+// Setup wizard
+// ---------------------------------------------------------------------------
+
+const SETUP_PREFIX = "/api/v1/setup";
+
+export interface OllamaStatus {
+  reachable: boolean;
+  base_url: string;
+  models: string[];
+}
+
+export interface SetupStatus {
+  configured: boolean;
+  source: "env" | "db" | null;
+  provider: string;
+  model: string;
+  api_key_masked: string;
+  ollama: OllamaStatus;
+}
+
+export interface SetupPayload {
+  provider: "openai" | "anthropic" | "ollama";
+  api_key: string;
+  model: string;
+  base_url: string;
+  ollama_base_url: string;
+}
+
+export async function getSetupStatus(): Promise<SetupStatus> {
+  const response = await fetchWithRetry(`${SETUP_PREFIX}/status`, {
+    method: "GET",
+    headers: buildJsonHeaders(),
+  });
+  await assertOk(response, "getSetupStatus");
+  return response.json() as Promise<SetupStatus>;
+}
+
+export async function testSetup(
+  payload: SetupPayload,
+): Promise<{ ok: boolean; message: string }> {
+  const response = await fetchWithRetry(`${SETUP_PREFIX}/test`, {
+    method: "POST",
+    headers: buildJsonHeaders(),
+    body: JSON.stringify(payload),
+  });
+  await assertOk(response, "testSetup");
+  return response.json() as Promise<{ ok: boolean; message: string }>;
+}
+
+export async function saveSetup(payload: SetupPayload): Promise<SetupStatus> {
+  const response = await fetchWithRetry(SETUP_PREFIX, {
+    method: "POST",
+    headers: buildJsonHeaders(),
+    body: JSON.stringify(payload),
+  });
+  await assertOk(response, "saveSetup");
+  return response.json() as Promise<SetupStatus>;
+}
