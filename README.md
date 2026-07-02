@@ -2,18 +2,14 @@
 
 # Kara (कर)
 
-**The open-source AI tax advisor for India — it computes, never guesses.**
-
-Chat with an AI that understands Indian income tax, where every rupee figure
-comes from a deterministic rule engine with 950+ tests — not from an LLM's
-imagination.
+**A private, self-hosted AI tax advisor for India — it computes, never guesses.**
 
 [![CI](https://github.com/vinoththecool7-netizen/kara-ai/actions/workflows/ci.yml/badge.svg)](https://github.com/vinoththecool7-netizen/kara-ai/actions/workflows/ci.yml)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue)](LICENSE)
 [![Tax engine: MIT](https://img.shields.io/badge/tax--engine-MIT-green)](packages/tax-engine/LICENSE)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-[Quick start](#quick-start) · [Why Kara?](#why-kara) · [Features](#features) ·
+[Quick start](#quick-start) · [Why Kara](#why-kara) ·
 [Self-hosting guide](docs/self-hosting.md) · [Contributing](CONTRIBUTING.md)
 
 <!-- Hero demo: capture a 20–30s GIF of a chat session (question → streaming
@@ -26,12 +22,20 @@ imagination.
 
 ---
 
-Ask ChatGPT how much tax you owe on a ₹15 lakh salary and you'll get a
-confident answer that's frequently wrong — slab math, the §87A rebate,
-marginal relief, and surcharge tiers are exactly the kind of arithmetic LLMs
-fumble. Kara takes a different approach: **the LLM only converses and
-orchestrates; a deterministic, YAML-rule-driven engine does every
-calculation.** Same natural conversation, zero hallucinated numbers.
+Your Form 16 is your PAN, your salary, and every investment you've made.
+Right now your options for getting tax help with it are to upload it to a
+filing portal's servers, or paste it into ChatGPT. Kara is the third
+option: a tax advisor that runs on your own hardware. Documents are parsed
+in memory and never written to disk, PANs are masked before anything is
+stored, and with a local model the whole thing works offline — nothing
+leaves your machine.
+
+There's a second problem with asking ChatGPT, anyway: it is confidently
+wrong about Indian tax arithmetic. Slab boundaries, the §87A rebate with
+marginal relief, surcharge tiers — exactly the math language models fumble.
+So in Kara, the language model is not allowed to do math. It converses,
+asks clarifying questions, and calls tools; every rupee figure comes from a
+deterministic rule engine with 950+ tests that anyone can audit.
 
 ```
 You:   How much tax do I owe on a 15 lakh salary?
@@ -43,37 +47,35 @@ Kara:  Under the new regime for FY 2025-26, your tax is ₹97,500…
 > Kara provides general tax information, not professional tax advice.
 > Verify with a qualified professional before filing.
 
-## Why Kara?
+## Why Kara
 
-|  | **Kara** | ChatGPT / Claude | ClearTax / Quicko | Calculator sites |
-|---|---|---|---|---|
-| Numbers are computed, not generated | ✅ deterministic engine | ❌ hallucinates | ✅ | ✅ |
-| Conversational — ask anything, in plain English | ✅ | ✅ | ⚠️ limited chatbot | ❌ forms only |
-| Reads your Form 16 / AIS / 26AS | ✅ | ⚠️ unreliable | ✅ | ❌ |
-| Your PAN & salary stay on your machine | ✅ self-hosted | ❌ | ❌ | ⚠️ |
-| Works fully offline (Ollama) | ✅ | ❌ | ❌ | ❌ |
-| Free and open source | ✅ AGPL + MIT engine | ❌ | ❌ | ⚠️ closed |
-| Files your ITR | 🔜 roadmap | ❌ | ✅ | ❌ |
+**Your data stays yours.** ClearTax, Quicko, and every other filing portal
+work by uploading your financial life to their servers. Kara is software
+you run yourself. Bring your own LLM key (OpenAI, Anthropic, OpenRouter) —
+or start it with one command in fully-local mode, where an on-device model
+answers and no data ever touches the internet. Either way: documents parsed
+in memory, PANs masked before storage, idle sessions deleted after 30 days.
 
-## Features
+**The numbers are computed, not generated.** The [tax
+engine](packages/tax-engine/) covers FY 2025-26 slabs, every deduction cap,
+capital gains across 7 asset classes, TDS rates, advance tax schedules,
+§234A/B/C interest, and ITR form selection. The rules are plain YAML you
+can read and check against the Income Tax Act; the engine is MIT-licensed,
+so you can embed it in your own projects.
 
-- 💬 **Conversational** — ask in plain English; Kara asks clarifying
-  questions, streams answers token by token, and renders rich cards: tax
-  breakdown waterfall, old-vs-new regime comparison, deduction gap analysis,
-  capital gains summaries.
-- 🎯 **Deterministic** — FY 2025-26 slabs, §87A rebate with marginal relief,
-  surcharge tiers, every deduction cap, capital gains across 7 asset classes,
-  TDS rates, advance tax schedules, §234A/B/C interest, and ITR form
-  selection — all computed by code, driven by [YAML rule
-  files](packages/tax-engine/) anyone can audit.
-- 📄 **Document-aware** — upload Form 16, AIS, or Form 26AS (PDF/JSON); Kara
-  parses them, auto-fills your profile, and reconciles TDS across documents.
-  Documents are parsed in memory and never written to disk.
-- 📚 **Cites the law** — a 114-section tax-law knowledge base (hybrid
-  pgvector + full-text search) grounds explanations in the actual provisions.
-- 🔒 **Private by design** — self-hosted, bring your own LLM key (OpenAI,
-  Anthropic, OpenRouter, or fully local via Ollama). PANs are masked before
-  storage; idle sessions auto-delete after 30 days.
+**It understands your documents.** Upload Form 16, AIS, or Form 26AS and
+Kara fills in your profile and reconciles TDS across them. Then it answers
+the questions calculator sites can't: *old regime or new, for me
+specifically? Did my employer deduct the right TDS? What do I owe on my US
+stock sales?*
+
+**It shows its work.** Answers stream in with a tax-breakdown waterfall,
+regime comparison, and deduction-gap cards — and explanations are grounded
+in a 114-section knowledge base of the actual tax provisions, not vibes.
+
+**What it doesn't do (yet):** file your ITR. Kara is for planning and
+understanding; ITR JSON export for the e-filing portal is on the
+[roadmap](#roadmap).
 
 ## Quick start
 
