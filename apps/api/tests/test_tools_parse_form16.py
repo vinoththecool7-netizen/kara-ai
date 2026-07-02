@@ -1,7 +1,6 @@
 """Tests for the parse_form16 tool registration in ToolRegistry."""
 from __future__ import annotations
 
-import asyncio
 import base64
 import json
 

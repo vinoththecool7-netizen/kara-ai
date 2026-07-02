@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type {
   SSEEvent,
   ProfileState,
@@ -45,69 +45,88 @@ export interface UseSSECallbacks {
  * SSE wire format from the backend:
  *   data: {"type":"...","key":"value"}\n\n
  */
+// ---------------------------------------------------------------------------
+// dispatch — route a parsed SSEEvent to the appropriate callback
+// ---------------------------------------------------------------------------
+
+function dispatch(event: SSEEvent, callbacks: UseSSECallbacks): void {
+  switch (event.type) {
+    case "session_created":
+      callbacks.onSessionCreated?.(event.session_id);
+      break;
+    case "tool_result":
+      callbacks.onToolResult?.(event.tool_name, event.result, event.is_error);
+      break;
+    case "content":
+      callbacks.onContent?.(event.text);
+      break;
+    case "content_delta":
+      callbacks.onContentDelta?.(event.text);
+      break;
+    case "advisory":
+      callbacks.onAdvisory?.(event.hint);
+      break;
+    case "tax_breakdown":
+      callbacks.onTaxBreakdown?.(event.breakdown);
+      break;
+    case "regime_comparison":
+      callbacks.onRegimeComparison?.(event.comparison);
+      break;
+    case "deduction_gaps":
+      callbacks.onDeductionGaps?.(event.optimization);
+      break;
+    case "capital_gains":
+      callbacks.onCapitalGains?.(event.gains);
+      break;
+    case "document_parsed":
+      callbacks.onDocumentParsed?.(event.summary);
+      break;
+    case "done":
+      callbacks.onDone?.(event.session_id, event.profile_state);
+      break;
+    case "error":
+      callbacks.onError?.(event.message);
+      break;
+  }
+}
+
 export function useSSE(): {
   processStream: (response: Response, callbacks: UseSSECallbacks) => Promise<void>;
+  beginRequest: () => AbortSignal;
   abort: () => void;
   isStreaming: boolean;
 } {
   const abortControllerRef = useRef<AbortController | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
 
-  // -------------------------------------------------------------------------
-  // dispatch — route a parsed SSEEvent to the appropriate callback
-  // -------------------------------------------------------------------------
-
-  function dispatch(event: SSEEvent, callbacks: UseSSECallbacks): void {
-    switch (event.type) {
-      case "session_created":
-        callbacks.onSessionCreated?.(event.session_id);
-        break;
-      case "tool_result":
-        callbacks.onToolResult?.(event.tool_name, event.result, event.is_error);
-        break;
-      case "content":
-        callbacks.onContent?.(event.text);
-        break;
-      case "content_delta":
-        callbacks.onContentDelta?.(event.text);
-        break;
-      case "advisory":
-        callbacks.onAdvisory?.(event.hint);
-        break;
-      case "tax_breakdown":
-        callbacks.onTaxBreakdown?.(event.breakdown);
-        break;
-      case "regime_comparison":
-        callbacks.onRegimeComparison?.(event.comparison);
-        break;
-      case "deduction_gaps":
-        callbacks.onDeductionGaps?.(event.optimization);
-        break;
-      case "capital_gains":
-        callbacks.onCapitalGains?.(event.gains);
-        break;
-      case "document_parsed":
-        callbacks.onDocumentParsed?.(event.summary);
-        break;
-      case "done":
-        callbacks.onDone?.(event.session_id, event.profile_state);
-        break;
-      case "error":
-        callbacks.onError?.(event.message);
-        break;
-    }
-  }
+  /**
+   * Create the AbortController BEFORE the fetch so abort() can cancel the
+   * in-flight HTTP request itself, not just stop reading the stream.
+   * Pass the returned signal into the fetch call.
+   *
+   * All three returned functions are memoized with stable identities: they
+   * feed effect dependency arrays in useChat (e.g. abort-on-unmount), where
+   * a fresh identity per render makes the cleanup run on every re-render —
+   * aborting the in-flight request the moment any state updates.
+   */
+  const beginRequest = useCallback((): AbortSignal => {
+    abortControllerRef.current?.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    return controller.signal;
+  }, []);
 
   // -------------------------------------------------------------------------
   // processStream — consume the ReadableStream from a fetch Response
   // -------------------------------------------------------------------------
 
-  async function processStream(
+  const processStream = useCallback(async (
     response: Response,
     callbacks: UseSSECallbacks
-  ): Promise<void> {
-    // Create a fresh AbortController for this stream.
-    const controller = new AbortController();
+  ): Promise<void> => {
+    // Reuse the controller from beginRequest() (which also aborts the
+    // underlying fetch); fall back to a fresh one for direct callers.
+    const controller = abortControllerRef.current ?? new AbortController();
     abortControllerRef.current = controller;
 
     if (!response.body) {
@@ -170,15 +189,15 @@ export function useSSE(): {
       reader.releaseLock();
       setIsStreaming(false);
     }
-  }
+  }, []);
 
   // -------------------------------------------------------------------------
   // abort — cancel an in-progress stream
   // -------------------------------------------------------------------------
 
-  function abort(): void {
+  const abort = useCallback((): void => {
     abortControllerRef.current?.abort();
-  }
+  }, []);
 
-  return { processStream, abort, isStreaming };
+  return { processStream, beginRequest, abort, isStreaming };
 }

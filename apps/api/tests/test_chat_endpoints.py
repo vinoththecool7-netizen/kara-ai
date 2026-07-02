@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -12,7 +12,6 @@ from httpx import ASGITransport, AsyncClient
 from kara_api.agent.loop import AgentResponse, ToolCallRecord
 from kara_api.agent.session import SessionSummaryRow
 from kara_api.llm.models import TokenUsage
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -53,7 +52,7 @@ class _FakeDbSession:
 
     def __init__(self, session_id: uuid.UUID | None = None, profile_json: dict | None = None):
         self.id = session_id or uuid.uuid4()
-        self.created_at = datetime(2026, 3, 29, 12, 0, 0, tzinfo=timezone.utc)
+        self.created_at = datetime(2026, 3, 29, 12, 0, 0, tzinfo=UTC)
         self.updated_at = self.created_at
         self.profile_json = profile_json or {}
 
@@ -72,7 +71,7 @@ class _FakeDbMessage:
         self.role = role
         self.content = content
         self.tool_calls_json = tool_calls_json
-        self.created_at = datetime(2026, 3, 29, 12, 0, 0, tzinfo=timezone.utc)
+        self.created_at = datetime(2026, 3, 29, 12, 0, 0, tzinfo=UTC)
 
 
 # ---------------------------------------------------------------------------
@@ -95,10 +94,37 @@ def mock_session_manager():
     return sm
 
 
+def _wire_run_stream(loop: AsyncMock) -> None:
+    """Make loop.run_stream stream whatever loop.run would return.
+
+    Delegating at call time means tests that override ``loop.run`` (with a
+    custom response or a side_effect exception) automatically drive the
+    streaming path too.
+    """
+    from kara_api.agent.loop import AgentStreamEvent
+
+    def run_stream(*args, **kwargs):
+        async def _gen():
+            response = await loop.run(*args, **kwargs)
+            for record in response.tool_calls_made:
+                yield AgentStreamEvent(type="tool_result", record=record)
+            if response.content:
+                # Stream in two deltas to exercise accumulation
+                half = max(1, len(response.content) // 2)
+                yield AgentStreamEvent(type="content_delta", text=response.content[:half])
+                yield AgentStreamEvent(type="content_delta", text=response.content[half:])
+            yield AgentStreamEvent(type="done", response=response)
+
+        return _gen()
+
+    loop.run_stream = MagicMock(side_effect=run_stream)
+
+
 @pytest.fixture
 def mock_agent_loop():
     loop = AsyncMock()
     loop.run = AsyncMock(return_value=_make_agent_response())
+    _wire_run_stream(loop)
     return loop
 
 
@@ -121,10 +147,10 @@ def patches(mock_session_manager, mock_agent_loop):
 @pytest.fixture
 async def client(patches):
     """HTTP client with mocked dependencies — no DB/LLM required."""
-    from kara_api.main import create_app
-
     # Patch lifespan to skip DB init
     from contextlib import asynccontextmanager
+
+    from kara_api.main import create_app
 
     @asynccontextmanager
     async def _noop_lifespan(app):
@@ -154,12 +180,12 @@ class TestCreateChat:
         assert len(events) >= 1
         assert events[0]["type"] == "session_created"
 
-    async def test_create_chat_stream_has_content_event(self, client):
+    async def test_create_chat_streams_content_deltas(self, client):
         resp = await client.post("/api/v1/chat", json={"message": "Hi"})
         events = parse_sse_events(resp.text)
-        content_events = [e for e in events if e["type"] == "content"]
-        assert len(content_events) == 1
-        assert content_events[0]["text"] == "Hello from Kara."
+        deltas = [e for e in events if e["type"] == "content_delta"]
+        assert len(deltas) >= 2  # token streaming, not a single blob
+        assert "".join(e["text"] for e in deltas) == "Hello from Kara."
 
     async def test_create_chat_stream_ends_with_done(self, client):
         resp = await client.post("/api/v1/chat", json={"message": "Hi"})
@@ -372,7 +398,9 @@ class TestSSEFormat:
         events = parse_sse_events(resp.text)
         error_events = [e for e in events if e["type"] == "error"]
         assert len(error_events) == 1
-        assert "LLM exploded" in error_events[0]["message"]
+        # Internals are logged, never sent to the client
+        assert "LLM exploded" not in error_events[0]["message"]
+        assert "try again" in error_events[0]["message"].lower()
 
     async def test_done_event_has_session_id(self, client):
         resp = await client.post("/api/v1/chat", json={"message": "Hi"})
@@ -751,8 +779,8 @@ class TestListSessionsEndpoint:
     ):
         sid1 = uuid.UUID("11111111-1111-1111-1111-111111111111")
         sid2 = uuid.UUID("22222222-2222-2222-2222-222222222222")
-        ts_newer = datetime(2026, 4, 8, 12, 0, 0, tzinfo=timezone.utc)
-        ts_older = datetime(2026, 4, 7, 9, 0, 0, tzinfo=timezone.utc)
+        ts_newer = datetime(2026, 4, 8, 12, 0, 0, tzinfo=UTC)
+        ts_older = datetime(2026, 4, 7, 9, 0, 0, tzinfo=UTC)
         mock_session_manager.list_sessions = AsyncMock(
             return_value=[
                 SessionSummaryRow(
@@ -797,3 +825,247 @@ class TestListSessionsEndpoint:
         # If the wrong route handled this, FastAPI would return 422 for an
         # invalid UUID path param.
         assert resp.status_code == 200
+
+
+# ---------------------------------------------------------------------------
+# Agent loop wiring
+# ---------------------------------------------------------------------------
+
+
+class TestAgentLoopWiring:
+    """The chat agent's ToolRegistry must have knowledge search wired in."""
+
+    def _make_loop(self):
+        from kara_api.config import Settings
+        from kara_api.routers.chat import _create_agent_loop
+
+        settings = Settings(LLM_PROVIDER="fake", _env_file=None)
+        return _create_agent_loop(settings)
+
+    def test_search_dependencies_are_wired(self):
+        from kara_api.knowledge.search import hybrid_search
+
+        loop = self._make_loop()
+        registry = loop._registry
+        assert registry._search_fn is hybrid_search
+        assert registry._embedding_provider is not None
+        assert registry._db_session_factory is not None
+
+    @pytest.mark.asyncio
+    async def test_search_tool_is_not_unconfigured(self):
+        """search_tax_law must never report 'not configured' from the chat path.
+
+        (Without an initialized DB it may fail with a runtime error, but the
+        wiring itself must be present.)
+        """
+        from kara_api.llm.models import ToolCall
+
+        loop = self._make_loop()
+        tc = ToolCall(id="t1", name="search_tax_law", arguments={"query": "80C"})
+        result = await loop._registry.execute(tc)
+        assert "not configured" not in result.content
+
+
+# ---------------------------------------------------------------------------
+# Streaming robustness
+# ---------------------------------------------------------------------------
+
+
+class TestStreamingRobustness:
+    async def test_user_message_persisted_even_when_agent_fails(
+        self, client, mock_session_manager, mock_agent_loop
+    ):
+        """The user's message must be saved BEFORE the agent runs, so a
+        provider failure can never silently swallow it."""
+
+        def exploding_stream(*args, **kwargs):
+            async def _gen():
+                raise RuntimeError("provider exploded")
+                yield  # pragma: no cover
+
+            return _gen()
+
+        mock_agent_loop.run_stream = MagicMock(side_effect=exploding_stream)
+
+        resp = await client.post("/api/v1/chat", json={"message": "remember me"})
+        events = parse_sse_events(resp.text)
+        assert events[-1]["type"] == "error"
+
+        persisted_roles = [c.args[1] for c in mock_session_manager.add_message.call_args_list]
+        assert "user" in persisted_roles
+        user_call = next(
+            c for c in mock_session_manager.add_message.call_args_list if c.args[1] == "user"
+        )
+        assert user_call.args[2] == "remember me"
+
+    async def test_sse_error_event_does_not_leak_internals(
+        self, client, mock_agent_loop
+    ):
+        def exploding_stream(*args, **kwargs):
+            async def _gen():
+                raise RuntimeError("postgres password is hunter2")
+                yield  # pragma: no cover
+
+            return _gen()
+
+        mock_agent_loop.run_stream = MagicMock(side_effect=exploding_stream)
+
+        resp = await client.post("/api/v1/chat", json={"message": "Hi"})
+        events = parse_sse_events(resp.text)
+        error_events = [e for e in events if e["type"] == "error"]
+        assert len(error_events) == 1
+        assert "hunter2" not in error_events[0]["message"]
+        assert "RuntimeError" not in error_events[0]["message"]
+
+
+# ---------------------------------------------------------------------------
+# Card restoration on session reload
+# ---------------------------------------------------------------------------
+
+
+class TestSessionCards:
+    """GET /chat/{id} must include structured card payloads derived from
+    persisted tool results so the UI can rebuild cards after a reload."""
+
+    @staticmethod
+    def _breakdown_json() -> str:
+        from kara_tax_engine import TaxComputer
+
+        return TaxComputer("2025-26").compute(gross_salary=1_500_000).model_dump_json()
+
+    async def test_get_session_rebuilds_tax_breakdown_card(
+        self, client, mock_session_manager
+    ):
+        mock_session_manager.get_messages = AsyncMock(
+            return_value=[
+                _FakeDbMessage(role="user", content="tax on 15L?"),
+                _FakeDbMessage(
+                    role="assistant",
+                    content="Here you go.",
+                    tool_calls_json=[
+                        {
+                            "name": "compute_tax",
+                            "args": {"gross_salary": 1_500_000},
+                            "result": self._breakdown_json(),
+                            "is_error": False,
+                        }
+                    ],
+                ),
+            ]
+        )
+
+        resp = await client.get(f"/api/v1/chat/{_SESSION_ID}")
+        assert resp.status_code == 200
+        messages = resp.json()["messages"]
+        assistant = messages[1]
+        assert assistant["cards"] is not None
+        assert assistant["cards"]["tax_breakdown"]["total_tax_payable"] == 97_500
+
+    async def test_get_session_no_cards_for_plain_messages(
+        self, client, mock_session_manager
+    ):
+        mock_session_manager.get_messages = AsyncMock(
+            return_value=[_FakeDbMessage(role="assistant", content="Hi there")]
+        )
+        resp = await client.get(f"/api/v1/chat/{_SESSION_ID}")
+        assert resp.json()["messages"][0]["cards"] is None
+
+    async def test_persisted_tool_calls_include_results(
+        self, client, mock_session_manager, mock_agent_loop
+    ):
+        """The SSE path must store tool results so cards survive a reload."""
+        record = ToolCallRecord(
+            tool_name="compute_tax",
+            arguments={"gross_salary": 1},
+            result='{"x": 1}',
+            is_error=False,
+        )
+        mock_agent_loop.run = AsyncMock(
+            return_value=_make_agent_response(tool_calls=[record])
+        )
+
+        await client.post("/api/v1/chat", json={"message": "Hi"})
+
+        assistant_calls = [
+            c
+            for c in mock_session_manager.add_message.call_args_list
+            if c.args[1] == "assistant"
+        ]
+        assert len(assistant_calls) == 1
+        stored = assistant_calls[0].args[3]
+        assert stored[0]["name"] == "compute_tax"
+        assert stored[0]["result"] == '{"x": 1}'
+        assert stored[0]["is_error"] is False
+
+
+# ---------------------------------------------------------------------------
+# Profile clearing
+# ---------------------------------------------------------------------------
+
+
+class TestClearProfile:
+    async def test_clear_profile_resets_slots(self, client, mock_session_manager):
+        resp = await client.delete(f"/api/v1/chat/{_SESSION_ID}/profile")
+        assert resp.status_code == 200
+        assert resp.json()["profile_state"]["slots"] == {}
+        mock_session_manager.update_profile.assert_awaited_once()
+        args = mock_session_manager.update_profile.await_args.args
+        assert args[1] == {"slots": {}}
+
+    async def test_clear_profile_unknown_session_404(self, client, mock_session_manager):
+        mock_session_manager.get_session = AsyncMock(return_value=None)
+        resp = await client.delete(f"/api/v1/chat/{uuid.uuid4()}/profile")
+        assert resp.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# Effective (wizard-aware) settings
+# ---------------------------------------------------------------------------
+
+
+async def test_chat_uses_effective_settings(
+    mock_session_manager, mock_agent_loop, monkeypatch
+):
+    """Wizard-saved (DB) config must reach the provider factory."""
+    from contextlib import asynccontextmanager
+
+    from kara_api import runtime_config
+    from kara_api.config import get_settings
+    from kara_api.main import create_app
+
+    # setenv("", ...) rather than delenv: pydantic-settings also reads
+    # apps/api/.env, and only a real (even empty) env var overrides it.
+    monkeypatch.setenv("LLM_API_KEY", "")
+    monkeypatch.setenv("LLM_PROVIDER", "openai")
+    get_settings.cache_clear()
+
+    async def overrides() -> dict:
+        return {"LLM_PROVIDER": "fake"}
+
+    monkeypatch.setattr(runtime_config, "get_runtime_overrides", overrides)
+
+    @asynccontextmanager
+    async def _noop_lifespan(app):
+        yield
+
+    create_loop = MagicMock(return_value=mock_agent_loop)
+    with (
+        patch(
+            "kara_api.routers.chat._create_session_manager",
+            return_value=mock_session_manager,
+        ),
+        patch("kara_api.routers.chat._create_agent_loop", create_loop),
+        patch("kara_api.main.lifespan", _noop_lifespan),
+    ):
+        app = create_app()
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://test") as ac:
+            resp = await ac.post(
+                "/api/v1/chat",
+                json={"message": "Hello"},
+                headers={"Accept": "application/json"},
+            )
+    assert resp.status_code == 200
+    settings_passed = create_loop.call_args.args[0]
+    assert settings_passed.LLM_PROVIDER == "fake"
+    get_settings.cache_clear()

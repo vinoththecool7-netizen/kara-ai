@@ -3,12 +3,14 @@ services:
     image: pgvector/pgvector:pg16
     environment:
       POSTGRES_USER: kara
-      POSTGRES_PASSWORD: kara
+      POSTGRES_PASSWORD: ${KARA_DB_PASSWORD:-kara}
       POSTGRES_DB: kara
     ports:
-      - "5432:5432"
+      # Bound to loopback only — set KARA_DB_PASSWORD before exposing wider.
+      - "127.0.0.1:5432:5432"
     volumes:
       - kara-db-data:/var/lib/postgresql/data
+    restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U kara -d kara"]
       interval: 5s
@@ -17,32 +19,35 @@ services:
       start_period: 10s
 
   api:
-    build:
-      context: .
-      dockerfile: apps/api/Dockerfile
+    image: ghcr.io/vinoththecool7-netizen/kara-api:latest
     ports:
-      - "8000:8000"
+      # Loopback only by default — the API has no authentication, so binding
+      # wider exposes every chat session to the whole network. The web UI
+      # reaches it through the internal network (http://api:8000) regardless.
+      # Set KARA_BIND_HOST=0.0.0.0 only behind your own auth/reverse proxy.
+      - "${KARA_BIND_HOST:-127.0.0.1}:8000:8000"
     env_file:
-      - apps/api/.env
+      # Optional: without it Kara boots unconfigured and the web UI shows
+      # the first-run setup wizard.
+      - path: apps/api/.env
+        required: false
     environment:
-      - DATABASE_URL=postgresql+asyncpg://kara:kara@db:5432/kara
+      - DATABASE_URL=postgresql+asyncpg://kara:${KARA_DB_PASSWORD:-kara}@db:5432/kara
     depends_on:
       db:
         condition: service_healthy
     restart: unless-stopped
 
   web:
-    build:
-      context: .
-      dockerfile: apps/web/Dockerfile
-      args:
-        NEXT_PUBLIC_API_URL: http://localhost:8000
-        NEXT_PUBLIC_SITE_URL: http://localhost:3000
+    image: ghcr.io/vinoththecool7-netizen/kara-web:latest
     ports:
-      - "3000:3000"
+      # Loopback only by default: the UI proxies straight to the
+      # unauthenticated API, so exposing it wider exposes all data too.
+      - "${KARA_BIND_HOST:-127.0.0.1}:3000:3000"
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000
       - NEXT_PUBLIC_SITE_URL=http://localhost:3000
+      - INTERNAL_API_URL=http://api:8000
     depends_on:
       api:
         condition: service_healthy
@@ -54,5 +59,33 @@ services:
       retries: 3
       start_period: 15s
 
+  # Fully-local LLM (opt-in): docker compose --profile local up -d
+  # Pulls ${OLLAMA_MODEL:-llama3.1} on first start; the setup wizard
+  # auto-detects it at http://ollama:11434.
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["local"]
+    volumes:
+      - kara-ollama-data:/root/.ollama
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  ollama-init:
+    image: ollama/ollama:latest
+    profiles: ["local"]
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    entrypoint: ["/bin/sh", "-c", "ollama pull ${OLLAMA_MODEL:-llama3.1}"]
+    restart: "no"
+
 volumes:
   kara-db-data:
+  kara-ollama-data:

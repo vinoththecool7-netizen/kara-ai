@@ -1,15 +1,12 @@
 """Tests for system prompt and intent taxonomy (Task 1 - Day 33)."""
 from __future__ import annotations
 
-import pytest
-
 from kara_api.agent.prompts import (
     ALL_SLOTS,
     ENHANCED_SYSTEM_PROMPT,
     INTENT_SPECS,
     Intent,
     IntentSpec,
-    SlotDefinition,
     get_intent_spec,
     get_required_slots,
     get_slot_definition,

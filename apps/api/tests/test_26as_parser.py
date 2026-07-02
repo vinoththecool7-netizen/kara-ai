@@ -9,7 +9,6 @@ import pytest
 from kara_api.parsers.twenty_six_as import Form26ASDocument, parse_form_26as
 from tests.fixtures.twenty_six_as_factory import build_26as_pdf
 
-
 # ---------------------------------------------------------------------------
 # PART A — Salary TDS
 # ---------------------------------------------------------------------------
@@ -85,11 +84,11 @@ class TestParse26ASPartDRefund:
 
 def test_parse_26as_missing_part_d_no_crash():
     """A 26AS PDF without a refund section must not crash."""
+    import io
+
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.styles import getSampleStyleSheet
     from reportlab.platypus import Paragraph, SimpleDocTemplate
-
-    import io
 
     buf = io.BytesIO()
     styles = getSampleStyleSheet()

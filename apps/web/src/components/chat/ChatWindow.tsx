@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import type { UseChatReturn } from "@/hooks/useChat";
 import { MessageBubble } from "./MessageBubble";
 import { MessageInput } from "./MessageInput";
+import { ProfilePanel } from "./ProfilePanel";
 import { TypingIndicator } from "./TypingIndicator";
 import { SuggestedQuestions } from "./SuggestedQuestions";
 
@@ -38,9 +39,11 @@ export function ChatWindow({ chat, onOpenSidebar, sidebarOpen }: ChatWindowProps
     messages,
     isStreaming,
     isLoading,
+    profileState,
     sendMessage,
     uploadAndProcess,
     retryMessage,
+    clearProfile,
   } = chat;
 
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -104,6 +107,14 @@ export function ChatWindow({ chat, onOpenSidebar, sidebarOpen }: ChatWindowProps
         aria-live="polite"
       >
         <div className="max-w-3xl mx-auto w-full px-4 py-8 space-y-6">
+          {/* What Kara knows — collected taxpayer facts with a clear control */}
+          {!isLoading && (
+            <ProfilePanel
+              profileState={profileState}
+              onClear={() => void clearProfile()}
+            />
+          )}
+
           {/* Loading skeleton — shown while restoring a session from localStorage */}
           {isLoading && (
             <div className="space-y-4 py-8" aria-label="Loading conversation history" aria-busy="true">
@@ -181,6 +192,10 @@ export function ChatWindow({ chat, onOpenSidebar, sidebarOpen }: ChatWindowProps
         onFilesSelected={(files) => void uploadAndProcess(files)}
         disabled={isStreaming}
       />
+      <p className="px-4 pb-2 text-center text-xs text-muted-foreground">
+        Kara provides general tax information, not professional tax advice.
+        Verify with a qualified professional before filing.
+      </p>
     </div>
   );
 }

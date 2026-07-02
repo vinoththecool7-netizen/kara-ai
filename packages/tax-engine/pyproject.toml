@@ -56,3 +56,9 @@ line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "N", "W", "UP"]
+# UP042 (StrEnum) deferred: changing the str-Enum bases is a public API change.
+ignore = ["UP042"]
+
+[tool.ruff.lint.per-file-ignores]
+# Test names encode rupee amounts and section codes (e.g. _at_5L, _80C).
+"tests/*" = ["N802", "E501"]

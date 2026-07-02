@@ -1,0 +1,16 @@
+# Build-from-source override for contributors and custom deployments
+# (e.g. non-localhost NEXT_PUBLIC_* values, which are baked at build time):
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml up --build
+services:
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000
+        NEXT_PUBLIC_SITE_URL: http://localhost:3000
+        INTERNAL_API_URL: http://api:8000

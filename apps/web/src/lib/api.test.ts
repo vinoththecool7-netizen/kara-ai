@@ -5,7 +5,14 @@
  * Uses a manual fetch mock — no test framework required.
  */
 
-import { uploadDocument, HttpError } from "./api";
+import {
+  uploadDocument,
+  getSetupStatus,
+  saveSetup,
+  testSetup,
+  HttpError,
+  type SetupStatus,
+} from "./api";
 
 let passed = 0;
 let failed = 0;
@@ -475,6 +482,105 @@ void (async () => {
     const result = await uploadDocument("s", file, "form16");
     assertEqual(result.parsed_summary.fields_filled, 12, "fields_filled returned correctly");
     assertEqual(result.parsed_summary.pan, "XYZAB1234C", "PAN returned correctly");
+    restoreFetch();
+  }
+
+  // -------------------------------------------------------------------------
+  // Test: getSetupStatus parses the status payload
+  // -------------------------------------------------------------------------
+
+  {
+    const status: SetupStatus = {
+      configured: false,
+      source: null,
+      provider: "openai",
+      model: "gpt-4o",
+      api_key_masked: "",
+      ollama: { reachable: false, base_url: "", models: [] },
+    };
+    let capturedUrl: string | null = null;
+    mockFetch(async (input) => {
+      capturedUrl = String(input);
+      return makeResponse(status, 200);
+    });
+
+    const result = await getSetupStatus();
+    assertEqual(capturedUrl, "/api/v1/setup/status", "getSetupStatus hits /api/v1/setup/status");
+    assertEqual(result.configured, false, "getSetupStatus returns configured flag");
+    assertEqual(result.ollama.reachable, false, "getSetupStatus returns ollama status");
+    restoreFetch();
+  }
+
+  // -------------------------------------------------------------------------
+  // Test: saveSetup POSTs the payload and returns status
+  // -------------------------------------------------------------------------
+
+  {
+    const status: SetupStatus = {
+      configured: true,
+      source: "db",
+      provider: "openai",
+      model: "gpt-4o",
+      api_key_masked: "••••1234",
+      ollama: { reachable: false, base_url: "", models: [] },
+    };
+    let capturedMethod: string | null = null;
+    let capturedBody: string | null = null;
+    mockFetch(async (_input, init) => {
+      capturedMethod = init?.method ?? null;
+      capturedBody = String(init?.body);
+      return makeResponse(status, 200);
+    });
+
+    const result = await saveSetup({
+      provider: "openai",
+      api_key: "sk-x",
+      model: "",
+      base_url: "",
+      ollama_base_url: "",
+    });
+    assertEqual(capturedMethod, "POST", "saveSetup uses POST");
+    assert(
+      String(capturedBody).includes('"provider":"openai"'),
+      "saveSetup sends the provider in the body",
+    );
+    assertEqual(result.configured, true, "saveSetup returns the new status");
+    restoreFetch();
+  }
+
+  // -------------------------------------------------------------------------
+  // Test: saveSetup surfaces HTTP errors; testSetup returns the result
+  // -------------------------------------------------------------------------
+
+  {
+    mockFetch(async () => makeResponse({ detail: "Invalid API key." }, 400));
+    await assertRejects(
+      () =>
+        saveSetup({
+          provider: "openai",
+          api_key: "bad",
+          model: "",
+          base_url: "",
+          ollama_base_url: "",
+        }),
+      (err) =>
+        err instanceof HttpError &&
+        err.status === 400 &&
+        err.message.includes("Invalid API key."),
+      "saveSetup throws HttpError with the server detail",
+    );
+    restoreFetch();
+
+    mockFetch(async () => makeResponse({ ok: true, message: "Connection OK." }, 200));
+    const test = await testSetup({
+      provider: "openai",
+      api_key: "sk-x",
+      model: "",
+      base_url: "",
+      ollama_base_url: "",
+    });
+    assertEqual(test.ok, true, "testSetup returns ok flag");
+    assertEqual(test.message, "Connection OK.", "testSetup returns message");
     restoreFetch();
   }
 

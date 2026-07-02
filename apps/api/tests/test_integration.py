@@ -11,22 +11,19 @@ from __future__ import annotations
 import json
 import uuid
 from contextlib import asynccontextmanager
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import patch
 
-import pytest
 from httpx import ASGITransport, AsyncClient
 
+from kara_api.agent import ENHANCED_SYSTEM_PROMPT
 from kara_api.agent.loop import AgentLoop
-from kara_api.agent.profile_builder import ProfileBuilder
 from kara_api.llm.client import LLMClient
-from kara_api.llm.models import LLMResponse, Role, ToolCall, TokenUsage
+from kara_api.llm.models import LLMResponse, Role, TokenUsage, ToolCall
 from kara_api.llm.providers import FakeLLMProvider
 from kara_api.tools.executor import ToolRegistry
-from kara_api.agent import ENHANCED_SYSTEM_PROMPT
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -95,7 +92,7 @@ class InMemorySessionManager:
 
     async def create_session(self, profile_data: dict[str, Any] | None = None) -> uuid.UUID:
         session_id = uuid.uuid4()
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         self._sessions[session_id] = InMemorySession(
             id=session_id,
             created_at=now,
@@ -122,7 +119,7 @@ class InMemorySessionManager:
         content: str | None,
         tool_calls: list[dict] | None = None,
     ) -> InMemoryMessage:
-        now = datetime.now(tz=timezone.utc)
+        now = datetime.now(tz=UTC)
         msg = InMemoryMessage(
             id=self._next_msg_id,
             session_id=session_id,
@@ -147,7 +144,7 @@ class InMemorySessionManager:
         if session is None:
             return False
         session.profile_json = profile_data
-        session.updated_at = datetime.now(tz=timezone.utc)
+        session.updated_at = datetime.now(tz=UTC)
         return True
 
 
@@ -245,10 +242,11 @@ class TestSingleTurnIntegration:
         assert isinstance(result_data["total_tax_payable"], (int, float))
         assert result_data["total_tax_payable"] > 0
 
-        # content event must be present
-        content_events = [e for e in events if e["type"] == "content"]
-        assert len(content_events) == 1
-        assert "tax" in content_events[0]["text"].lower()
+        # content arrives as streamed deltas
+        deltas = [e for e in events if e["type"] == "content_delta"]
+        assert len(deltas) >= 1
+        full_text = "".join(e["text"] for e in deltas)
+        assert "tax" in full_text.lower()
 
         # done event must close the stream
         done_events = [e for e in events if e["type"] == "done"]
@@ -442,8 +440,8 @@ class TestSingleTurnIntegration:
     # Test 6: get_tds_rate stub
     # ------------------------------------------------------------------
 
-    async def test_stub_tools_tds_rate(self):
-        """get_tds_rate stub returns section and rate information."""
+    async def test_tds_rate_tool(self):
+        """get_tds_rate returns section and rate information from the rate table."""
         fake = FakeLLMProvider(
             responses=[
                 _fake_response(
@@ -479,8 +477,8 @@ class TestSingleTurnIntegration:
     # Test 7: calculate_advance_tax stub
     # ------------------------------------------------------------------
 
-    async def test_stub_tools_advance_tax(self):
-        """calculate_advance_tax stub returns installment schedule."""
+    async def test_advance_tax_tool(self):
+        """calculate_advance_tax returns the s.211 installment schedule."""
         fake = FakeLLMProvider(
             responses=[
                 _fake_response(
@@ -510,14 +508,14 @@ class TestSingleTurnIntegration:
         assert tool_events[0]["is_error"] is False
 
         result_data = json.loads(tool_events[0]["result"])
-        assert result_data["advance_tax_required"] is True
+        assert result_data["required"] is True
         assert "installments" in result_data
         assert len(result_data["installments"]) == 4
         # Verify Q1 installment structure
         q1 = result_data["installments"][0]
         assert q1["quarter"] == "Q1"
-        assert "due_date" in q1
-        assert "amount" in q1
+        assert q1["due_date"] == "2025-06-15"
+        assert q1["amount_due"] == 30000  # 15% of 200K
 
     # ------------------------------------------------------------------
     # Test 8: unknown tool → error in tool_result, then content
@@ -552,10 +550,9 @@ class TestSingleTurnIntegration:
         assert tool_events[0]["is_error"] is True
         assert "Unknown tool" in tool_events[0]["result"]
 
-        # LLM still produces a final content response
-        content_events = [e for e in events if e["type"] == "content"]
-        assert len(content_events) == 1
-        assert len(content_events[0]["text"]) > 0
+        # LLM still produces a final streamed response
+        deltas = [e for e in events if e["type"] == "content_delta"]
+        assert len("".join(e["text"] for e in deltas)) > 0
 
         # Stream ends with done
         done_events = [e for e in events if e["type"] == "done"]

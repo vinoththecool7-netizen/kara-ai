@@ -14,6 +14,8 @@ from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel
 
+from kara_api.privacy import mask_pan, sanitize_text
+
 if TYPE_CHECKING:
     from kara_api.agent.profile_builder import ProfileBuilder
     from kara_api.parsers.ais import AISDocument
@@ -43,7 +45,7 @@ class AutofillDiff(BaseModel):
 
 
 def _set_slot(
-    builder: "ProfileBuilder",
+    builder: ProfileBuilder,
     diff: AutofillDiff,
     slot_name: str,
     value: Any,
@@ -60,7 +62,7 @@ def _set_slot(
 
 
 def _add_to_slot(
-    builder: "ProfileBuilder",
+    builder: ProfileBuilder,
     diff: AutofillDiff,
     slot_name: str,
     amount: int,
@@ -82,8 +84,8 @@ def _add_to_slot(
 
 
 def apply_form16(
-    builder: "ProfileBuilder",
-    doc: "Form16Document",
+    builder: ProfileBuilder,
+    doc: Form16Document,
 ) -> AutofillDiff:
     """Map Form16Document fields onto *builder* slots.
 
@@ -106,11 +108,11 @@ def apply_form16(
 
     # employee_pan → metadata
     if part_a.employee_pan and part_a.employee_pan != "UNKNOWN0000X":
-        _set_slot(builder, diff, "pan", part_a.employee_pan)
+        _set_slot(builder, diff, "pan", mask_pan(part_a.employee_pan))
 
     # employer_name → metadata
     if part_a.employer_name and part_a.employer_name != "Unknown Employer":
-        _set_slot(builder, diff, "employer_name", part_a.employer_name)
+        _set_slot(builder, diff, "employer_name", sanitize_text(part_a.employer_name))
 
     # total_tds_deposited → internal tds_form16 (rupees from Form 16)
     if part_a.total_tds_deposited:
@@ -171,8 +173,8 @@ def apply_form16(
 
 
 def apply_ais(
-    builder: "ProfileBuilder",
-    doc: "AISDocument",
+    builder: ProfileBuilder,
+    doc: AISDocument,
 ) -> AutofillDiff:
     """Map AISDocument fields onto *builder* slots.
 
@@ -187,7 +189,7 @@ def apply_ais(
 
     # --- PAN ---
     if doc.pan:
-        _set_slot(builder, diff, "pan", doc.pan)
+        _set_slot(builder, diff, "pan", mask_pan(doc.pan))
 
     # --- Interest (savings + FD) → other_income (rupees) ---
     total_interest_paise = sum(e.amount for e in doc.interest_savings) + sum(
@@ -239,8 +241,8 @@ def apply_ais(
 
 
 def apply_26as(
-    builder: "ProfileBuilder",
-    doc: "Form26ASDocument",
+    builder: ProfileBuilder,
+    doc: Form26ASDocument,
 ) -> AutofillDiff:
     """Map Form26ASDocument fields onto *builder* slots.
 
@@ -255,7 +257,7 @@ def apply_26as(
 
     # --- PAN ---
     if doc.pan:
-        _set_slot(builder, diff, "pan", doc.pan)
+        _set_slot(builder, diff, "pan", mask_pan(doc.pan))
 
     # --- TDS on salary → tds_26as (rupees) ---
     total_tds_salary_paise = doc.totals.total_tds_salary
@@ -285,7 +287,7 @@ def apply_26as(
 
 
 def _check_tds_reconciliation(
-    builder: "ProfileBuilder",
+    builder: ProfileBuilder,
     diff: AutofillDiff,
 ) -> None:
     """If both tds_form16 and tds_26as are set and differ by > ₹100, warn."""

@@ -5,21 +5,22 @@ ProfileBuilder into HTTP endpoints with Server-Sent Events streaming.
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import uuid
-from typing import Any, AsyncIterator
+from collections.abc import AsyncIterator
+from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field, ValidationError
-
 from kara_tax_engine.models import (
     CapitalGainsResult,
     OptimizationResult,
     RegimeComparison,
     TaxBreakdown,
 )
+from pydantic import BaseModel, Field, ValidationError
 
 from kara_api.agent import (
     ENHANCED_SYSTEM_PROMPT,
@@ -28,13 +29,17 @@ from kara_api.agent import (
     AgentResponse,
     ProfileBuilder,
     SessionManager,
+    ToolCallRecord,
 )
-from kara_api.config import Settings, get_settings
+from kara_api.config import Settings
 from kara_api.db.connection import get_session_factory
 from kara_api.db.models import Message as DbMessage
+from kara_api.knowledge.embeddings import get_embedding_provider
+from kara_api.knowledge.search import hybrid_search
 from kara_api.llm.client import LLMClient
 from kara_api.llm.models import Message, Role, ToolCall
 from kara_api.llm.providers import get_llm_provider
+from kara_api.runtime_config import get_effective_settings
 from kara_api.tools.executor import ToolRegistry
 
 logger = logging.getLogger(__name__)
@@ -56,6 +61,10 @@ class MessageResponse(BaseModel):
     content: str | None
     tool_calls: list[dict] | None = None
     created_at: str
+    # Structured card payloads rebuilt from persisted tool results, keyed by
+    # SSE event type (tax_breakdown / regime_comparison / deduction_gaps /
+    # capital_gains) so the UI can restore cards after a reload.
+    cards: dict[str, Any] | None = None
 
 
 class ProfileState(BaseModel):
@@ -94,10 +103,23 @@ class ChatResponse(BaseModel):
 # ---------------------------------------------------------------------------
 
 
+def _lazy_db_session():
+    """Open an AsyncSession, resolving the factory at call time.
+
+    The engine/session factory only exists after app startup (init_db), so
+    the ToolRegistry gets this thin indirection instead of the factory itself.
+    """
+    return get_session_factory()()
+
+
 def _create_agent_loop(settings: Settings) -> AgentLoop:
     provider = get_llm_provider(settings)
     client = LLMClient(provider, system_prompt=ENHANCED_SYSTEM_PROMPT)
-    registry = ToolRegistry()
+    registry = ToolRegistry(
+        search_fn=hybrid_search,
+        db_session_factory=_lazy_db_session,
+        embedding_provider=get_embedding_provider(settings),
+    )
     return AgentLoop(llm_client=client, tool_registry=registry)
 
 
@@ -140,6 +162,31 @@ def _build_profile_state(profile: ProfileBuilder) -> ProfileState:
     )
 
 
+def _cards_from_tool_calls(tool_calls_json: list[dict] | None) -> dict[str, Any] | None:
+    """Rebuild structured card payloads from persisted tool calls.
+
+    Older rows (persisted before results were stored) simply yield no cards.
+    When a tool was called multiple times in one turn, the last result wins.
+    """
+    if not tool_calls_json:
+        return None
+    cards: dict[str, Any] = {}
+    for tc in tool_calls_json:
+        record = ToolCallRecord(
+            tool_name=tc.get("name", ""),
+            arguments=tc.get("args") or {},
+            result=tc.get("result") or "",
+            is_error=bool(tc.get("is_error", False)),
+        )
+        if not record.result:
+            continue
+        for payload in _card_events(record):
+            event_type = payload["type"]
+            value = next(v for k, v in payload.items() if k != "type")
+            cards[event_type] = value
+    return cards or None
+
+
 def _db_messages_to_response(db_msgs: list[DbMessage]) -> list[MessageResponse]:
     """Convert DB message rows to API response models."""
     return [
@@ -148,6 +195,7 @@ def _db_messages_to_response(db_msgs: list[DbMessage]) -> list[MessageResponse]:
             content=m.content,
             tool_calls=m.tool_calls_json,
             created_at=m.created_at.isoformat() if m.created_at else "",
+            cards=_cards_from_tool_calls(m.tool_calls_json),
         )
         for m in db_msgs
     ]
@@ -158,6 +206,48 @@ def _db_messages_to_response(db_msgs: list[DbMessage]) -> list[MessageResponse]:
 # ---------------------------------------------------------------------------
 
 
+def _sse(payload: dict[str, Any]) -> str:
+    """Serialize a payload as a Server-Sent Events data frame."""
+    return f"data: {json.dumps(payload)}\n\n"
+
+
+_GENERIC_ERROR_MESSAGE = (
+    "Something went wrong while generating a response. Please try again."
+)
+
+# Structured card events derived from specific tool results:
+#   tool name            -> (event type,        payload key)
+_CARD_EVENT_SPECS = {
+    "compute_tax": ("tax_breakdown", "breakdown", TaxBreakdown),
+    "compare_regimes": ("regime_comparison", "comparison", RegimeComparison),
+    "find_deduction_gaps": ("deduction_gaps", "optimization", OptimizationResult),
+}
+
+
+def _card_events(record) -> list[dict[str, Any]]:
+    """Build structured card payloads from a successful tool result."""
+    if record.is_error:
+        return []
+    try:
+        if record.tool_name in _CARD_EVENT_SPECS:
+            event_type, key, model = _CARD_EVENT_SPECS[record.tool_name]
+            parsed = model.model_validate(json.loads(record.result))
+            return [{"type": event_type, key: parsed.model_dump(mode="json")}]
+        if record.tool_name == "compute_capital_gains":
+            gains = [
+                CapitalGainsResult.model_validate(item)
+                for item in json.loads(record.result)
+            ]
+            return [
+                {"type": "capital_gains", "gains": [g.model_dump(mode="json") for g in gains]}
+            ]
+    except (json.JSONDecodeError, ValidationError) as exc:
+        logger.warning(
+            "Failed to parse structured card from %s result: %s", record.tool_name, exc
+        )
+    return []
+
+
 # SSE event types emitted by _sse_generator (and by /documents/upload via client):
 #   "session_created"  — session UUID on new chat
 #   "tool_result"      — raw tool call result
@@ -166,10 +256,11 @@ def _db_messages_to_response(db_msgs: list[DbMessage]) -> list[MessageResponse]:
 #   "deduction_gaps"   — structured OptimizationResult from find_deduction_gaps tool
 #   "capital_gains"    — structured CapitalGainsResult list from compute_capital_gains tool
 #   "document_parsed"  — emitted after a document upload auto-fills the profile
-#   "content"          — assistant text content
+#   "content_delta"    — incremental assistant text (token streaming)
+#   "content"          — full assistant text (legacy, JSON fallback only)
 #   "advisory"         — advisory hint
 #   "done"             — final event with profile state
-#   "error"            — error event
+#   "error"            — error event (generic message; details are logged)
 async def _sse_generator(
     agent_loop: AgentLoop,
     session_manager: SessionManager,
@@ -180,79 +271,87 @@ async def _sse_generator(
     profile: ProfileBuilder,
 ) -> AsyncIterator[str]:
     try:
-        yield f"data: {json.dumps({'type': 'session_created', 'session_id': str(session_id)})}\n\n"
+        yield _sse({"type": "session_created", "session_id": str(session_id)})
 
-        result: AgentResponse = await agent_loop.run(
-            user_message, history=history, profile=profile
+        # Persist the user message BEFORE running the agent so a provider
+        # failure or client disconnect can never silently swallow it.
+        # Shielded: a client disconnect cancels this generator, and a
+        # CancelledError landing mid-query corrupts the pooled asyncpg
+        # connection (it re-enters the pool in a stuck protocol state and
+        # freezes whichever request checks it out next).
+        await asyncio.shield(
+            session_manager.add_message(session_id, "user", user_message)
         )
 
-        # Emit tool results
-        for record in result.tool_calls_made:
-            yield f"data: {json.dumps({'type': 'tool_result', 'tool_name': record.tool_name, 'result': record.result, 'is_error': record.is_error})}\n\n"
+        result: AgentResponse | None = None
+        async for event in agent_loop.run_stream(
+            user_message, history=history, profile=profile
+        ):
+            if event.type == "content_delta":
+                yield _sse({"type": "content_delta", "text": event.text})
+            elif event.type == "tool_result":
+                record = event.record
+                yield _sse(
+                    {
+                        "type": "tool_result",
+                        "tool_name": record.tool_name,
+                        "result": record.result,
+                        "is_error": record.is_error,
+                    }
+                )
+                for payload in _card_events(record):
+                    yield _sse(payload)
+            elif event.type == "done":
+                result = event.response
 
-            # Emit structured tax_breakdown event for compute_tax tool
-            if record.tool_name == "compute_tax" and not record.is_error:
-                try:
-                    breakdown = TaxBreakdown.model_validate(json.loads(record.result))
-                    yield f"data: {json.dumps({'type': 'tax_breakdown', 'breakdown': breakdown.model_dump(mode='json')})}\n\n"
-                except (json.JSONDecodeError, ValidationError) as exc:
-                    logger.warning("Failed to parse tax_breakdown from compute_tax result: %s", exc)
-
-            if record.tool_name == "compare_regimes" and not record.is_error:
-                try:
-                    comparison = RegimeComparison.model_validate(json.loads(record.result))
-                    yield f"data: {json.dumps({'type': 'regime_comparison', 'comparison': comparison.model_dump(mode='json')})}\n\n"
-                except (json.JSONDecodeError, ValidationError) as exc:
-                    logger.warning("Failed to parse regime_comparison from compare_regimes result: %s", exc)
-
-            if record.tool_name == "find_deduction_gaps" and not record.is_error:
-                try:
-                    optimization = OptimizationResult.model_validate(json.loads(record.result))
-                    yield f"data: {json.dumps({'type': 'deduction_gaps', 'optimization': optimization.model_dump(mode='json')})}\n\n"
-                except (json.JSONDecodeError, ValidationError) as exc:
-                    logger.warning("Failed to parse deduction_gaps from find_deduction_gaps result: %s", exc)
-
-            if record.tool_name == "compute_capital_gains" and not record.is_error:
-                try:
-                    raw_list = json.loads(record.result)
-                    gains = [CapitalGainsResult.model_validate(item) for item in raw_list]
-                    yield f"data: {json.dumps({'type': 'capital_gains', 'gains': [g.model_dump(mode='json') for g in gains]})}\n\n"
-                except (json.JSONDecodeError, ValidationError) as exc:
-                    logger.warning("Failed to parse capital_gains from compute_capital_gains result: %s", exc)
-
-        # Emit content
-        if result.content:
-            yield f"data: {json.dumps({'type': 'content', 'text': result.content})}\n\n"
+        if result is None:  # defensive: run_stream always ends with done
+            raise RuntimeError("agent stream ended without a done event")
 
         # Advisory hints
         tool_names = [r.tool_name for r in result.tool_calls_made]
         for hint in advisory.check(tool_names):
-            yield f"data: {json.dumps({'type': 'advisory', 'hint': hint})}\n\n"
+            yield _sse({"type": "advisory", "hint": hint})
 
-        # Persist user message
-        await session_manager.add_message(session_id, "user", user_message)
-
-        # Persist assistant message
-        await session_manager.add_message(
-            session_id,
-            "assistant",
-            result.content,
-            (
-                [{"name": r.tool_name, "args": r.arguments} for r in result.tool_calls_made]
-                or None
-            ),
+        # Persist assistant message (results included so cards survive reload).
+        # Shielded for the same reason as the user message above.
+        await asyncio.shield(
+            session_manager.add_message(
+                session_id,
+                "assistant",
+                result.content,
+                (
+                    [
+                        {
+                            "name": r.tool_name,
+                            "args": r.arguments,
+                            "result": r.result,
+                            "is_error": r.is_error,
+                        }
+                        for r in result.tool_calls_made
+                    ]
+                    or None
+                ),
+            )
         )
 
         # Update profile
-        await session_manager.update_profile(session_id, result.profile_snapshot)
+        await asyncio.shield(
+            session_manager.update_profile(session_id, result.profile_snapshot)
+        )
 
         # Done event
         profile_state = _build_profile_state(profile)
-        yield f"data: {json.dumps({'type': 'done', 'session_id': str(session_id), 'profile_state': profile_state.model_dump()})}\n\n"
+        yield _sse(
+            {
+                "type": "done",
+                "session_id": str(session_id),
+                "profile_state": profile_state.model_dump(),
+            }
+        )
 
-    except Exception as exc:
+    except Exception:
         logger.exception("SSE stream error")
-        yield f"data: {json.dumps({'type': 'error', 'message': str(exc)})}\n\n"
+        yield _sse({"type": "error", "message": _GENERIC_ERROR_MESSAGE})
 
 
 # ---------------------------------------------------------------------------
@@ -270,10 +369,10 @@ async def _run_json_response(
     profile: ProfileBuilder,
 ) -> ChatResponse:
     """Run the agent and return a plain JSON response."""
-    result = await agent_loop.run(user_message, history=history, profile=profile)
-
-    # Persist user message
+    # Persist the user message first — an agent failure must not swallow it.
     await session_manager.add_message(session_id, "user", user_message)
+
+    result = await agent_loop.run(user_message, history=history, profile=profile)
 
     # Persist assistant message
     await session_manager.add_message(
@@ -281,7 +380,15 @@ async def _run_json_response(
         "assistant",
         result.content,
         (
-            [{"name": r.tool_name, "args": r.arguments} for r in result.tool_calls_made]
+            [
+                {
+                    "name": r.tool_name,
+                    "args": r.arguments,
+                    "result": r.result,
+                    "is_error": r.is_error,
+                }
+                for r in result.tool_calls_made
+            ]
             or None
         ),
     )
@@ -295,7 +402,12 @@ async def _run_json_response(
         session_id=str(session_id),
         response=result.content,
         tool_calls_made=[
-            {"tool_name": r.tool_name, "arguments": r.arguments, "result": r.result, "is_error": r.is_error}
+            {
+                "tool_name": r.tool_name,
+                "arguments": r.arguments,
+                "result": r.result,
+                "is_error": r.is_error,
+            }
             for r in result.tool_calls_made
         ],
         profile_state=profile_state,
@@ -313,7 +425,7 @@ async def create_chat(body: ChatRequest, request: Request):
 
     Returns SSE stream by default, or JSON if ``Accept: application/json``.
     """
-    settings = get_settings()
+    settings = await get_effective_settings()
     agent_loop = _create_agent_loop(settings)
     sm = _create_session_manager()
     advisory = AdvisoryTriggers()
@@ -341,7 +453,7 @@ async def continue_chat(session_id: uuid.UUID, body: ChatRequest, request: Reque
 
     Returns SSE stream by default, or JSON if ``Accept: application/json``.
     """
-    settings = get_settings()
+    settings = await get_effective_settings()
     agent_loop = _create_agent_loop(settings)
     sm = _create_session_manager()
     advisory = AdvisoryTriggers()
@@ -429,3 +541,22 @@ async def delete_session(session_id: uuid.UUID):
         raise HTTPException(status_code=404, detail="Session not found")
 
     return {"status": "deleted", "session_id": str(session_id)}
+
+
+@router.delete("/{session_id}/profile")
+async def clear_profile(session_id: uuid.UUID):
+    """Clear everything Kara has learned about the taxpayer in this session."""
+    sm = _create_session_manager()
+
+    db_session = await sm.get_session(session_id)
+    if db_session is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    empty = ProfileBuilder()
+    await sm.update_profile(session_id, empty.to_dict())
+
+    return {
+        "status": "cleared",
+        "session_id": str(session_id),
+        "profile_state": _build_profile_state(empty).model_dump(),
+    }

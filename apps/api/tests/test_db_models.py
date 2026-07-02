@@ -4,7 +4,13 @@ from kara_api.db.models import Base, MessageRole, RelationshipType
 
 
 def test_base_has_all_tables():
-    expected = {"tax_sections", "section_relationships", "sessions", "messages"}
+    expected = {
+        "tax_sections",
+        "section_relationships",
+        "sessions",
+        "messages",
+        "runtime_settings",
+    }
     assert set(Base.metadata.tables.keys()) == expected
 
 
@@ -54,3 +60,12 @@ def test_section_relationship_unique_constraint():
     table = Base.metadata.tables["section_relationships"]
     constraint_names = [c.name for c in table.constraints if c.name]
     assert "uq_section_relationship" in constraint_names
+
+
+def test_runtime_setting_model_mapping():
+    from kara_api.db.models import RuntimeSetting
+
+    assert RuntimeSetting.__tablename__ == "runtime_settings"
+    setting = RuntimeSetting(key="LLM_PROVIDER", value="openai")
+    assert setting.key == "LLM_PROVIDER"
+    assert setting.value == "openai"

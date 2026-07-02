@@ -1,6 +1,6 @@
 """Tool schemas for the Kara AI agent.
 
-Defines 8 ToolDefinition constants in OpenAI function-calling JSON Schema
+Defines the ToolDefinition constants in OpenAI function-calling JSON Schema
 format.  These describe every tool the agent is allowed to invoke during a
 conversation.
 """
@@ -51,10 +51,22 @@ COMPUTE_TAX = ToolDefinition(
             },
             "deductions": {
                 "type": "object",
+                "properties": {
+                    "parents_senior": {
+                        "type": "boolean",
+                        "description": (
+                            "Set true only if the parents covered under "
+                            "80D_parents are aged 60+, which raises that cap "
+                            "from 25,000 to 50,000. Ask the user if unknown."
+                        ),
+                    },
+                },
                 "additionalProperties": {"type": "integer"},
                 "description": (
                     "Map of deduction section codes to claimed amounts, "
-                    "e.g. {\"80C\": 150000, \"80D\": 25000}."
+                    "e.g. {\"80C\": 150000, \"80D\": 25000}. For 80G enter the "
+                    "eligible deduction amount (after the 50%/100% category and "
+                    "qualifying limit), not the raw donation."
                 ),
             },
         },
@@ -101,10 +113,22 @@ COMPARE_REGIMES = ToolDefinition(
             },
             "deductions": {
                 "type": "object",
+                "properties": {
+                    "parents_senior": {
+                        "type": "boolean",
+                        "description": (
+                            "Set true only if the parents covered under "
+                            "80D_parents are aged 60+, which raises that cap "
+                            "from 25,000 to 50,000. Ask the user if unknown."
+                        ),
+                    },
+                },
                 "additionalProperties": {"type": "integer"},
                 "description": (
                     "Map of deduction section codes to claimed amounts, "
-                    "e.g. {\"80C\": 150000, \"80D\": 25000}."
+                    "e.g. {\"80C\": 150000, \"80D\": 25000}. For 80G enter the "
+                    "eligible deduction amount (after the 50%/100% category and "
+                    "qualifying limit), not the raw donation."
                 ),
             },
         },
@@ -264,26 +288,59 @@ SEARCH_TAX_LAW = ToolDefinition(
 )
 
 # ---------------------------------------------------------------------------
-# 6. GET_TDS_RATE (stub)
+# 6. GET_TDS_RATE — FY 2025-26 rate table
 # ---------------------------------------------------------------------------
 GET_TDS_RATE = ToolDefinition(
     name="get_tds_rate",
-    description="Look up TDS rate for a payment type.",
+    description=(
+        "Look up the TDS section, rate, and threshold for a payment type from "
+        "the FY 2025-26 rate table; optionally computes the TDS amount."
+    ),
     parameters={
         "type": "object",
         "properties": {
             "payment_type": {
                 "type": "string",
-                "description": "Type of payment (e.g. salary, rent, professional).",
+                "enum": [
+                    "salary",
+                    "epf_withdrawal",
+                    "interest_securities",
+                    "dividend",
+                    "interest_bank",
+                    "interest_other",
+                    "lottery",
+                    "horse_race",
+                    "contractor_individual",
+                    "contractor_other",
+                    "insurance_commission",
+                    "commission",
+                    "rent_plant_machinery",
+                    "rent_land_building",
+                    "property_purchase",
+                    "rent_by_individual",
+                    "professional_fees",
+                    "technical_fees",
+                    "mutual_fund_income",
+                    "land_acquisition",
+                    "ecommerce",
+                    "goods_purchase",
+                    "vda_transfer",
+                ],
+                "description": "Nature of the payment.",
             },
             "amount": {
                 "type": "integer",
-                "description": "Payment amount in INR.",
+                "description": "Payment amount in INR (enables TDS amount computation).",
             },
             "has_pan": {
                 "type": "boolean",
                 "default": True,
-                "description": "Whether the payee has a valid PAN.",
+                "description": "False applies the 20% no-PAN rate under s.206AA.",
+            },
+            "is_senior": {
+                "type": "boolean",
+                "default": False,
+                "description": "Recipient is a senior citizen (raises 194A threshold to 1L).",
             },
         },
         "required": ["payment_type"],
@@ -291,11 +348,14 @@ GET_TDS_RATE = ToolDefinition(
 )
 
 # ---------------------------------------------------------------------------
-# 7. CALCULATE_ADVANCE_TAX (stub)
+# 7. CALCULATE_ADVANCE_TAX — s.208/211 schedule
 # ---------------------------------------------------------------------------
 CALCULATE_ADVANCE_TAX = ToolDefinition(
     name="calculate_advance_tax",
-    description="Calculate advance tax installments and due dates.",
+    description=(
+        "Build the advance tax installment schedule (15/45/75/100% cumulative "
+        "by Jun/Sep/Dec/Mar 15) for the estimated liability."
+    ),
     parameters={
         "type": "object",
         "properties": {
@@ -308,10 +368,18 @@ CALCULATE_ADVANCE_TAX = ToolDefinition(
                 "default": 0,
                 "description": "TDS already deducted during the year in INR.",
             },
-            "financial_year": {
-                "type": "string",
-                "default": "2025-26",
-                "description": "Financial year in YYYY-YY format.",
+            "is_presumptive": {
+                "type": "boolean",
+                "default": False,
+                "description": "44AD/44ADA taxpayers pay 100% in one installment by 15 March.",
+            },
+            "is_senior_without_business": {
+                "type": "boolean",
+                "default": False,
+                "description": (
+                    "Resident senior citizen (60+) with no business income — "
+                    "exempt from advance tax under s.207(2)."
+                ),
             },
         },
         "required": ["total_estimated_tax"],
@@ -319,56 +387,135 @@ CALCULATE_ADVANCE_TAX = ToolDefinition(
 )
 
 # ---------------------------------------------------------------------------
-# 8. SELECT_ITR_FORM (stub)
+# 7b. CALCULATE_INTEREST_234 — late payment/filing interest
 # ---------------------------------------------------------------------------
-SELECT_ITR_FORM = ToolDefinition(
-    name="select_itr_form",
-    description="Determine which ITR form the taxpayer should file.",
+CALCULATE_INTEREST_234 = ToolDefinition(
+    name="calculate_interest_234",
+    description=(
+        "Compute interest under s.234A (late filing), s.234B (advance tax "
+        "below 90% of assessed tax), and s.234C (installment deferment)."
+    ),
     parameters={
         "type": "object",
         "properties": {
-            "income_sources": {
-                "type": "array",
-                "items": {
-                    "type": "string",
-                    "enum": [
-                        "salary",
-                        "house_property",
-                        "business",
-                        "capital_gains",
-                        "other_sources",
-                        "foreign_income",
-                        "agricultural",
-                    ],
+            "total_tax_liability": {
+                "type": "integer",
+                "description": "Assessed/estimated total tax for the year in INR.",
+            },
+            "tds_deducted": {
+                "type": "integer",
+                "default": 0,
+                "description": "TDS/TCS already deducted in INR.",
+            },
+            "advance_tax_paid": {
+                "type": "integer",
+                "default": 0,
+                "description": "Total advance tax paid during the year in INR.",
+            },
+            "filing_date": {
+                "type": "string",
+                "description": "Actual/planned return filing date (YYYY-MM-DD).",
+            },
+            "as_of_date": {
+                "type": "string",
+                "description": "Date up to which 234B interest runs (YYYY-MM-DD).",
+            },
+            "cumulative_paid": {
+                "type": "object",
+                "properties": {
+                    "q1": {"type": "integer"},
+                    "q2": {"type": "integer"},
+                    "q3": {"type": "integer"},
+                    "q4": {"type": "integer"},
                 },
-                "description": "List of income source types for the taxpayer.",
+                "description": (
+                    "Cumulative advance tax paid by each installment due date "
+                    "(15 Jun/Sep/Dec/Mar). Needed for an accurate 234C figure."
+                ),
             },
-            "is_resident": {
-                "type": "boolean",
-                "default": True,
-                "description": "Whether the taxpayer is a resident of India.",
-            },
-            "has_foreign_assets": {
+            "is_presumptive": {
                 "type": "boolean",
                 "default": False,
-                "description": "Whether the taxpayer holds foreign assets.",
+                "description": "44AD/44ADA: only the 15 March installment is checked.",
+            },
+            "financial_year": {
+                "type": "string",
+                "default": "2025-26",
+                "description": "Financial year in YYYY-YY format.",
+            },
+        },
+        "required": ["total_tax_liability"],
+    },
+)
+
+# ---------------------------------------------------------------------------
+# 8. SELECT_ITR_FORM — decision tree
+# ---------------------------------------------------------------------------
+SELECT_ITR_FORM = ToolDefinition(
+    name="select_itr_form",
+    description=(
+        "Recommend the correct ITR form (ITR-1 to ITR-7) for AY 2026-27 from "
+        "the taxpayer's situation."
+    ),
+    parameters={
+        "type": "object",
+        "properties": {
+            "entity_type": {
+                "type": "string",
+                "enum": ["individual", "huf", "firm", "llp", "company", "trust"],
+                "default": "individual",
+                "description": "Type of taxpayer entity.",
+            },
+            "residential_status": {
+                "type": "string",
+                "enum": ["resident", "rnor", "non_resident"],
+                "default": "resident",
+                "description": "Residential status for the year.",
             },
             "total_income": {
                 "type": "integer",
                 "description": "Total income in INR.",
             },
-            "is_company": {
+            "has_salary": {"type": "boolean", "default": False},
+            "house_property_count": {
+                "type": "integer",
+                "default": 0,
+                "description": "Number of house properties with income/loss.",
+            },
+            "has_business": {
                 "type": "boolean",
                 "default": False,
-                "description": "Whether the taxpayer is a company.",
+                "description": "Has business or professional income.",
             },
-            "is_partnership": {
+            "is_presumptive": {
                 "type": "boolean",
                 "default": False,
-                "description": "Whether the taxpayer is a partnership firm.",
+                "description": "Business income under 44AD/44ADA/44AE.",
             },
+            "ltcg_112a_amount": {
+                "type": "integer",
+                "default": 0,
+                "description": (
+                    "LTCG on listed equity u/s 112A in INR (up to 1.25L is "
+                    "allowed in ITR-1/ITR-4 from AY 2025-26)."
+                ),
+            },
+            "has_other_capital_gains": {
+                "type": "boolean",
+                "default": False,
+                "description": "Any capital gains other than small 112A LTCG.",
+            },
+            "has_foreign_assets": {"type": "boolean", "default": False},
+            "has_crypto_income": {"type": "boolean", "default": False},
+            "is_director": {
+                "type": "boolean",
+                "default": False,
+                "description": "Director of a company (excludes ITR-1/ITR-4).",
+            },
+            "has_unlisted_shares": {"type": "boolean", "default": False},
+            "agricultural_income": {"type": "integer", "default": 0},
         },
-        "required": ["income_sources", "total_income"],
+        "required": ["total_income"],
     },
 )
 
@@ -455,6 +602,7 @@ ALL_TOOLS: list[ToolDefinition] = [
     SEARCH_TAX_LAW,
     GET_TDS_RATE,
     CALCULATE_ADVANCE_TAX,
+    CALCULATE_INTEREST_234,
     SELECT_ITR_FORM,
     PARSE_FORM16,
     PARSE_AIS,

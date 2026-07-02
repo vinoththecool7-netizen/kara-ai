@@ -8,7 +8,8 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from typing import AsyncIterator, Protocol
+from collections.abc import AsyncIterator
+from typing import Protocol
 
 import httpx
 
@@ -16,7 +17,6 @@ from kara_api.config import Settings
 from kara_api.llm.models import (
     LLMRequest,
     LLMResponse,
-    Message,
     Role,
     StreamChunk,
     TokenUsage,
@@ -58,10 +58,14 @@ class OpenAIProvider:
         api_key: str,
         model: str = "gpt-4o",
         base_url: str = "https://api.openai.com/v1",
+        fallback_models: list[str] | None = None,
     ):
         self.api_key = api_key
         self.model = model
         self.base_url = base_url.rstrip("/")
+        # OpenRouter-only routing: alternates tried when the primary model's
+        # pool is congested/rate-limited. Ignored for other base URLs.
+        self.fallback_models = fallback_models or []
 
     # -- helpers ----------------------------------------------------------
 
@@ -92,6 +96,9 @@ class OpenAIProvider:
             "temperature": request.temperature,
             "max_tokens": request.max_tokens,
         }
+
+        if self.fallback_models and "openrouter" in self.base_url:
+            payload["models"] = [self.model, *self.fallback_models]
 
         if request.tools:
             payload["tools"] = to_openai_tools(request.tools)
@@ -170,7 +177,29 @@ class OpenAIProvider:
             "Content-Type": "application/json",
         }
 
-        timeout = httpx.Timeout(connect=10.0, read=120.0, write=10.0, pool=10.0)
+        # read applies between received chunks AND to the wait for response
+        # headers — 45s turns a silently stalled provider (congested free
+        # pools hold requests without answering) into a visible error event
+        # instead of a 2-minute frozen spinner.
+        timeout = httpx.Timeout(connect=10.0, read=45.0, write=10.0, pool=10.0)
+        # Tool-call arguments arrive as string fragments spread across many
+        # chunks, keyed by index; accumulate and flush as complete ToolCalls.
+        tool_buf: dict[int, dict] = {}
+
+        def _flush_tool_calls() -> list[ToolCall]:
+            calls: list[ToolCall] = []
+            for idx in sorted(tool_buf):
+                buf = tool_buf[idx]
+                try:
+                    args = json.loads(buf["arguments"]) if buf["arguments"] else {}
+                except json.JSONDecodeError:
+                    args = {}
+                calls.append(
+                    ToolCall(id=buf["id"] or f"call_{idx}", name=buf["name"], arguments=args)
+                )
+            tool_buf.clear()
+            return calls
+
         async with httpx.AsyncClient(timeout=timeout) as client:
             async with client.stream("POST", url, json=payload, headers=headers) as resp:
                 resp.raise_for_status()
@@ -180,13 +209,30 @@ class OpenAIProvider:
                         continue
                     data_str = line[len("data: "):]
                     if data_str == "[DONE]":
+                        pending = _flush_tool_calls()
+                        if pending:
+                            yield StreamChunk(tool_calls=pending)
                         yield StreamChunk(is_final=True)
                         return
                     data = json.loads(data_str)
                     choice = data.get("choices", [{}])[0] if data.get("choices") else {}
                     delta = choice.get("delta", {})
 
+                    for tc_delta in delta.get("tool_calls") or []:
+                        idx = tc_delta.get("index", 0)
+                        buf = tool_buf.setdefault(idx, {"id": "", "name": "", "arguments": ""})
+                        if tc_delta.get("id"):
+                            buf["id"] = tc_delta["id"]
+                        fn = tc_delta.get("function") or {}
+                        if fn.get("name"):
+                            buf["name"] = fn["name"]
+                        if fn.get("arguments"):
+                            buf["arguments"] += fn["arguments"]
+
                     chunk = StreamChunk(content=delta.get("content"))
+
+                    if choice.get("finish_reason"):
+                        chunk.tool_calls = _flush_tool_calls()
 
                     # Check for usage in the chunk (sent with stream_options)
                     if data.get("usage"):
@@ -353,7 +399,11 @@ class AnthropicProvider:
             "content-type": "application/json",
         }
 
-        timeout = httpx.Timeout(connect=10.0, read=120.0, write=10.0, pool=10.0)
+        # read applies between received chunks AND to the wait for response
+        # headers — 45s turns a silently stalled provider (congested free
+        # pools hold requests without answering) into a visible error event
+        # instead of a 2-minute frozen spinner.
+        timeout = httpx.Timeout(connect=10.0, read=45.0, write=10.0, pool=10.0)
         # Buffer for accumulating tool call JSON across delta events
         current_tool: dict | None = None
 
@@ -492,6 +542,8 @@ class FakeLLMProvider:
         words = (response.content or "").split()
         for word in words:
             yield StreamChunk(content=word + " ")
+        if response.tool_calls:
+            yield StreamChunk(tool_calls=response.tool_calls)
         yield StreamChunk(
             is_final=True,
             usage=response.usage,
@@ -509,10 +561,14 @@ def get_llm_provider(settings: Settings) -> LLMProvider:
 
     if provider_name == "openai":
         base_url = settings.LLM_BASE_URL or "https://api.openai.com/v1"
+        fallbacks = [
+            m.strip() for m in settings.LLM_FALLBACK_MODELS.split(",") if m.strip()
+        ]
         return OpenAIProvider(
             api_key=settings.LLM_API_KEY,
             model=settings.LLM_MODEL,
             base_url=base_url,
+            fallback_models=fallbacks,
         )
     elif provider_name == "anthropic":
         return AnthropicProvider(

@@ -1,5 +1,9 @@
 # Override for smoke testing — uses fake LLM provider (no API key needed)
+# and builds the API from the current checkout instead of pulling GHCR.
 services:
   api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
     environment:
       - LLM_PROVIDER=fake

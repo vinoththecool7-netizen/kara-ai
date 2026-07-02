@@ -17,8 +17,6 @@ from kara_api.llm.models import (
     LLMResponse,
     Message,
     Role,
-    StreamChunk,
-    TokenUsage,
     ToolCall,
     ToolDefinition,
 )
@@ -29,7 +27,6 @@ from kara_api.llm.providers import (
     OpenAIProvider,
     get_llm_provider,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -873,3 +870,108 @@ class TestGetLLMProvider:
         settings = Settings(LLM_PROVIDER="unknown_provider")
         with pytest.raises(ValueError, match="Unknown LLM provider"):
             get_llm_provider(settings)
+
+
+class TestOpenAIStreamToolCalls:
+    """OpenAI streams tool calls as argument fragments that must be
+    accumulated by index and flushed as complete ToolCall objects."""
+
+    async def test_streaming_accumulates_tool_call_fragments(self):
+        provider = OpenAIProvider(api_key="sk-test")
+
+        sse_lines = [
+            'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call_abc",'
+            '"type":"function","function":{"name":"compute_tax","arguments":""}}]}}]}\n',
+            'data: {"choices":[{"delta":{"tool_calls":[{"index":0,'
+            '"function":{"arguments":"{\\"gross"}}]}}]}\n',
+            'data: {"choices":[{"delta":{"tool_calls":[{"index":0,'
+            '"function":{"arguments":"_salary\\": 1500000}"}}]}}]}\n',
+            'data: {"choices":[{"delta":{},"finish_reason":"tool_calls"}]}\n',
+            "data: [DONE]\n",
+        ]
+
+        mock_resp = AsyncMock()
+        mock_resp.raise_for_status = MagicMock()
+
+        async def fake_aiter_lines():
+            for line in sse_lines:
+                yield line
+
+        mock_resp.aiter_lines = fake_aiter_lines
+
+        with patch("kara_api.llm.providers.httpx.AsyncClient") as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client.stream = MagicMock(return_value=_make_stream_context(mock_resp))
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=False)
+            mock_client_cls.return_value = mock_client
+
+            chunks = []
+            async for chunk in provider.stream(_simple_request()):
+                chunks.append(chunk)
+
+        all_tool_calls = [tc for c in chunks for tc in c.tool_calls]
+        assert len(all_tool_calls) == 1
+        assert all_tool_calls[0].id == "call_abc"
+        assert all_tool_calls[0].name == "compute_tax"
+        assert all_tool_calls[0].arguments == {"gross_salary": 1500000}
+
+    async def test_streaming_parallel_tool_calls(self):
+        """Two tool calls interleaved by index must both be assembled."""
+        provider = OpenAIProvider(api_key="sk-test")
+
+        sse_lines = [
+            'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call_1",'
+            '"type":"function","function":{"name":"compute_tax","arguments":"{}"}},'
+            '{"index":1,"id":"call_2",'
+            '"type":"function","function":{"name":"compare_regimes","arguments":""}}]}}]}\n',
+            'data: {"choices":[{"delta":{"tool_calls":[{"index":1,'
+            '"function":{"arguments":"{\\"gross_salary\\": 1}"}}]}}]}\n',
+            'data: {"choices":[{"delta":{},"finish_reason":"tool_calls"}]}\n',
+            "data: [DONE]\n",
+        ]
+
+        mock_resp = AsyncMock()
+        mock_resp.raise_for_status = MagicMock()
+
+        async def fake_aiter_lines():
+            for line in sse_lines:
+                yield line
+
+        mock_resp.aiter_lines = fake_aiter_lines
+
+        with patch("kara_api.llm.providers.httpx.AsyncClient") as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client.stream = MagicMock(return_value=_make_stream_context(mock_resp))
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=False)
+            mock_client_cls.return_value = mock_client
+
+            chunks = []
+            async for chunk in provider.stream(_simple_request()):
+                chunks.append(chunk)
+
+        all_tool_calls = [tc for c in chunks for tc in c.tool_calls]
+        names = {tc.name for tc in all_tool_calls}
+        assert names == {"compute_tax", "compare_regimes"}
+        by_name = {tc.name: tc for tc in all_tool_calls}
+        assert by_name["compare_regimes"].arguments == {"gross_salary": 1}
+
+
+class TestFakeProviderStreamToolCalls:
+    async def test_stream_yields_queued_tool_calls(self):
+        """A queued response with tool_calls must surface them when streamed."""
+        queued = LLMResponse(
+            content=None,
+            tool_calls=[ToolCall(id="t1", name="compute_tax", arguments={"gross_salary": 1})],
+            stop_reason="tool_use",
+        )
+        provider = FakeLLMProvider(responses=[queued])
+
+        chunks = []
+        async for chunk in provider.stream(_simple_request()):
+            chunks.append(chunk)
+
+        all_tool_calls = [tc for c in chunks for tc in c.tool_calls]
+        assert len(all_tool_calls) == 1
+        assert all_tool_calls[0].name == "compute_tax"

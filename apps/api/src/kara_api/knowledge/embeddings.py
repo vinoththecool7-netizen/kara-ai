@@ -1,5 +1,5 @@
+import asyncio
 import hashlib
-from abc import ABC, abstractmethod
 from typing import Protocol
 
 import httpx
@@ -39,15 +39,14 @@ class OpenAIEmbeddingProvider:
                         timeout=30.0,
                     )
                     response.raise_for_status()
-                    data = await response.json()
+                    data = response.json()
                     # Sort by index to ensure correct order
                     embeddings_data = sorted(data["data"], key=lambda x: x["index"])
                     return [item["embedding"] for item in embeddings_data]
-                except httpx.HTTPError as e:
+                except httpx.HTTPError:
                     if attempt == 2:
                         raise
                     # Exponential backoff: 1s, 2s, 4s
-                    import asyncio
                     await asyncio.sleep(2 ** attempt)
 
     async def embed_single(self, text: str) -> list[float]:
@@ -74,7 +73,7 @@ class OllamaEmbeddingProvider:
                     timeout=30.0,
                 )
                 response.raise_for_status()
-                data = await response.json()
+                data = response.json()
                 embedding = data["embedding"]
                 # Validate dimension
                 if len(embedding) != 1536:

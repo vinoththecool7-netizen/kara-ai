@@ -1,15 +1,16 @@
 """Tests for the hybrid search module."""
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+
 from kara_api.knowledge.search import (
+    RRF_K,
     SearchResult,
-    semantic_search,
-    keyword_search,
     graph_boost,
     hybrid_search,
-    RRF_K,
+    keyword_search,
+    semantic_search,
 )
-from kara_api.knowledge.embeddings import FakeEmbeddingProvider
 
 
 def _make_result(id: int, section_number: str = "TEST", title: str = "Test", score: float = 0.5) -> SearchResult:
@@ -148,6 +149,34 @@ class TestHybridSearch:
 
         results = await hybrid_search("test", 3, session, provider)
         assert len(results) <= 3
+
+    async def test_degrades_to_keyword_when_embeddings_fail(self):
+        """If the embedding provider errors (no key, wrong endpoint, network),
+        hybrid_search must still return keyword results instead of raising."""
+        provider = AsyncMock()
+        provider.embed_single.side_effect = RuntimeError("embedding backend unavailable")
+        session = AsyncMock()
+
+        keyword_rows = [
+            _make_row(1, "80C", "Section 80C", None, 0.9),
+            _make_row(2, "80D", "Section 80D", None, 0.7),
+        ]
+
+        call_count = 0
+        def mock_execute(*args, **kwargs):
+            nonlocal call_count
+            call_count += 1
+            mock_r = MagicMock()
+            if call_count == 1:  # keyword (semantic never reaches the DB)
+                mock_r.fetchall.return_value = keyword_rows
+            else:  # graph boost queries
+                mock_r.fetchall.return_value = []
+            return mock_r
+
+        session.execute = AsyncMock(side_effect=mock_execute)
+
+        results = await hybrid_search("80c deduction", 5, session, provider)
+        assert [r.section_number for r in results] == ["80C", "80D"]
 
     async def test_rrf_boosts_overlap(self):
         """A document in both semantic and keyword results should score higher."""

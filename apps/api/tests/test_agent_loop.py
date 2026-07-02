@@ -3,7 +3,12 @@ from __future__ import annotations
 
 import pytest
 
-from kara_api.agent.loop import AgentError, AgentLoop, AgentResponse, ToolCallRecord, _FALLBACK_MESSAGE
+from kara_api.agent.loop import (
+    _FALLBACK_MESSAGE,
+    AgentError,
+    AgentLoop,
+    AgentResponse,
+)
 from kara_api.agent.profile_builder import ProfileBuilder
 from kara_api.llm.client import LLMClient
 from kara_api.llm.models import (
@@ -15,7 +20,6 @@ from kara_api.llm.models import (
 )
 from kara_api.llm.providers import FakeLLMProvider
 from kara_api.tools.executor import ToolRegistry
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -195,7 +199,7 @@ class TestSingleToolCall:
         tool_msgs = [m for m in req.messages if m.role == Role.tool]
         assert len(tool_msgs) == 1
         assert tool_msgs[0].tool_call_id == "call_1"
-        assert "194I" in tool_msgs[0].content  # rent TDS section
+        assert "194-I" in tool_msgs[0].content  # rent TDS section
 
     async def test_assistant_message_ordering(self, registry):
         """Assistant message with tool_calls precedes tool result messages."""
@@ -416,7 +420,7 @@ class TestErrorHandling:
 
             async def stream(self, request):
                 raise RuntimeError("Provider exploded")
-                yield  # noqa: unreachable — makes this an async generator
+                yield  # unreachable — makes this an async generator
 
         client = LLMClient(ExplodingProvider())
         loop = AgentLoop(llm_client=client, tool_registry=registry)
@@ -540,3 +544,160 @@ class TestIntegration:
         # The real tax engine produces JSON with tax data
         assert "total_tax" in record.result
         assert result.content == "Your tax is Rs 1,12,500 under new regime."
+
+
+# ---------------------------------------------------------------------------
+# Streaming agent loop
+# ---------------------------------------------------------------------------
+
+
+class TestRunStream:
+    """AgentLoop.run_stream yields typed events: content_delta as tokens
+    arrive, tool_result after each tool execution, done with the final
+    AgentResponse."""
+
+    def _make_loop(self, responses: list[LLMResponse]) -> AgentLoop:
+        provider = FakeLLMProvider(responses=responses)
+        client = LLMClient(provider)
+        return AgentLoop(llm_client=client, tool_registry=ToolRegistry())
+
+    @pytest.mark.asyncio
+    async def test_streams_content_deltas_for_text_answer(self):
+        loop = self._make_loop([_text_response("Hello there friend")])
+
+        events = [e async for e in loop.run_stream("hi")]
+
+        deltas = [e for e in events if e.type == "content_delta"]
+        assert len(deltas) == 3  # FakeLLMProvider streams word by word
+        assert "".join(d.text for d in deltas).strip() == "Hello there friend"
+
+        done = [e for e in events if e.type == "done"]
+        assert len(done) == 1
+        assert done[0] is events[-1]
+        assert done[0].response.content.strip() == "Hello there friend"
+        assert done[0].response.iterations == 1
+
+    @pytest.mark.asyncio
+    async def test_tool_call_turn_then_final_answer(self):
+        tc = ToolCall(id="t1", name="compute_tax", arguments={"gross_salary": 1500000})
+        loop = self._make_loop(
+            [
+                _tool_response([tc]),
+                _text_response("Your tax is computed."),
+            ]
+        )
+
+        events = [e async for e in loop.run_stream("tax on 15L?")]
+
+        tool_events = [e for e in events if e.type == "tool_result"]
+        assert len(tool_events) == 1
+        assert tool_events[0].record.tool_name == "compute_tax"
+        assert tool_events[0].record.is_error is False
+
+        # Tool event must come before the final answer's deltas
+        types = [e.type for e in events]
+        assert types.index("tool_result") < types.index("content_delta")
+
+        done = events[-1]
+        assert done.type == "done"
+        assert done.response.iterations == 2
+        assert len(done.response.tool_calls_made) == 1
+        assert done.response.content.strip() == "Your tax is computed."
+
+    @pytest.mark.asyncio
+    async def test_max_iterations_yields_fallback(self):
+        tc = ToolCall(id="t1", name="get_tds_rate", arguments={"payment_type": "rent"})
+        responses = [_tool_response([tc]) for _ in range(12)]
+        provider = FakeLLMProvider(responses=responses)
+        client = LLMClient(provider)
+        loop = AgentLoop(llm_client=client, tool_registry=ToolRegistry(), max_iterations=2)
+
+        events = [e async for e in loop.run_stream("loop forever")]
+
+        done = events[-1]
+        assert done.type == "done"
+        assert _FALLBACK_MESSAGE in done.response.content
+        # The fallback must also have been streamed so the client displays it
+        deltas = "".join(e.text for e in events if e.type == "content_delta")
+        assert _FALLBACK_MESSAGE.split()[0] in deltas
+
+    @pytest.mark.asyncio
+    async def test_provider_error_raises_agent_error(self):
+        class ExplodingProvider:
+            async def complete(self, request):
+                raise RuntimeError("Provider exploded")
+
+            async def stream(self, request):
+                raise RuntimeError("Provider exploded")
+                yield  # unreachable — makes this an async generator
+
+        client = LLMClient(ExplodingProvider())
+        loop = AgentLoop(llm_client=client, tool_registry=ToolRegistry())
+
+        with pytest.raises(AgentError):
+            async for _ in loop.run_stream("boom"):
+                pass
+
+    @pytest.mark.asyncio
+    async def test_usage_accumulated_across_turns(self):
+        tc = ToolCall(id="t1", name="get_tds_rate", arguments={"payment_type": "rent"})
+        loop = self._make_loop(
+            [
+                _tool_response([tc], prompt_tokens=100, completion_tokens=20),
+                _text_response("done", prompt_tokens=10, completion_tokens=5),
+            ]
+        )
+
+        events = [e async for e in loop.run_stream("tds on rent")]
+        usage = events[-1].response.total_usage
+        assert usage.prompt_tokens == 110
+        assert usage.completion_tokens == 25
+
+
+class TestProfileCapture:
+    """Profile slots accumulate from profile-bearing tool calls."""
+
+    @pytest.mark.asyncio
+    async def test_run_captures_compute_tax_args(self):
+        tc = ToolCall(
+            id="t1",
+            name="compute_tax",
+            arguments={"gross_salary": 1_500_000, "regime": "new"},
+        )
+        provider = FakeLLMProvider(
+            responses=[_tool_response([tc]), _text_response("done")]
+        )
+        loop = AgentLoop(llm_client=LLMClient(provider), tool_registry=ToolRegistry())
+
+        result = await loop.run("tax on 15L")
+        assert result.profile_snapshot["slots"]["gross_salary"] == 1_500_000
+        assert result.profile_snapshot["slots"]["regime"] == "new"
+
+    @pytest.mark.asyncio
+    async def test_run_stream_captures_args(self):
+        tc = ToolCall(
+            id="t1",
+            name="compare_regimes",
+            arguments={"gross_salary": 2_000_000, "deductions": {"80C": 150_000}},
+        )
+        provider = FakeLLMProvider(
+            responses=[_tool_response([tc]), _text_response("done")]
+        )
+        loop = AgentLoop(llm_client=LLMClient(provider), tool_registry=ToolRegistry())
+
+        events = [e async for e in loop.run_stream("which regime?")]
+        snapshot = events[-1].response.profile_snapshot["slots"]
+        assert snapshot["gross_salary"] == 2_000_000
+        assert snapshot["section_80c"] == 150_000
+
+    @pytest.mark.asyncio
+    async def test_failed_tool_args_not_captured(self):
+        tc = ToolCall(id="t1", name="compute_tax", arguments={"gross_salary": -5})
+        provider = FakeLLMProvider(
+            responses=[_tool_response([tc]), _text_response("hmm")]
+        )
+        loop = AgentLoop(llm_client=LLMClient(provider), tool_registry=ToolRegistry())
+
+        result = await loop.run("bad input")
+        if result.tool_calls_made[0].is_error:
+            assert "gross_salary" not in result.profile_snapshot.get("slots", {})

@@ -8,7 +8,7 @@
  * response.body as a ReadableStream for streaming events.
  */
 
-import type { SessionResponse, SessionSummary } from "@/types/chat";
+import type { ProfileState, SessionResponse, SessionSummary } from "@/types/chat";
 import { reportNetworkError } from "@/hooks/useOnlineStatus";
 
 const API_PREFIX = "/api/v1/chat";
@@ -92,16 +92,22 @@ async function assertOk(response: Response, context: string): Promise<void> {
  * Returns the raw Response so the caller can parse the SSE stream via
  * response.body (ReadableStream). The backend streams Server-Sent Events.
  */
-export async function createChat(message: string): Promise<Response> {
+export async function createChat(
+  message: string,
+  signal?: AbortSignal,
+): Promise<Response> {
   let response: Response;
   try {
     response = await fetch(API_PREFIX, {
       method: "POST",
       headers: buildJsonHeaders(),
       body: JSON.stringify({ message }),
+      signal,
     });
   } catch (err) {
-    reportNetworkError();
+    if (!(err instanceof DOMException && err.name === "AbortError")) {
+      reportNetworkError();
+    }
     throw err;
   }
 
@@ -117,7 +123,8 @@ export async function createChat(message: string): Promise<Response> {
  */
 export async function continueChat(
   sessionId: string,
-  message: string
+  message: string,
+  signal?: AbortSignal,
 ): Promise<Response> {
   let response: Response;
   try {
@@ -125,9 +132,12 @@ export async function continueChat(
       method: "POST",
       headers: buildJsonHeaders(),
       body: JSON.stringify({ message }),
+      signal,
     });
   } catch (err) {
-    reportNetworkError();
+    if (!(err instanceof DOMException && err.name === "AbortError")) {
+      reportNetworkError();
+    }
     throw err;
   }
 
@@ -163,6 +173,22 @@ export async function deleteSession(sessionId: string): Promise<void> {
   });
 
   await assertOk(response, "deleteSession");
+}
+
+/**
+ * Clear everything Kara has learned about the taxpayer in this session.
+ * Returns the (now empty) profile state.
+ */
+export async function clearProfile(
+  sessionId: string,
+): Promise<{ profile_state: ProfileState }> {
+  const response = await fetch(`${API_PREFIX}/${sessionId}/profile`, {
+    method: "DELETE",
+    headers: buildJsonHeaders(),
+  });
+
+  await assertOk(response, "clearProfile");
+  return response.json() as Promise<{ profile_state: ProfileState }>;
 }
 
 /**
@@ -246,4 +272,64 @@ export async function uploadDocument(
 
   await assertOk(response, "uploadDocument");
   return response.json() as Promise<DocumentUploadResponse>;
+}
+
+// ---------------------------------------------------------------------------
+// Setup wizard
+// ---------------------------------------------------------------------------
+
+const SETUP_PREFIX = "/api/v1/setup";
+
+export interface OllamaStatus {
+  reachable: boolean;
+  base_url: string;
+  models: string[];
+}
+
+export interface SetupStatus {
+  configured: boolean;
+  source: "env" | "db" | null;
+  provider: string;
+  model: string;
+  api_key_masked: string;
+  ollama: OllamaStatus;
+}
+
+export interface SetupPayload {
+  provider: "openai" | "anthropic" | "ollama";
+  api_key: string;
+  model: string;
+  base_url: string;
+  ollama_base_url: string;
+}
+
+export async function getSetupStatus(): Promise<SetupStatus> {
+  const response = await fetchWithRetry(`${SETUP_PREFIX}/status`, {
+    method: "GET",
+    headers: buildJsonHeaders(),
+  });
+  await assertOk(response, "getSetupStatus");
+  return response.json() as Promise<SetupStatus>;
+}
+
+export async function testSetup(
+  payload: SetupPayload,
+): Promise<{ ok: boolean; message: string }> {
+  const response = await fetchWithRetry(`${SETUP_PREFIX}/test`, {
+    method: "POST",
+    headers: buildJsonHeaders(),
+    body: JSON.stringify(payload),
+  });
+  await assertOk(response, "testSetup");
+  return response.json() as Promise<{ ok: boolean; message: string }>;
+}
+
+export async function saveSetup(payload: SetupPayload): Promise<SetupStatus> {
+  const response = await fetchWithRetry(SETUP_PREFIX, {
+    method: "POST",
+    headers: buildJsonHeaders(),
+    body: JSON.stringify(payload),
+  });
+  await assertOk(response, "saveSetup");
+  return response.json() as Promise<SetupStatus>;
 }

@@ -4,9 +4,14 @@ export function Footer() {
   return (
     <footer className="border-t bg-background py-6 px-4">
       <div className="mx-auto max-w-7xl flex flex-col items-center gap-3 text-center sm:flex-row sm:justify-between sm:text-left">
-        <p className="text-sm text-muted-foreground">
-          Kara (कर) — Open Source AI Tax Advisor for India
-        </p>
+        <div>
+          <p className="text-sm text-muted-foreground">
+            Kara (कर) — Open Source AI Tax Advisor for India
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground/80">
+            General tax information only — not professional tax advice.
+          </p>
+        </div>
 
         <div className="flex flex-col items-center gap-3 sm:flex-row sm:gap-4">
           <nav className="flex items-center gap-4" aria-label="Footer navigation">

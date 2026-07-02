@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 import logging
 import uuid
-from typing import Any, Literal
+from typing import Literal
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
@@ -27,6 +27,7 @@ from kara_api.parsers import (
     parse_form16,
     parse_form_26as,
 )
+from kara_api.privacy import mask_pan, sanitize_text
 
 logger = logging.getLogger(__name__)
 
@@ -115,8 +116,6 @@ def _parse_document(
     filename: str,
 ) -> Form16Document | AISDocument | Form26ASDocument:
     """Parse *content* as the given document type."""
-    name_lower = filename.lower() if filename else ""
-
     try:
         if doc_type == "form16":
             return parse_form16(content)
@@ -232,8 +231,8 @@ def _build_summary(
     return ParsedDocumentSummary(
         document_id=document_id,
         document_type=doc_type,
-        pan=pan,
-        employer_name=employer_name,
+        pan=mask_pan(pan),
+        employer_name=sanitize_text(employer_name),
         period=period,
         key_amounts=key_amounts,
         fields_filled=fields_filled,

@@ -3,10 +3,10 @@
 import asyncio
 from logging.config import fileConfig
 
-from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
+from alembic import context
 from kara_api.config import get_settings
 from kara_api.db.models import Base
 

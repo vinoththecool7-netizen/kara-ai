@@ -10,7 +10,6 @@ import pytest
 from kara_api.parsers.ais import AISDocument, parse_ais_json, parse_ais_pdf
 from tests.fixtures.ais_factory import build_ais_json, build_ais_pdf
 
-
 # ---------------------------------------------------------------------------
 # JSON path tests
 # ---------------------------------------------------------------------------

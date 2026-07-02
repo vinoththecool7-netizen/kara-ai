@@ -3,13 +3,14 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from kara_api.db.models import Message as DbMessage, Session as DbSession
+from kara_api.db.models import Message as DbMessage
+from kara_api.db.models import Session as DbSession
 
 
 @dataclass
@@ -97,30 +98,60 @@ class SessionManager:
             await db.commit()
             return True
 
+    async def delete_sessions_older_than(self, days: int) -> int:
+        """Delete sessions (and their messages, via FK cascade) not updated
+        in the last *days* days. Returns the number of sessions removed."""
+        if days <= 0:
+            raise ValueError("days must be positive; use SESSION_TTL_DAYS=0 to disable")
+        cutoff = datetime.now(tz=UTC) - timedelta(days=days)
+        async with self._factory() as db:
+            result = await db.execute(
+                delete(DbSession).where(DbSession.updated_at < cutoff)
+            )
+            await db.commit()
+            return result.rowcount or 0
+
     async def list_sessions(self) -> list[SessionSummaryRow]:
         """Return a summary of every session, newest first.
 
         Each row carries a derived ``title`` (the first user message, truncated
         to 60 characters with an ellipsis, or ``"New Chat"`` when the session
         has no user message yet) and a total ``message_count``.
+
+        Issues a constant three queries regardless of the number of sessions
+        (sessions, message counts, first user message per session).
         """
         async with self._factory() as db:
             sessions_result = await db.execute(
                 select(DbSession).order_by(DbSession.updated_at.desc())
             )
             sessions = list(sessions_result.scalars().all())
+            if not sessions:
+                return []
+
+            counts_result = await db.execute(
+                select(DbMessage.session_id, func.count(DbMessage.id)).group_by(
+                    DbMessage.session_id
+                )
+            )
+            counts: dict[uuid.UUID, int] = dict(counts_result.all())
+
+            first_user_msg_ids = (
+                select(func.min(DbMessage.id))
+                .where(DbMessage.role == "user")
+                .group_by(DbMessage.session_id)
+                .scalar_subquery()
+            )
+            titles_result = await db.execute(
+                select(DbMessage.session_id, DbMessage.content).where(
+                    DbMessage.id.in_(first_user_msg_ids)
+                )
+            )
+            first_messages: dict[uuid.UUID, str | None] = dict(titles_result.all())
 
             summaries: list[SessionSummaryRow] = []
             for sess in sessions:
-                msgs_result = await db.execute(
-                    select(DbMessage)
-                    .where(DbMessage.session_id == sess.id)
-                    .order_by(DbMessage.id)
-                )
-                msgs = list(msgs_result.scalars().all())
-
-                first_user = next((m for m in msgs if m.role == "user"), None)
-                raw_content = (first_user.content if first_user else None) or ""
+                raw_content = first_messages.get(sess.id) or ""
                 if not raw_content:
                     title = "New Chat"
                 elif len(raw_content) > 60:
@@ -134,7 +165,7 @@ class SessionManager:
                         created_at=sess.created_at,
                         updated_at=sess.updated_at,
                         title=title,
-                        message_count=len(msgs),
+                        message_count=counts.get(sess.id, 0),
                     )
                 )
             return summaries

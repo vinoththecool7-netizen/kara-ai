@@ -23,6 +23,10 @@ async def init_db(database_url: str, echo: bool = False) -> None:
         pool_size=5,
         max_overflow=10,
         pool_pre_ping=True,
+        # Bound every command at the asyncpg level. A connection left in a
+        # broken protocol state (e.g. after a client disconnect cancelled a
+        # task mid-query) would otherwise hang its next caller forever.
+        connect_args={"timeout": 10, "command_timeout": 30},
     )
     _session_factory = async_sessionmaker(_engine, expire_on_commit=False)
 
@@ -41,6 +45,13 @@ def get_session_factory() -> async_sessionmaker[AsyncSession]:
     if _session_factory is None:
         raise RuntimeError("Database not initialized. Call init_db() first.")
     return _session_factory
+
+
+def get_engine() -> AsyncEngine:
+    """Return the engine. Raises RuntimeError if init_db not called."""
+    if _engine is None:
+        raise RuntimeError("Database not initialized. Call init_db() first.")
+    return _engine
 
 
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:

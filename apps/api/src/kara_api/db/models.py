@@ -3,7 +3,6 @@
 import enum
 import uuid
 from datetime import datetime
-from typing import Optional
 
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
@@ -18,7 +17,6 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB, TSVECTOR
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from sqlalchemy.schema import Computed
-
 
 # ---------------------------------------------------------------------------
 # Enums
@@ -59,7 +57,7 @@ class TaxSection(Base):
     ltree_path: Mapped[str] = mapped_column(String(255), nullable=False)
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
-    summary: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    summary: Mapped[str | None] = mapped_column(Text, nullable=True)
     embedding = mapped_column(Vector(1536), nullable=True)
     search_vector = mapped_column(
         TSVECTOR,
@@ -164,7 +162,7 @@ class Message(Base):
         ForeignKey("sessions.id", ondelete="CASCADE"), nullable=False
     )
     role: Mapped[str] = mapped_column(String(20), nullable=False)
-    content: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    content: Mapped[str | None] = mapped_column(Text, nullable=True)
     tool_calls_json = mapped_column(JSONB, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
@@ -172,3 +170,24 @@ class Message(Base):
 
     # Relationships
     session: Mapped["Session"] = relationship("Session", back_populates="messages")
+
+
+# ---------------------------------------------------------------------------
+# Runtime settings (first-run setup wizard)
+# ---------------------------------------------------------------------------
+
+
+class RuntimeSetting(Base):
+    """Key/value config written by the setup wizard.
+
+    Only consulted when the environment does not already configure an LLM
+    (see kara_api.runtime_config.is_env_configured).
+    """
+
+    __tablename__ = "runtime_settings"
+
+    key: Mapped[str] = mapped_column(String(100), primary_key=True)
+    value: Mapped[str] = mapped_column(Text, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
