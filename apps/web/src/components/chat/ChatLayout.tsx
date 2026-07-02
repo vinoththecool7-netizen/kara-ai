@@ -1,11 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { useChat } from "@/hooks/useChat";
 import { useSessions } from "@/hooks/useSessions";
 import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
 import { toast } from "@/hooks/useToast";
+import { getSetupStatus } from "@/lib/api";
 import { ChatWindow } from "./ChatWindow";
 import { SessionSidebar } from "./SessionSidebar";
 
@@ -21,6 +23,19 @@ export function ChatLayout() {
   const chat = useChat();
   const sessionsState = useSessions();
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const router = useRouter();
+
+  // First-run guard: an unconfigured backend can't chat — send the user to
+  // the setup wizard instead of letting the first message fail.
+  useEffect(() => {
+    getSetupStatus()
+      .then((s) => {
+        if (!s.configured) router.replace("/setup");
+      })
+      .catch(() => {
+        // API unreachable → the chat UI's own error handling covers it.
+      });
+  }, [router]);
 
   // Whenever the active sessionId changes (e.g. a new session was just
   // created via the first message), refresh the sidebar list so the new
