@@ -1,6 +1,8 @@
 <div align="center">
 
-# Kara (कर)
+<img src="docs/assets/logo.svg" alt="कर — Kara" width="280" />
+
+### Know Your Taxes. Keep Your Privacy.
 
 **A private, self-hosted AI tax advisor for India — it computes, never guesses.**
 
