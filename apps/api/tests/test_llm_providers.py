@@ -5,6 +5,7 @@ All HTTP calls are mocked -- no real network I/O.
 """
 from __future__ import annotations
 
+import asyncio
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -23,6 +24,7 @@ from kara_api.llm.models import (
 from kara_api.llm.providers import (
     AnthropicProvider,
     FakeLLMProvider,
+    LLMStreamError,
     OllamaProvider,
     OpenAIProvider,
     get_llm_provider,
@@ -488,6 +490,90 @@ class TestOpenAIStream:
         assert len(chunks) == 2
         assert chunks[0].content == "Hi"
         assert chunks[1].is_final is True
+
+
+async def _collect_stream(provider, request, aiter_lines):
+    """Run provider.stream against a mocked SSE line iterator."""
+    mock_resp = AsyncMock()
+    mock_resp.raise_for_status = MagicMock()
+    mock_resp.aiter_lines = aiter_lines
+
+    with patch("kara_api.llm.providers.httpx.AsyncClient") as mock_client_cls:
+        mock_client = AsyncMock()
+        mock_client.stream = MagicMock(return_value=_make_stream_context(mock_resp))
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_client_cls.return_value = mock_client
+        return [chunk async for chunk in provider.stream(request)]
+
+
+class TestStreamErrorFrames:
+    """Providers can abort an HTTP-200 SSE stream with an error frame (Groq's
+    tool_use_failed, OpenRouter mid-stream errors, Anthropic overloaded_error).
+    Swallowing the frame turns a hard failure into a silent empty reply."""
+
+    async def test_openai_error_frame_raises_with_provider_message(self):
+        provider = OpenAIProvider(api_key="sk-test")
+        lines = [
+            'data: {"error":{"message":"tool call validation failed: '
+            "parameters for tool compute_tax did not match schema\","
+            '"type":"invalid_request_error","code":"tool_use_failed",'
+            '"status_code":400}}\n',
+            "data: [DONE]\n",
+        ]
+
+        async def fake_aiter_lines():
+            for line in lines:
+                yield line
+
+        with pytest.raises(LLMStreamError, match="tool call validation failed"):
+            await _collect_stream(provider, _simple_request(), fake_aiter_lines)
+
+    async def test_anthropic_error_event_raises_with_provider_message(self):
+        provider = AnthropicProvider(api_key="sk-ant-test")
+        lines = [
+            "event: error\n",
+            'data: {"type":"error","error":{"type":"overloaded_error",'
+            '"message":"Overloaded"}}\n',
+        ]
+
+        async def fake_aiter_lines():
+            for line in lines:
+                yield line
+
+        with pytest.raises(LLMStreamError, match="Overloaded"):
+            await _collect_stream(provider, _simple_request(), fake_aiter_lines)
+
+
+class TestStreamStallWatchdog:
+    """Keep-alive comments (e.g. OpenRouter's queue pings) reset the socket
+    read timeout forever; the watchdog bounds the wait for real data frames."""
+
+    async def test_keepalives_without_data_raise_after_stall_timeout(self):
+        provider = OpenAIProvider(api_key="sk-test", stall_timeout=0.05)
+
+        async def fake_aiter_lines():
+            for _ in range(5):
+                await asyncio.sleep(0.02)
+                yield ": OPENROUTER PROCESSING\n"
+            yield "data: [DONE]\n"
+
+        with pytest.raises(LLMStreamError, match="no data"):
+            await _collect_stream(provider, _simple_request(), fake_aiter_lines)
+
+    async def test_keepalives_before_timely_data_are_fine(self):
+        provider = OpenAIProvider(api_key="sk-test", stall_timeout=5.0)
+
+        async def fake_aiter_lines():
+            yield ": OPENROUTER PROCESSING\n"
+            yield ": OPENROUTER PROCESSING\n"
+            yield 'data: {"choices":[{"delta":{"content":"Hi"}}]}\n'
+            yield "data: [DONE]\n"
+
+        chunks = await _collect_stream(provider, _simple_request(), fake_aiter_lines)
+
+        assert chunks[0].content == "Hi"
+        assert chunks[-1].is_final is True
 
 
 # ---------------------------------------------------------------------------

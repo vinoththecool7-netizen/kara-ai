@@ -8,6 +8,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import time
 from collections.abc import AsyncIterator
 from typing import Protocol
 
@@ -30,6 +31,27 @@ from kara_api.tools.converters import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Errors
+# ---------------------------------------------------------------------------
+
+
+class LLMStreamError(Exception):
+    """A provider aborted or stalled an HTTP-200 SSE stream.
+
+    OpenAI-compatible backends (Groq, OpenRouter) and Anthropic can accept a
+    request, return 200, and then deliver an error *inside* the stream (e.g.
+    Groq's tool_use_failed schema validation, overloaded_error) — or hold the
+    stream open with keep-alive comments while never producing data.
+    """
+
+
+def _error_message(err) -> str:
+    if isinstance(err, dict):
+        return err.get("message") or str(err)
+    return str(err)
 
 
 # ---------------------------------------------------------------------------
@@ -59,6 +81,8 @@ class OpenAIProvider:
         model: str = "gpt-4o",
         base_url: str = "https://api.openai.com/v1",
         fallback_models: list[str] | None = None,
+        *,
+        stall_timeout: float = 90.0,
     ):
         self.api_key = api_key
         self.model = model
@@ -66,6 +90,10 @@ class OpenAIProvider:
         # OpenRouter-only routing: alternates tried when the primary model's
         # pool is congested/rate-limited. Ignored for other base URLs.
         self.fallback_models = fallback_models or []
+        # Max seconds a stream may go without a data frame. Keep-alive
+        # comments reset the socket read timeout, so a congested pool can
+        # otherwise hold a request open forever with zero output.
+        self.stall_timeout = stall_timeout
 
     # -- helpers ----------------------------------------------------------
 
@@ -200,13 +228,24 @@ class OpenAIProvider:
             tool_buf.clear()
             return calls
 
+        last_data = time.monotonic()
         async with httpx.AsyncClient(timeout=timeout) as client:
             async with client.stream("POST", url, json=payload, headers=headers) as resp:
                 resp.raise_for_status()
                 async for line in resp.aiter_lines():
                     line = line.strip()
                     if not line or not line.startswith("data: "):
+                        # Keep-alive comments (e.g. ": OPENROUTER PROCESSING")
+                        # arrive while a request sits in a congested queue and
+                        # reset the read timeout; bound the wait ourselves.
+                        if time.monotonic() - last_data > self.stall_timeout:
+                            raise LLMStreamError(
+                                f"Provider sent no data for {self.stall_timeout:.0f}s "
+                                "(stream stalled — the model's pool may be congested; "
+                                "retry or switch models)"
+                            )
                         continue
+                    last_data = time.monotonic()
                     data_str = line[len("data: "):]
                     if data_str == "[DONE]":
                         pending = _flush_tool_calls()
@@ -215,6 +254,14 @@ class OpenAIProvider:
                         yield StreamChunk(is_final=True)
                         return
                     data = json.loads(data_str)
+                    if data.get("error"):
+                        # Groq/OpenRouter abort HTTP-200 streams with an error
+                        # frame (e.g. Groq's tool_use_failed schema check);
+                        # swallowing it would end the turn as a silent empty
+                        # reply.
+                        raise LLMStreamError(
+                            f"Provider stream error: {_error_message(data['error'])}"
+                        )
                     choice = data.get("choices", [{}])[0] if data.get("choices") else {}
                     delta = choice.get("delta", {})
 
@@ -439,6 +486,14 @@ class AnthropicProvider:
                         continue
 
                     data = json.loads(line[len("data: "):])
+
+                    if event_type == "error":
+                        # e.g. overloaded_error mid-stream on an HTTP-200
+                        # response; must surface, not end as an empty reply.
+                        raise LLMStreamError(
+                            "Provider stream error: "
+                            f"{_error_message(data.get('error', data))}"
+                        )
 
                     if event_type == "content_block_start":
                         block = data.get("content_block", {})
