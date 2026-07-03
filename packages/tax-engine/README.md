@@ -13,7 +13,7 @@ Compute tax in 3 lines of Python. No infrastructure needed.
 - **Regime comparator** -- Side-by-side comparison with breakeven analysis
 - **Deduction optimizer** -- Finds tax-saving gaps, suggests ELSS/PPF/NPS/health insurance
 - **YAML-driven rules** -- Extensible to future financial years
-- **306+ tests** -- Comprehensive coverage at every boundary
+- **390+ tests** -- Comprehensive coverage at every boundary
 
 ## Installation
 

@@ -38,10 +38,10 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/kara-tax/kara"
-Documentation = "https://github.com/kara-tax/kara/tree/main/docs"
-Repository = "https://github.com/kara-tax/kara"
-Issues = "https://github.com/kara-tax/kara/issues"
+Homepage = "https://github.com/vinoththecool7-netizen/kara-ai/tree/master/packages/tax-engine"
+Documentation = "https://github.com/vinoththecool7-netizen/kara-ai/tree/master/docs"
+Repository = "https://github.com/vinoththecool7-netizen/kara-ai"
+Issues = "https://github.com/vinoththecool7-netizen/kara-ai/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/kara_tax_engine"]
