@@ -8,6 +8,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import time
 from collections.abc import AsyncIterator
 from typing import Protocol
 
@@ -30,6 +31,38 @@ from kara_api.tools.converters import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Errors
+# ---------------------------------------------------------------------------
+
+
+class LLMStreamError(Exception):
+    """A provider aborted or stalled an HTTP-200 SSE stream.
+
+    OpenAI-compatible backends (Groq, OpenRouter) and Anthropic can accept a
+    request, return 200, and then deliver an error *inside* the stream (e.g.
+    Groq's tool_use_failed schema validation, overloaded_error) — or hold the
+    stream open with keep-alive comments while never producing data.
+    """
+
+
+def _error_message(err) -> str:
+    if isinstance(err, dict):
+        return err.get("message") or str(err)
+    return str(err)
+
+
+def _retry_delay(response: httpx.Response, attempt: int) -> float:
+    """Backoff before a retry, honouring Retry-After when present (capped)."""
+    retry_after = response.headers.get("retry-after")
+    if retry_after:
+        try:
+            return min(float(retry_after), 30.0)
+        except ValueError:
+            pass
+    return float(2**attempt)
 
 
 # ---------------------------------------------------------------------------
@@ -59,6 +92,8 @@ class OpenAIProvider:
         model: str = "gpt-4o",
         base_url: str = "https://api.openai.com/v1",
         fallback_models: list[str] | None = None,
+        *,
+        stall_timeout: float = 90.0,
     ):
         self.api_key = api_key
         self.model = model
@@ -66,6 +101,10 @@ class OpenAIProvider:
         # OpenRouter-only routing: alternates tried when the primary model's
         # pool is congested/rate-limited. Ignored for other base URLs.
         self.fallback_models = fallback_models or []
+        # Max seconds a stream may go without a data frame. Keep-alive
+        # comments reset the socket read timeout, so a congested pool can
+        # otherwise hold a request open forever with zero output.
+        self.stall_timeout = stall_timeout
 
     # -- helpers ----------------------------------------------------------
 
@@ -166,7 +205,13 @@ class OpenAIProvider:
             raise last_exc  # type: ignore[misc]
 
     async def stream(self, request: LLMRequest) -> AsyncIterator[StreamChunk]:
-        """Stream chat completions via SSE."""
+        """Stream chat completions via SSE, retrying 429/5xx on connect.
+
+        Retries happen only on the initial status check — before any chunk
+        has been yielded — so a retried request is always a clean replay.
+        Free-tier TPM limits (e.g. Groq) routinely 429 the second round-trip
+        of a tool-calling turn; without the retry that kills the whole turn.
+        """
         payload = self._build_payload(request)
         payload["stream"] = True
         payload["stream_options"] = {"include_usage": True}
@@ -182,6 +227,26 @@ class OpenAIProvider:
         # pools hold requests without answering) into a visible error event
         # instead of a 2-minute frozen spinner.
         timeout = httpx.Timeout(connect=10.0, read=45.0, write=10.0, pool=10.0)
+
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            for attempt in range(3):
+                try:
+                    async with client.stream(
+                        "POST", url, json=payload, headers=headers
+                    ) as resp:
+                        resp.raise_for_status()
+                        async for chunk in self._parse_sse(resp):
+                            yield chunk
+                        return
+                except httpx.HTTPStatusError as exc:
+                    status = exc.response.status_code
+                    if (status == 429 or status >= 500) and attempt < 2:
+                        await asyncio.sleep(_retry_delay(exc.response, attempt))
+                        continue
+                    raise
+
+    async def _parse_sse(self, resp) -> AsyncIterator[StreamChunk]:
+        """Parse OpenAI-style SSE lines from an open response."""
         # Tool-call arguments arrive as string fragments spread across many
         # chunks, keyed by index; accumulate and flush as complete ToolCalls.
         tool_buf: dict[int, dict] = {}
@@ -200,50 +265,65 @@ class OpenAIProvider:
             tool_buf.clear()
             return calls
 
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            async with client.stream("POST", url, json=payload, headers=headers) as resp:
-                resp.raise_for_status()
-                async for line in resp.aiter_lines():
-                    line = line.strip()
-                    if not line or not line.startswith("data: "):
-                        continue
-                    data_str = line[len("data: "):]
-                    if data_str == "[DONE]":
-                        pending = _flush_tool_calls()
-                        if pending:
-                            yield StreamChunk(tool_calls=pending)
-                        yield StreamChunk(is_final=True)
-                        return
-                    data = json.loads(data_str)
-                    choice = data.get("choices", [{}])[0] if data.get("choices") else {}
-                    delta = choice.get("delta", {})
+        last_data = time.monotonic()
+        async for line in resp.aiter_lines():
+            line = line.strip()
+            if not line or not line.startswith("data: "):
+                # Keep-alive comments (e.g. ": OPENROUTER PROCESSING") arrive
+                # while a request sits in a congested queue and reset the
+                # read timeout; bound the wait ourselves.
+                if time.monotonic() - last_data > self.stall_timeout:
+                    raise LLMStreamError(
+                        f"Provider sent no data for {self.stall_timeout:.0f}s "
+                        "(stream stalled — the model's pool may be congested; "
+                        "retry or switch models)"
+                    )
+                continue
+            last_data = time.monotonic()
+            data_str = line[len("data: "):]
+            if data_str == "[DONE]":
+                pending = _flush_tool_calls()
+                if pending:
+                    yield StreamChunk(tool_calls=pending)
+                yield StreamChunk(is_final=True)
+                return
+            data = json.loads(data_str)
+            if data.get("error"):
+                # Groq/OpenRouter abort HTTP-200 streams with an error frame
+                # (e.g. Groq's tool_use_failed schema check); swallowing it
+                # would end the turn as a silent empty reply.
+                raise LLMStreamError(
+                    f"Provider stream error: {_error_message(data['error'])}"
+                )
+            choice = data.get("choices", [{}])[0] if data.get("choices") else {}
+            delta = choice.get("delta", {})
 
-                    for tc_delta in delta.get("tool_calls") or []:
-                        idx = tc_delta.get("index", 0)
-                        buf = tool_buf.setdefault(idx, {"id": "", "name": "", "arguments": ""})
-                        if tc_delta.get("id"):
-                            buf["id"] = tc_delta["id"]
-                        fn = tc_delta.get("function") or {}
-                        if fn.get("name"):
-                            buf["name"] = fn["name"]
-                        if fn.get("arguments"):
-                            buf["arguments"] += fn["arguments"]
+            for tc_delta in delta.get("tool_calls") or []:
+                idx = tc_delta.get("index", 0)
+                buf = tool_buf.setdefault(idx, {"id": "", "name": "", "arguments": ""})
+                if tc_delta.get("id"):
+                    buf["id"] = tc_delta["id"]
+                fn = tc_delta.get("function") or {}
+                if fn.get("name"):
+                    buf["name"] = fn["name"]
+                if fn.get("arguments"):
+                    buf["arguments"] += fn["arguments"]
 
-                    chunk = StreamChunk(content=delta.get("content"))
+            chunk = StreamChunk(content=delta.get("content"))
 
-                    if choice.get("finish_reason"):
-                        chunk.tool_calls = _flush_tool_calls()
+            if choice.get("finish_reason"):
+                chunk.tool_calls = _flush_tool_calls()
 
-                    # Check for usage in the chunk (sent with stream_options)
-                    if data.get("usage"):
-                        u = data["usage"]
-                        chunk.usage = TokenUsage(
-                            prompt_tokens=u.get("prompt_tokens", 0),
-                            completion_tokens=u.get("completion_tokens", 0),
-                            total_tokens=u.get("total_tokens", 0),
-                        )
+            # Check for usage in the chunk (sent with stream_options)
+            if data.get("usage"):
+                u = data["usage"]
+                chunk.usage = TokenUsage(
+                    prompt_tokens=u.get("prompt_tokens", 0),
+                    completion_tokens=u.get("completion_tokens", 0),
+                    total_tokens=u.get("total_tokens", 0),
+                )
 
-                    yield chunk
+            yield chunk
 
 
 # ---------------------------------------------------------------------------
@@ -278,22 +358,41 @@ class AnthropicProvider:
 
             if msg.role == Role.tool and msg.tool_call_id:
                 # Anthropic expects tool results as user messages with
-                # content blocks of type "tool_result".
-                messages.append(
-                    {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "tool_result",
-                                "tool_use_id": msg.tool_call_id,
-                                "content": msg.content or "",
-                            }
-                        ],
-                    }
-                )
+                # content blocks of type "tool_result". Results for tools
+                # called in the same assistant turn must share one user
+                # message, so append to the previous tool-result turn.
+                block = {
+                    "type": "tool_result",
+                    "tool_use_id": msg.tool_call_id,
+                    "content": msg.content or "",
+                }
+                if (
+                    messages
+                    and messages[-1]["role"] == "user"
+                    and isinstance(messages[-1]["content"], list)
+                ):
+                    messages[-1]["content"].append(block)
+                else:
+                    messages.append({"role": "user", "content": [block]})
                 continue
 
             entry: dict = {"role": msg.role.value, "content": msg.content or ""}
+            if msg.role == Role.assistant and msg.tool_calls:
+                # Each tool_result sent later must reference a tool_use block
+                # emitted here — the API rejects the request otherwise.
+                blocks: list[dict] = []
+                if msg.content:
+                    blocks.append({"type": "text", "text": msg.content})
+                blocks.extend(
+                    {
+                        "type": "tool_use",
+                        "id": tc.id,
+                        "name": tc.name,
+                        "input": tc.arguments,
+                    }
+                    for tc in msg.tool_calls
+                )
+                entry["content"] = blocks
             messages.append(entry)
 
         payload: dict = {
@@ -420,6 +519,14 @@ class AnthropicProvider:
                         continue
 
                     data = json.loads(line[len("data: "):])
+
+                    if event_type == "error":
+                        # e.g. overloaded_error mid-stream on an HTTP-200
+                        # response; must surface, not end as an empty reply.
+                        raise LLMStreamError(
+                            "Provider stream error: "
+                            f"{_error_message(data.get('error', data))}"
+                        )
 
                     if event_type == "content_block_start":
                         block = data.get("content_block", {})

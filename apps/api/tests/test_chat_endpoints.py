@@ -11,7 +11,8 @@ from httpx import ASGITransport, AsyncClient
 
 from kara_api.agent.loop import AgentResponse, ToolCallRecord
 from kara_api.agent.session import SessionSummaryRow
-from kara_api.llm.models import TokenUsage
+from kara_api.llm.models import Role, TokenUsage
+from kara_api.routers.chat import _db_messages_to_llm
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -280,6 +281,84 @@ class TestContinueChat:
         call_args = mock_agent_loop.run.call_args
         history_arg = call_args.kwargs.get("history", call_args.args[1] if len(call_args.args) > 1 else [])
         assert len(history_arg) == 2
+
+
+# ---------------------------------------------------------------------------
+# TestHistoryRebuild
+# ---------------------------------------------------------------------------
+
+
+class TestHistoryRebuild:
+    """History rebuilt from the DB must be replayable against real provider
+    APIs: an assistant message carrying tool_calls must be followed by a
+    tool-result message per call (OpenAI rejects the payload otherwise)."""
+
+    def test_assistant_tool_calls_followed_by_tool_results(self):
+        db_msgs = [
+            _FakeDbMessage(role="user", content="Tax on 15L?"),
+            _FakeDbMessage(
+                role="assistant",
+                content="Your tax is ₹97,500.",
+                tool_calls_json=[
+                    {
+                        "name": "compute_tax",
+                        "args": {"gross_salary": 1500000},
+                        "result": '{"total_tax_payable": 97500}',
+                        "is_error": False,
+                    }
+                ],
+            ),
+        ]
+        history = _db_messages_to_llm(db_msgs)
+
+        assert [m.role for m in history] == [Role.user, Role.assistant, Role.tool]
+        assistant, tool_msg = history[1], history[2]
+        assert assistant.tool_calls[0].name == "compute_tax"
+        assert tool_msg.tool_call_id == assistant.tool_calls[0].id
+        assert tool_msg.content == '{"total_tax_payable": 97500}'
+
+    def test_each_tool_call_gets_its_own_result_message(self):
+        db_msgs = [
+            _FakeDbMessage(
+                role="assistant",
+                content="Comparison below.",
+                tool_calls_json=[
+                    {"name": "compute_tax", "args": {}, "result": '{"a": 1}'},
+                    {"name": "compare_regimes", "args": {}, "result": '{"b": 2}'},
+                ],
+            ),
+        ]
+        history = _db_messages_to_llm(db_msgs)
+
+        assert [m.role for m in history] == [Role.assistant, Role.tool, Role.tool]
+        ids = [tc.id for tc in history[0].tool_calls]
+        assert [m.tool_call_id for m in history[1:]] == ids
+        assert len(set(ids)) == 2
+
+    def test_plain_messages_pass_through_unchanged(self):
+        db_msgs = [
+            _FakeDbMessage(role="user", content="Hello"),
+            _FakeDbMessage(role="assistant", content="Hi there!"),
+        ]
+        history = _db_messages_to_llm(db_msgs)
+
+        assert [m.role for m in history] == [Role.user, Role.assistant]
+        assert all(not m.tool_calls for m in history)
+
+    def test_legacy_rows_without_stored_results_still_get_tool_messages(self):
+        # Rows persisted before tool results were stored have no "result" key;
+        # an empty result is still a valid (and required) tool message.
+        db_msgs = [
+            _FakeDbMessage(
+                role="assistant",
+                content="Done.",
+                tool_calls_json=[{"name": "compute_tax", "args": {}}],
+            ),
+        ]
+        history = _db_messages_to_llm(db_msgs)
+
+        assert [m.role for m in history] == [Role.assistant, Role.tool]
+        assert history[1].content == ""
 
 
 # ---------------------------------------------------------------------------

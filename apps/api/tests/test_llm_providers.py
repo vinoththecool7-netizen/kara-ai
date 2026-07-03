@@ -5,6 +5,7 @@ All HTTP calls are mocked -- no real network I/O.
 """
 from __future__ import annotations
 
+import asyncio
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -23,6 +24,7 @@ from kara_api.llm.models import (
 from kara_api.llm.providers import (
     AnthropicProvider,
     FakeLLMProvider,
+    LLMStreamError,
     OllamaProvider,
     OpenAIProvider,
     get_llm_provider,
@@ -490,6 +492,190 @@ class TestOpenAIStream:
         assert chunks[1].is_final is True
 
 
+async def _collect_stream(provider, request, aiter_lines):
+    """Run provider.stream against a mocked SSE line iterator."""
+    mock_resp = AsyncMock()
+    mock_resp.raise_for_status = MagicMock()
+    mock_resp.aiter_lines = aiter_lines
+
+    with patch("kara_api.llm.providers.httpx.AsyncClient") as mock_client_cls:
+        mock_client = AsyncMock()
+        mock_client.stream = MagicMock(return_value=_make_stream_context(mock_resp))
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=False)
+        mock_client_cls.return_value = mock_client
+        return [chunk async for chunk in provider.stream(request)]
+
+
+class TestStreamErrorFrames:
+    """Providers can abort an HTTP-200 SSE stream with an error frame (Groq's
+    tool_use_failed, OpenRouter mid-stream errors, Anthropic overloaded_error).
+    Swallowing the frame turns a hard failure into a silent empty reply."""
+
+    async def test_openai_error_frame_raises_with_provider_message(self):
+        provider = OpenAIProvider(api_key="sk-test")
+        lines = [
+            'data: {"error":{"message":"tool call validation failed: '
+            "parameters for tool compute_tax did not match schema\","
+            '"type":"invalid_request_error","code":"tool_use_failed",'
+            '"status_code":400}}\n',
+            "data: [DONE]\n",
+        ]
+
+        async def fake_aiter_lines():
+            for line in lines:
+                yield line
+
+        with pytest.raises(LLMStreamError, match="tool call validation failed"):
+            await _collect_stream(provider, _simple_request(), fake_aiter_lines)
+
+    async def test_anthropic_error_event_raises_with_provider_message(self):
+        provider = AnthropicProvider(api_key="sk-ant-test")
+        lines = [
+            "event: error\n",
+            'data: {"type":"error","error":{"type":"overloaded_error",'
+            '"message":"Overloaded"}}\n',
+        ]
+
+        async def fake_aiter_lines():
+            for line in lines:
+                yield line
+
+        with pytest.raises(LLMStreamError, match="Overloaded"):
+            await _collect_stream(provider, _simple_request(), fake_aiter_lines)
+
+
+class TestStreamRetry:
+    """429/5xx before any chunk has been yielded is safe to retry — free-tier
+    TPM limits (Groq) otherwise kill a whole turn on the second round-trip."""
+
+    async def test_stream_retries_429_then_succeeds(self):
+        provider = OpenAIProvider(api_key="sk-test")
+
+        rate_limited = AsyncMock()
+        rate_limited.raise_for_status = MagicMock(
+            side_effect=httpx.HTTPStatusError(
+                "HTTP 429",
+                request=MagicMock(),
+                response=MagicMock(status_code=429, headers={"retry-after": "1"}),
+            )
+        )
+
+        ok = AsyncMock()
+        ok.raise_for_status = MagicMock()
+
+        async def fake_aiter_lines():
+            yield 'data: {"choices":[{"delta":{"content":"Hi"}}]}\n'
+            yield "data: [DONE]\n"
+
+        ok.aiter_lines = fake_aiter_lines
+
+        with patch("kara_api.llm.providers.httpx.AsyncClient") as mock_client_cls, \
+             patch("kara_api.llm.providers.asyncio.sleep", new=AsyncMock()) as mock_sleep:
+            mock_client = AsyncMock()
+            mock_client.stream = MagicMock(
+                side_effect=[
+                    _make_stream_context(rate_limited),
+                    _make_stream_context(rate_limited),
+                    _make_stream_context(ok),
+                ]
+            )
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=False)
+            mock_client_cls.return_value = mock_client
+
+            chunks = [c async for c in provider.stream(_simple_request())]
+
+        assert mock_client.stream.call_count == 3
+        assert mock_sleep.await_count == 2
+        assert chunks[0].content == "Hi"
+        assert chunks[-1].is_final is True
+
+    async def test_stream_gives_up_after_max_retries(self):
+        provider = OpenAIProvider(api_key="sk-test")
+
+        rate_limited = AsyncMock()
+        rate_limited.raise_for_status = MagicMock(
+            side_effect=httpx.HTTPStatusError(
+                "HTTP 429",
+                request=MagicMock(),
+                response=MagicMock(status_code=429, headers={}),
+            )
+        )
+
+        with patch("kara_api.llm.providers.httpx.AsyncClient") as mock_client_cls, \
+             patch("kara_api.llm.providers.asyncio.sleep", new=AsyncMock()):
+            mock_client = AsyncMock()
+            mock_client.stream = MagicMock(
+                return_value=_make_stream_context(rate_limited)
+            )
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=False)
+            mock_client_cls.return_value = mock_client
+
+            with pytest.raises(httpx.HTTPStatusError):
+                _ = [c async for c in provider.stream(_simple_request())]
+
+        assert mock_client.stream.call_count == 3
+
+    async def test_stream_does_not_retry_client_errors(self):
+        provider = OpenAIProvider(api_key="sk-test")
+
+        bad_request = AsyncMock()
+        bad_request.raise_for_status = MagicMock(
+            side_effect=httpx.HTTPStatusError(
+                "HTTP 400",
+                request=MagicMock(),
+                response=MagicMock(status_code=400, headers={}),
+            )
+        )
+
+        with patch("kara_api.llm.providers.httpx.AsyncClient") as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client.stream = MagicMock(
+                return_value=_make_stream_context(bad_request)
+            )
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=False)
+            mock_client_cls.return_value = mock_client
+
+            with pytest.raises(httpx.HTTPStatusError):
+                _ = [c async for c in provider.stream(_simple_request())]
+
+        assert mock_client.stream.call_count == 1
+
+
+class TestStreamStallWatchdog:
+    """Keep-alive comments (e.g. OpenRouter's queue pings) reset the socket
+    read timeout forever; the watchdog bounds the wait for real data frames."""
+
+    async def test_keepalives_without_data_raise_after_stall_timeout(self):
+        provider = OpenAIProvider(api_key="sk-test", stall_timeout=0.05)
+
+        async def fake_aiter_lines():
+            for _ in range(5):
+                await asyncio.sleep(0.02)
+                yield ": OPENROUTER PROCESSING\n"
+            yield "data: [DONE]\n"
+
+        with pytest.raises(LLMStreamError, match="no data"):
+            await _collect_stream(provider, _simple_request(), fake_aiter_lines)
+
+    async def test_keepalives_before_timely_data_are_fine(self):
+        provider = OpenAIProvider(api_key="sk-test", stall_timeout=5.0)
+
+        async def fake_aiter_lines():
+            yield ": OPENROUTER PROCESSING\n"
+            yield ": OPENROUTER PROCESSING\n"
+            yield 'data: {"choices":[{"delta":{"content":"Hi"}}]}\n'
+            yield "data: [DONE]\n"
+
+        chunks = await _collect_stream(provider, _simple_request(), fake_aiter_lines)
+
+        assert chunks[0].content == "Hi"
+        assert chunks[-1].is_final is True
+
+
 # ---------------------------------------------------------------------------
 # Anthropic Provider Tests
 # ---------------------------------------------------------------------------
@@ -542,6 +728,72 @@ class TestAnthropicPayload:
         assert tool["name"] == "compute_tax"
         # Should NOT have "type": "function" wrapper like OpenAI
         assert "type" not in tool
+
+    def test_assistant_tool_calls_become_tool_use_blocks(self):
+        """Every tool_result block must reference a tool_use block emitted by
+        the preceding assistant message — the API rejects the request with
+        HTTP 400 otherwise, which breaks the second round-trip of any
+        tool-calling conversation."""
+        provider = AnthropicProvider(api_key="sk-ant-test")
+        request = _request_with_tool_result()
+        payload = provider._build_payload(request)
+
+        assistant_msgs = [m for m in payload["messages"] if m["role"] == "assistant"]
+        assert len(assistant_msgs) == 1
+        content = assistant_msgs[0]["content"]
+        assert isinstance(content, list)
+        tool_use = [b for b in content if b["type"] == "tool_use"]
+        assert len(tool_use) == 1
+        assert tool_use[0]["id"] == "call_1"
+        assert tool_use[0]["name"] == "compute_tax"
+        assert tool_use[0]["input"] == {"income": 1000000}
+
+    def test_assistant_text_kept_alongside_tool_use_blocks(self):
+        provider = AnthropicProvider(api_key="sk-ant-test")
+        request = LLMRequest(
+            messages=[
+                Message(role=Role.user, content="Compute my tax"),
+                Message(
+                    role=Role.assistant,
+                    content="Let me compute that.",
+                    tool_calls=[
+                        ToolCall(id="call_1", name="compute_tax", arguments={"income": 1})
+                    ],
+                ),
+                Message(role=Role.tool, content='{"tax": 0}', tool_call_id="call_1"),
+            ]
+        )
+        payload = provider._build_payload(request)
+
+        assistant_msg = [m for m in payload["messages"] if m["role"] == "assistant"][0]
+        assert [b["type"] for b in assistant_msg["content"]] == ["text", "tool_use"]
+        assert assistant_msg["content"][0]["text"] == "Let me compute that."
+
+    def test_parallel_tool_results_merge_into_one_user_message(self):
+        """Results for tools called in the same assistant turn must land in a
+        single user message (the API's parallel tool-use shape)."""
+        provider = AnthropicProvider(api_key="sk-ant-test")
+        request = LLMRequest(
+            messages=[
+                Message(role=Role.user, content="Compare regimes"),
+                Message(
+                    role=Role.assistant,
+                    content=None,
+                    tool_calls=[
+                        ToolCall(id="call_1", name="compute_tax", arguments={}),
+                        ToolCall(id="call_2", name="compare_regimes", arguments={}),
+                    ],
+                ),
+                Message(role=Role.tool, content='{"a": 1}', tool_call_id="call_1"),
+                Message(role=Role.tool, content='{"b": 2}', tool_call_id="call_2"),
+            ]
+        )
+        payload = provider._build_payload(request)
+
+        user_msgs = [m for m in payload["messages"] if m["role"] == "user"]
+        assert len(user_msgs) == 2  # the question + one merged tool-result turn
+        blocks = user_msgs[1]["content"]
+        assert [b["tool_use_id"] for b in blocks] == ["call_1", "call_2"]
 
 
 class TestAnthropicComplete:

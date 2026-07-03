@@ -13,9 +13,11 @@ RUN pip wheel --no-deps --wheel-dir /build/wheels /build/tax-engine/
 COPY apps/api/ /build/api/
 RUN pip wheel --no-deps --wheel-dir /build/wheels /build/api/
 
-# Install all dependencies
+# Install the wheels plus their declared dependencies. Everything must come
+# from this single resolve: a second unconstrained `pip install --prefix`
+# does not see what's already in the prefix and silently overrides pinned
+# versions (this once shipped an anyio the app could not run on).
 RUN pip install --no-cache-dir --prefix=/install /build/wheels/*.whl
-RUN pip install --no-cache-dir --prefix=/install fastapi "uvicorn[standard]" asyncpg "sqlalchemy[asyncio]" alembic pydantic-settings pgvector
 
 # Stage 2: Runtime
 FROM python:3.11-slim

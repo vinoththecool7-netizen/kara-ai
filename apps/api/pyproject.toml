@@ -10,6 +10,10 @@ license = "AGPL-3.0-or-later"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115.0",
+    # anyio 4.14.x hangs SSE chat streams: the provider-retry asyncio.sleep
+    # never resumes inside Starlette's streaming TaskGroup (verified live:
+    # 4.13.0 completes, 4.14.1 hangs indefinitely).
+    "anyio>=4,<4.14",
     "uvicorn[standard]>=0.34.0",
     "asyncpg>=0.30.0",
     "sqlalchemy[asyncio]>=2.0.36",

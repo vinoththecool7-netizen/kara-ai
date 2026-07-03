@@ -35,7 +35,7 @@ wrong about Indian tax arithmetic. Slab boundaries, the §87A rebate with
 marginal relief, surcharge tiers — exactly the math language models fumble.
 So in Kara, the language model is not allowed to do math. It converses,
 asks clarifying questions, and calls tools; every rupee figure comes from a
-deterministic rule engine with 950+ tests that anyone can audit.
+deterministic rule engine with 390+ tests that anyone can audit.
 
 ```
 You:   How much tax do I owe on a 15 lakh salary?
@@ -202,8 +202,8 @@ pytest packages/tax-engine/tests && (cd apps/api && pytest)
 cd apps/web && npm ci && npm test && npm run dev
 ```
 
-CI runs lint, the full test matrix (950+ engine tests), and a Docker smoke
-test on every PR.
+CI runs lint, the full test matrix (950+ tests across the engine, API, and
+web app), and a Docker smoke test on every PR.
 
 ## License
 

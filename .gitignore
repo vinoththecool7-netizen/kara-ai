@@ -26,9 +26,10 @@ out/
 *.tsbuildinfo
 lighthouse-report*
 
-# IDE / OS
+# IDE / OS / assistant-local settings
 .idea/
 .vscode/
+.claude/settings.local.json
 .DS_Store
 Thumbs.db
 
