@@ -133,26 +133,38 @@ def _create_session_manager() -> SessionManager:
 
 
 def _db_messages_to_llm(db_msgs: list[DbMessage]) -> list[Message]:
-    """Convert DB message rows to LLM Message objects."""
-    return [
-        Message(
-            role=Role(m.role),
-            content=m.content,
-            tool_calls=(
-                [
-                    ToolCall(
-                        id=tc.get("id", f"call_{i}"),
-                        name=tc["name"],
-                        arguments=tc.get("args", tc.get("arguments", {})),
-                    )
-                    for i, tc in enumerate(m.tool_calls_json)
-                ]
-                if m.tool_calls_json
-                else []
-            ),
+    """Convert DB message rows to LLM Message objects.
+
+    Assistant rows persist their tool calls (with results) in
+    ``tool_calls_json``; providers reject an assistant tool_calls message
+    that is not followed by a matching tool result, so each rebuilt
+    assistant message is followed by synthesized ``Role.tool`` messages.
+    IDs are regenerated per row (they are not persisted) and only need to
+    pair the call with its result within this payload.
+    """
+    messages: list[Message] = []
+    for row_idx, m in enumerate(db_msgs):
+        rows = m.tool_calls_json or []
+        tool_calls = [
+            ToolCall(
+                id=tc.get("id", f"call_{row_idx}_{i}"),
+                name=tc["name"],
+                arguments=tc.get("args", tc.get("arguments", {})),
+            )
+            for i, tc in enumerate(rows)
+        ]
+        messages.append(
+            Message(role=Role(m.role), content=m.content, tool_calls=tool_calls)
         )
-        for m in db_msgs
-    ]
+        for call, tc in zip(tool_calls, rows):
+            messages.append(
+                Message(
+                    role=Role.tool,
+                    content=tc.get("result") or "",
+                    tool_call_id=call.id,
+                )
+            )
+    return messages
 
 
 def _build_profile_state(profile: ProfileBuilder) -> ProfileState:

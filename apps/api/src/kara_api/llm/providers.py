@@ -278,22 +278,41 @@ class AnthropicProvider:
 
             if msg.role == Role.tool and msg.tool_call_id:
                 # Anthropic expects tool results as user messages with
-                # content blocks of type "tool_result".
-                messages.append(
-                    {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "tool_result",
-                                "tool_use_id": msg.tool_call_id,
-                                "content": msg.content or "",
-                            }
-                        ],
-                    }
-                )
+                # content blocks of type "tool_result". Results for tools
+                # called in the same assistant turn must share one user
+                # message, so append to the previous tool-result turn.
+                block = {
+                    "type": "tool_result",
+                    "tool_use_id": msg.tool_call_id,
+                    "content": msg.content or "",
+                }
+                if (
+                    messages
+                    and messages[-1]["role"] == "user"
+                    and isinstance(messages[-1]["content"], list)
+                ):
+                    messages[-1]["content"].append(block)
+                else:
+                    messages.append({"role": "user", "content": [block]})
                 continue
 
             entry: dict = {"role": msg.role.value, "content": msg.content or ""}
+            if msg.role == Role.assistant and msg.tool_calls:
+                # Each tool_result sent later must reference a tool_use block
+                # emitted here — the API rejects the request otherwise.
+                blocks: list[dict] = []
+                if msg.content:
+                    blocks.append({"type": "text", "text": msg.content})
+                blocks.extend(
+                    {
+                        "type": "tool_use",
+                        "id": tc.id,
+                        "name": tc.name,
+                        "input": tc.arguments,
+                    }
+                    for tc in msg.tool_calls
+                )
+                entry["content"] = blocks
             messages.append(entry)
 
         payload: dict = {

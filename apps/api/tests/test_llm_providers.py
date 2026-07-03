@@ -543,6 +543,72 @@ class TestAnthropicPayload:
         # Should NOT have "type": "function" wrapper like OpenAI
         assert "type" not in tool
 
+    def test_assistant_tool_calls_become_tool_use_blocks(self):
+        """Every tool_result block must reference a tool_use block emitted by
+        the preceding assistant message — the API rejects the request with
+        HTTP 400 otherwise, which breaks the second round-trip of any
+        tool-calling conversation."""
+        provider = AnthropicProvider(api_key="sk-ant-test")
+        request = _request_with_tool_result()
+        payload = provider._build_payload(request)
+
+        assistant_msgs = [m for m in payload["messages"] if m["role"] == "assistant"]
+        assert len(assistant_msgs) == 1
+        content = assistant_msgs[0]["content"]
+        assert isinstance(content, list)
+        tool_use = [b for b in content if b["type"] == "tool_use"]
+        assert len(tool_use) == 1
+        assert tool_use[0]["id"] == "call_1"
+        assert tool_use[0]["name"] == "compute_tax"
+        assert tool_use[0]["input"] == {"income": 1000000}
+
+    def test_assistant_text_kept_alongside_tool_use_blocks(self):
+        provider = AnthropicProvider(api_key="sk-ant-test")
+        request = LLMRequest(
+            messages=[
+                Message(role=Role.user, content="Compute my tax"),
+                Message(
+                    role=Role.assistant,
+                    content="Let me compute that.",
+                    tool_calls=[
+                        ToolCall(id="call_1", name="compute_tax", arguments={"income": 1})
+                    ],
+                ),
+                Message(role=Role.tool, content='{"tax": 0}', tool_call_id="call_1"),
+            ]
+        )
+        payload = provider._build_payload(request)
+
+        assistant_msg = [m for m in payload["messages"] if m["role"] == "assistant"][0]
+        assert [b["type"] for b in assistant_msg["content"]] == ["text", "tool_use"]
+        assert assistant_msg["content"][0]["text"] == "Let me compute that."
+
+    def test_parallel_tool_results_merge_into_one_user_message(self):
+        """Results for tools called in the same assistant turn must land in a
+        single user message (the API's parallel tool-use shape)."""
+        provider = AnthropicProvider(api_key="sk-ant-test")
+        request = LLMRequest(
+            messages=[
+                Message(role=Role.user, content="Compare regimes"),
+                Message(
+                    role=Role.assistant,
+                    content=None,
+                    tool_calls=[
+                        ToolCall(id="call_1", name="compute_tax", arguments={}),
+                        ToolCall(id="call_2", name="compare_regimes", arguments={}),
+                    ],
+                ),
+                Message(role=Role.tool, content='{"a": 1}', tool_call_id="call_1"),
+                Message(role=Role.tool, content='{"b": 2}', tool_call_id="call_2"),
+            ]
+        )
+        payload = provider._build_payload(request)
+
+        user_msgs = [m for m in payload["messages"] if m["role"] == "user"]
+        assert len(user_msgs) == 2  # the question + one merged tool-result turn
+        blocks = user_msgs[1]["content"]
+        assert [b["tool_use_id"] for b in blocks] == ["call_1", "call_2"]
+
 
 class TestAnthropicComplete:
     async def test_headers(self):
