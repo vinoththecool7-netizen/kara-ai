@@ -545,6 +545,106 @@ class TestStreamErrorFrames:
             await _collect_stream(provider, _simple_request(), fake_aiter_lines)
 
 
+class TestStreamRetry:
+    """429/5xx before any chunk has been yielded is safe to retry — free-tier
+    TPM limits (Groq) otherwise kill a whole turn on the second round-trip."""
+
+    async def test_stream_retries_429_then_succeeds(self):
+        provider = OpenAIProvider(api_key="sk-test")
+
+        rate_limited = AsyncMock()
+        rate_limited.raise_for_status = MagicMock(
+            side_effect=httpx.HTTPStatusError(
+                "HTTP 429",
+                request=MagicMock(),
+                response=MagicMock(status_code=429, headers={"retry-after": "1"}),
+            )
+        )
+
+        ok = AsyncMock()
+        ok.raise_for_status = MagicMock()
+
+        async def fake_aiter_lines():
+            yield 'data: {"choices":[{"delta":{"content":"Hi"}}]}\n'
+            yield "data: [DONE]\n"
+
+        ok.aiter_lines = fake_aiter_lines
+
+        with patch("kara_api.llm.providers.httpx.AsyncClient") as mock_client_cls, \
+             patch("kara_api.llm.providers.asyncio.sleep", new=AsyncMock()) as mock_sleep:
+            mock_client = AsyncMock()
+            mock_client.stream = MagicMock(
+                side_effect=[
+                    _make_stream_context(rate_limited),
+                    _make_stream_context(rate_limited),
+                    _make_stream_context(ok),
+                ]
+            )
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=False)
+            mock_client_cls.return_value = mock_client
+
+            chunks = [c async for c in provider.stream(_simple_request())]
+
+        assert mock_client.stream.call_count == 3
+        assert mock_sleep.await_count == 2
+        assert chunks[0].content == "Hi"
+        assert chunks[-1].is_final is True
+
+    async def test_stream_gives_up_after_max_retries(self):
+        provider = OpenAIProvider(api_key="sk-test")
+
+        rate_limited = AsyncMock()
+        rate_limited.raise_for_status = MagicMock(
+            side_effect=httpx.HTTPStatusError(
+                "HTTP 429",
+                request=MagicMock(),
+                response=MagicMock(status_code=429, headers={}),
+            )
+        )
+
+        with patch("kara_api.llm.providers.httpx.AsyncClient") as mock_client_cls, \
+             patch("kara_api.llm.providers.asyncio.sleep", new=AsyncMock()):
+            mock_client = AsyncMock()
+            mock_client.stream = MagicMock(
+                return_value=_make_stream_context(rate_limited)
+            )
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=False)
+            mock_client_cls.return_value = mock_client
+
+            with pytest.raises(httpx.HTTPStatusError):
+                _ = [c async for c in provider.stream(_simple_request())]
+
+        assert mock_client.stream.call_count == 3
+
+    async def test_stream_does_not_retry_client_errors(self):
+        provider = OpenAIProvider(api_key="sk-test")
+
+        bad_request = AsyncMock()
+        bad_request.raise_for_status = MagicMock(
+            side_effect=httpx.HTTPStatusError(
+                "HTTP 400",
+                request=MagicMock(),
+                response=MagicMock(status_code=400, headers={}),
+            )
+        )
+
+        with patch("kara_api.llm.providers.httpx.AsyncClient") as mock_client_cls:
+            mock_client = AsyncMock()
+            mock_client.stream = MagicMock(
+                return_value=_make_stream_context(bad_request)
+            )
+            mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+            mock_client.__aexit__ = AsyncMock(return_value=False)
+            mock_client_cls.return_value = mock_client
+
+            with pytest.raises(httpx.HTTPStatusError):
+                _ = [c async for c in provider.stream(_simple_request())]
+
+        assert mock_client.stream.call_count == 1
+
+
 class TestStreamStallWatchdog:
     """Keep-alive comments (e.g. OpenRouter's queue pings) reset the socket
     read timeout forever; the watchdog bounds the wait for real data frames."""

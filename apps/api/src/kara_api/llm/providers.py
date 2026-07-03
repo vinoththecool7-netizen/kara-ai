@@ -54,6 +54,17 @@ def _error_message(err) -> str:
     return str(err)
 
 
+def _retry_delay(response: httpx.Response, attempt: int) -> float:
+    """Backoff before a retry, honouring Retry-After when present (capped)."""
+    retry_after = response.headers.get("retry-after")
+    if retry_after:
+        try:
+            return min(float(retry_after), 30.0)
+        except ValueError:
+            pass
+    return float(2**attempt)
+
+
 # ---------------------------------------------------------------------------
 # Protocol
 # ---------------------------------------------------------------------------
@@ -194,7 +205,13 @@ class OpenAIProvider:
             raise last_exc  # type: ignore[misc]
 
     async def stream(self, request: LLMRequest) -> AsyncIterator[StreamChunk]:
-        """Stream chat completions via SSE."""
+        """Stream chat completions via SSE, retrying 429/5xx on connect.
+
+        Retries happen only on the initial status check — before any chunk
+        has been yielded — so a retried request is always a clean replay.
+        Free-tier TPM limits (e.g. Groq) routinely 429 the second round-trip
+        of a tool-calling turn; without the retry that kills the whole turn.
+        """
         payload = self._build_payload(request)
         payload["stream"] = True
         payload["stream_options"] = {"include_usage": True}
@@ -210,6 +227,26 @@ class OpenAIProvider:
         # pools hold requests without answering) into a visible error event
         # instead of a 2-minute frozen spinner.
         timeout = httpx.Timeout(connect=10.0, read=45.0, write=10.0, pool=10.0)
+
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            for attempt in range(3):
+                try:
+                    async with client.stream(
+                        "POST", url, json=payload, headers=headers
+                    ) as resp:
+                        resp.raise_for_status()
+                        async for chunk in self._parse_sse(resp):
+                            yield chunk
+                        return
+                except httpx.HTTPStatusError as exc:
+                    status = exc.response.status_code
+                    if (status == 429 or status >= 500) and attempt < 2:
+                        await asyncio.sleep(_retry_delay(exc.response, attempt))
+                        continue
+                    raise
+
+    async def _parse_sse(self, resp) -> AsyncIterator[StreamChunk]:
+        """Parse OpenAI-style SSE lines from an open response."""
         # Tool-call arguments arrive as string fragments spread across many
         # chunks, keyed by index; accumulate and flush as complete ToolCalls.
         tool_buf: dict[int, dict] = {}
@@ -229,68 +266,64 @@ class OpenAIProvider:
             return calls
 
         last_data = time.monotonic()
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            async with client.stream("POST", url, json=payload, headers=headers) as resp:
-                resp.raise_for_status()
-                async for line in resp.aiter_lines():
-                    line = line.strip()
-                    if not line or not line.startswith("data: "):
-                        # Keep-alive comments (e.g. ": OPENROUTER PROCESSING")
-                        # arrive while a request sits in a congested queue and
-                        # reset the read timeout; bound the wait ourselves.
-                        if time.monotonic() - last_data > self.stall_timeout:
-                            raise LLMStreamError(
-                                f"Provider sent no data for {self.stall_timeout:.0f}s "
-                                "(stream stalled — the model's pool may be congested; "
-                                "retry or switch models)"
-                            )
-                        continue
-                    last_data = time.monotonic()
-                    data_str = line[len("data: "):]
-                    if data_str == "[DONE]":
-                        pending = _flush_tool_calls()
-                        if pending:
-                            yield StreamChunk(tool_calls=pending)
-                        yield StreamChunk(is_final=True)
-                        return
-                    data = json.loads(data_str)
-                    if data.get("error"):
-                        # Groq/OpenRouter abort HTTP-200 streams with an error
-                        # frame (e.g. Groq's tool_use_failed schema check);
-                        # swallowing it would end the turn as a silent empty
-                        # reply.
-                        raise LLMStreamError(
-                            f"Provider stream error: {_error_message(data['error'])}"
-                        )
-                    choice = data.get("choices", [{}])[0] if data.get("choices") else {}
-                    delta = choice.get("delta", {})
+        async for line in resp.aiter_lines():
+            line = line.strip()
+            if not line or not line.startswith("data: "):
+                # Keep-alive comments (e.g. ": OPENROUTER PROCESSING") arrive
+                # while a request sits in a congested queue and reset the
+                # read timeout; bound the wait ourselves.
+                if time.monotonic() - last_data > self.stall_timeout:
+                    raise LLMStreamError(
+                        f"Provider sent no data for {self.stall_timeout:.0f}s "
+                        "(stream stalled — the model's pool may be congested; "
+                        "retry or switch models)"
+                    )
+                continue
+            last_data = time.monotonic()
+            data_str = line[len("data: "):]
+            if data_str == "[DONE]":
+                pending = _flush_tool_calls()
+                if pending:
+                    yield StreamChunk(tool_calls=pending)
+                yield StreamChunk(is_final=True)
+                return
+            data = json.loads(data_str)
+            if data.get("error"):
+                # Groq/OpenRouter abort HTTP-200 streams with an error frame
+                # (e.g. Groq's tool_use_failed schema check); swallowing it
+                # would end the turn as a silent empty reply.
+                raise LLMStreamError(
+                    f"Provider stream error: {_error_message(data['error'])}"
+                )
+            choice = data.get("choices", [{}])[0] if data.get("choices") else {}
+            delta = choice.get("delta", {})
 
-                    for tc_delta in delta.get("tool_calls") or []:
-                        idx = tc_delta.get("index", 0)
-                        buf = tool_buf.setdefault(idx, {"id": "", "name": "", "arguments": ""})
-                        if tc_delta.get("id"):
-                            buf["id"] = tc_delta["id"]
-                        fn = tc_delta.get("function") or {}
-                        if fn.get("name"):
-                            buf["name"] = fn["name"]
-                        if fn.get("arguments"):
-                            buf["arguments"] += fn["arguments"]
+            for tc_delta in delta.get("tool_calls") or []:
+                idx = tc_delta.get("index", 0)
+                buf = tool_buf.setdefault(idx, {"id": "", "name": "", "arguments": ""})
+                if tc_delta.get("id"):
+                    buf["id"] = tc_delta["id"]
+                fn = tc_delta.get("function") or {}
+                if fn.get("name"):
+                    buf["name"] = fn["name"]
+                if fn.get("arguments"):
+                    buf["arguments"] += fn["arguments"]
 
-                    chunk = StreamChunk(content=delta.get("content"))
+            chunk = StreamChunk(content=delta.get("content"))
 
-                    if choice.get("finish_reason"):
-                        chunk.tool_calls = _flush_tool_calls()
+            if choice.get("finish_reason"):
+                chunk.tool_calls = _flush_tool_calls()
 
-                    # Check for usage in the chunk (sent with stream_options)
-                    if data.get("usage"):
-                        u = data["usage"]
-                        chunk.usage = TokenUsage(
-                            prompt_tokens=u.get("prompt_tokens", 0),
-                            completion_tokens=u.get("completion_tokens", 0),
-                            total_tokens=u.get("total_tokens", 0),
-                        )
+            # Check for usage in the chunk (sent with stream_options)
+            if data.get("usage"):
+                u = data["usage"]
+                chunk.usage = TokenUsage(
+                    prompt_tokens=u.get("prompt_tokens", 0),
+                    completion_tokens=u.get("completion_tokens", 0),
+                    total_tokens=u.get("total_tokens", 0),
+                )
 
-                    yield chunk
+            yield chunk
 
 
 # ---------------------------------------------------------------------------
