@@ -1,101 +1,114 @@
-<svg viewBox="0 0 980 640" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Kara architecture: a chat UI streams to a FastAPI agent loop. The language model only talks; a deterministic tax engine, tools, knowledge base and parsers do all computation. PostgreSQL stores sessions.">
+<svg viewBox="0 0 1000 720" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="How Kara answers a tax question: you ask in the chat UI, the agent loop's LLM picks a tool but may not invent numbers, the deterministic tax engine computes the exact rupee figure, the answer streams back, and the session is saved with PAN masked. Everything runs on your machine; only conversation text can leave, and only if you choose a cloud LLM.">
   <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M 0 1 L 8 5 L 0 9 z" fill="#8f8e85"/>
+    <marker id="mGray" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 8 5 L 0 9 z" fill="#8a887f"/>
     </marker>
-    <marker id="arrowBlue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M 0 1 L 8 5 L 0 9 z" fill="#3987e5"/>
+    <marker id="mBlue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 8 5 L 0 9 z" fill="#2a78d6"/>
     </marker>
-    <marker id="arrowAqua" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M 0 1 L 8 5 L 0 9 z" fill="#1baf7a"/>
+    <marker id="mGreen" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 8 5 L 0 9 z" fill="#008300"/>
+    </marker>
+    <marker id="mAmber" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 8 5 L 0 9 z" fill="#b45309"/>
     </marker>
   </defs>
 
   <!-- card -->
-  <rect x="0.5" y="0.5" width="979" height="639" rx="16" fill="#1a1a19" stroke="#2e2e2c"/>
+  <rect x="0.5" y="0.5" width="999" height="719" rx="16" fill="#fcfcfb" stroke="#e5e3dc"/>
 
   <g font-family="ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif">
 
     <!-- header -->
-    <text x="44" y="46" font-size="16" font-weight="700" fill="#ffffff">How Kara works</text>
-    <text x="936" y="46" font-size="11" fill="#8f8e85" text-anchor="end" font-family="ui-monospace, 'SF Mono', Menlo, monospace">self-hosted · docker compose up -d</text>
+    <text x="44" y="50" font-size="17" font-weight="700" fill="#0b0b0b">The ₹15 lakh question — how Kara answers it</text>
+    <text x="956" y="50" font-size="11" fill="#52514e" text-anchor="end" font-family="ui-monospace, 'SF Mono', Menlo, monospace">self-hosted · docker compose up -d</text>
 
-    <!-- browser box -->
-    <rect x="330" y="70" width="320" height="54" rx="10" fill="#242423" stroke="#3a3a38"/>
-    <text x="490" y="93" font-size="14" font-weight="600" fill="#ffffff" text-anchor="middle">Chat UI — Next.js</text>
-    <text x="490" y="112" font-size="11" fill="#c3c2b7" text-anchor="middle">streams tokens &amp; rich result cards</text>
+    <!-- the fence -->
+    <rect x="36" y="76" width="928" height="512" rx="14" fill="none" stroke="#8a887f" stroke-width="1.5" stroke-dasharray="7 7"/>
+    <rect x="330" y="64" width="340" height="24" rx="12" fill="#fcfcfb" stroke="#8a887f"/>
+    <text x="500" y="80.5" font-size="11.5" font-weight="600" fill="#0b0b0b" text-anchor="middle" letter-spacing="0.5">YOUR MACHINE — nothing in here ever leaves</text>
 
-    <!-- browser <-> agent arrows -->
-    <line x1="478" y1="128" x2="478" y2="168" stroke="#8f8e85" stroke-width="1.5" marker-end="url(#arrow)"/>
-    <line x1="502" y1="168" x2="502" y2="128" stroke="#8f8e85" stroke-width="1.5" marker-end="url(#arrow)"/>
-    <text x="516" y="152" font-size="10.5" fill="#8f8e85" font-family="ui-monospace, 'SF Mono', Menlo, monospace">SSE</text>
+    <!-- 1 : you ask -->
+    <rect x="76" y="112" width="388" height="74" rx="10" fill="#ffffff" stroke="#d8d5cc"/>
+    <rect x="76" y="112" width="4" height="74" rx="2" fill="#2a78d6"/>
+    <circle cx="102" cy="138" r="11" fill="#2a78d6"/>
+    <text x="102" y="142.5" font-size="12" font-weight="700" fill="#ffffff" text-anchor="middle">1</text>
+    <text x="122" y="135" font-size="13.5" font-weight="600" fill="#0b0b0b">You ask — Chat UI (Next.js)</text>
+    <text x="122" y="164" font-size="12.5" font-style="italic" fill="#52514e">“How much tax do I owe on a ₹15 lakh salary?”</text>
 
-    <!-- agent box -->
-    <rect x="300" y="172" width="380" height="62" rx="10" fill="#242423" stroke="#3a3a38"/>
-    <text x="490" y="198" font-size="15" font-weight="600" fill="#ffffff" text-anchor="middle">FastAPI — agent loop</text>
-    <text x="490" y="218" font-size="11" fill="#c3c2b7" text-anchor="middle">sessions · profile builder · advisory hints</text>
+    <!-- arrows chat <-> agent, with step 4 on the way back -->
+    <line x1="140" y1="186" x2="140" y2="220" stroke="#8a887f" stroke-width="1.5" marker-end="url(#mGray)"/>
+    <line x1="168" y1="220" x2="168" y2="186" stroke="#2a78d6" stroke-width="1.5" marker-end="url(#mBlue)"/>
+    <circle cx="196" cy="203" r="11" fill="#2a78d6"/>
+    <text x="196" y="207.5" font-size="12" font-weight="700" fill="#ffffff" text-anchor="middle">4</text>
+    <text x="216" y="207.5" font-size="11.5" fill="#52514e">streams back: plain-English answer + breakdown card</text>
 
-    <!-- elbow: agent -> LLM (left) -->
-    <path d="M 370 234 L 370 254 L 250 254 L 250 306" fill="none" stroke="#3987e5" stroke-width="1.5" marker-end="url(#arrowBlue)"/>
-    <text x="238" y="270" font-size="10.5" fill="#86b6ef" text-anchor="end">prompt ⇄ streamed turns</text>
+    <!-- 2 : agent loop -->
+    <rect x="76" y="222" width="388" height="108" rx="10" fill="#ffffff" stroke="#d8d5cc"/>
+    <rect x="76" y="222" width="4" height="108" rx="2" fill="#2a78d6"/>
+    <circle cx="102" cy="248" r="11" fill="#2a78d6"/>
+    <text x="102" y="252.5" font-size="12" font-weight="700" fill="#ffffff" text-anchor="middle">2</text>
+    <text x="122" y="245" font-size="13.5" font-weight="600" fill="#0b0b0b">Agent loop — FastAPI</text>
+    <text x="122" y="267" font-size="11.5" fill="#52514e">The LLM reads the chat and picks a tool. It may not</text>
+    <text x="122" y="283" font-size="11.5" fill="#52514e">state any number it didn’t get from a tool.</text>
+    <rect x="122" y="294" width="268" height="22" rx="6" fill="#f1efe9" stroke="#d8d5cc"/>
+    <text x="133" y="309" font-size="10.5" fill="#0b0b0b" font-family="ui-monospace, 'SF Mono', Menlo, monospace">compute_tax(gross=1500000, regime=new)</text>
 
-    <!-- elbow: agent -> tools (right) -->
-    <path d="M 610 234 L 610 254 L 730 254 L 730 290" fill="none" stroke="#1baf7a" stroke-width="1.5" marker-end="url(#arrowAqua)"/>
-    <text x="742" y="270" font-size="10.5" fill="#1baf7a">tool call → exact ₹ back</text>
+    <!-- tool call arrows -->
+    <line x1="464" y1="252" x2="534" y2="252" stroke="#008300" stroke-width="1.5" marker-end="url(#mGreen)"/>
+    <text x="500" y="243" font-size="10" fill="#008300" text-anchor="middle" font-weight="600">tool call</text>
+    <line x1="536" y1="300" x2="466" y2="300" stroke="#008300" stroke-width="1.5" marker-end="url(#mGreen)"/>
+    <text x="500" y="317" font-size="10" fill="#008300" text-anchor="middle" font-weight="600">₹ exact</text>
 
-    <!-- LEFT ZONE : talks -->
-    <rect x="36" y="278" width="428" height="234" rx="12" fill="#3987e5" fill-opacity="0.06" stroke="#3987e5" stroke-opacity="0.30"/>
-    <text x="58" y="302" font-size="10.5" font-weight="700" letter-spacing="1.8" fill="#86b6ef">TALKS — PROBABILISTIC</text>
+    <!-- 3 : the engine -->
+    <rect x="536" y="222" width="388" height="130" rx="10" fill="#ffffff" stroke="#008300" stroke-opacity="0.55" stroke-width="1.5"/>
+    <rect x="536" y="222" width="4" height="130" rx="2" fill="#008300"/>
+    <circle cx="562" cy="248" r="11" fill="#008300"/>
+    <text x="562" y="252.5" font-size="12" font-weight="700" fill="#ffffff" text-anchor="middle">3</text>
+    <text x="582" y="245" font-size="13.5" font-weight="600" fill="#0b0b0b">kara-tax-engine — deterministic</text>
+    <text x="582" y="267" font-size="11.5" fill="#52514e">YAML rules · FY 2025-26 · slabs → §87A rebate → cess</text>
+    <text x="582" y="312" font-size="27" font-weight="800" fill="#0b0b0b">₹97,500</text>
+    <text x="582" y="336" font-size="10.5" fill="#52514e">950+ tests · MIT · same input, same rupee — every time</text>
 
-    <rect x="76" y="316" width="348" height="118" rx="10" fill="#242423" stroke="#3a3a38"/>
-    <text x="250" y="344" font-size="14" font-weight="600" fill="#ffffff" text-anchor="middle">LLM provider — your choice</text>
-    <text x="250" y="366" font-size="12" fill="#c3c2b7" text-anchor="middle">OpenAI · Anthropic · OpenRouter · Ollama</text>
-    <rect x="106" y="386" width="130" height="24" rx="12" fill="#3987e5" fill-opacity="0.12" stroke="#3987e5" stroke-opacity="0.45"/>
-    <text x="171" y="402" font-size="10.5" fill="#86b6ef" text-anchor="middle">bring your own key</text>
-    <rect x="248" y="386" width="146" height="24" rx="12" fill="#3987e5" fill-opacity="0.12" stroke="#3987e5" stroke-opacity="0.45"/>
-    <text x="321" y="402" font-size="10.5" fill="#86b6ef" text-anchor="middle">or fully local — offline</text>
+    <!-- arrow agent -> postgres -->
+    <line x1="150" y1="330" x2="150" y2="374" stroke="#8a887f" stroke-width="1.5" marker-end="url(#mGray)"/>
 
-    <text x="250" y="472" font-size="11.5" font-style="italic" fill="#c3c2b7" text-anchor="middle">words in, words out — it is never allowed</text>
-    <text x="250" y="490" font-size="11.5" font-style="italic" fill="#c3c2b7" text-anchor="middle">to do the math</text>
+    <!-- 5 : postgres -->
+    <rect x="76" y="376" width="388" height="64" rx="10" fill="#ffffff" stroke="#d8d5cc"/>
+    <rect x="76" y="376" width="4" height="64" rx="2" fill="#8a887f"/>
+    <circle cx="102" cy="400" r="11" fill="#52514e"/>
+    <text x="102" y="404.5" font-size="12" font-weight="700" fill="#ffffff" text-anchor="middle">5</text>
+    <text x="122" y="398" font-size="13" font-weight="600" fill="#0b0b0b">Saved — PostgreSQL</text>
+    <text x="122" y="420" font-size="11" fill="#52514e">PAN masked before storage · sessions auto-delete in 30 days</text>
 
-    <!-- RIGHT ZONE : computes -->
-    <rect x="516" y="278" width="428" height="234" rx="12" fill="#199e70" fill-opacity="0.06" stroke="#199e70" stroke-opacity="0.30"/>
-    <text x="538" y="302" font-size="10.5" font-weight="700" letter-spacing="1.8" fill="#1baf7a">COMPUTES — DETERMINISTIC</text>
+    <!-- elbow agent -> llm panel -->
+    <path d="M 400 330 L 400 362 L 700 362 L 700 374" fill="none" stroke="#2a78d6" stroke-width="1.5" marker-end="url(#mBlue)"/>
+    <text x="710" y="372" font-size="10.5" fill="#2a78d6">prompts</text>
 
-    <rect x="556" y="312" width="348" height="46" rx="10" fill="#242423" stroke="#3a3a38"/>
-    <text x="730" y="331" font-size="13" font-weight="600" fill="#ffffff" text-anchor="middle">12 function-calling tools</text>
-    <text x="730" y="349" font-size="10" fill="#8f8e85" text-anchor="middle" font-family="ui-monospace, 'SF Mono', Menlo, monospace">compute_tax · compare_regimes · parse_form16 · …</text>
+    <!-- llm choice panel -->
+    <rect x="536" y="376" width="388" height="176" rx="10" fill="#2a78d6" fill-opacity="0.05" stroke="#2a78d6" stroke-opacity="0.3"/>
+    <text x="556" y="400" font-size="10.5" font-weight="700" letter-spacing="1.5" fill="#2a78d6">YOUR LLM — PICK ONE</text>
 
-    <line x1="730" y1="358" x2="730" y2="374" stroke="#8f8e85" stroke-width="1.5" marker-end="url(#arrow)"/>
+    <rect x="556" y="412" width="348" height="56" rx="8" fill="#ffffff" stroke="#008300" stroke-opacity="0.55"/>
+    <text x="576" y="434" font-size="12.5" font-weight="600" fill="#0b0b0b">Ollama — runs inside this fence</text>
+    <text x="576" y="454" font-size="10.5" fill="#52514e" font-family="ui-monospace, 'SF Mono', Menlo, monospace">fully offline · --profile local</text>
 
-    <rect x="556" y="378" width="348" height="60" rx="10" fill="#242423" stroke="#1baf7a" stroke-opacity="0.55" stroke-width="1.5"/>
-    <text x="730" y="402" font-size="14" font-weight="600" fill="#ffffff" text-anchor="middle">kara-tax-engine</text>
-    <text x="730" y="422" font-size="11" fill="#c3c2b7" text-anchor="middle">YAML rules · FY 2025-26 · every ₹ computed by code</text>
-    <rect x="774" y="368" width="72" height="20" rx="10" fill="#1a1a19" stroke="#1baf7a" stroke-opacity="0.55"/>
-    <text x="810" y="382" font-size="9.5" fill="#1baf7a" text-anchor="middle">950+ tests</text>
-    <rect x="852" y="368" width="40" height="20" rx="10" fill="#1a1a19" stroke="#1baf7a" stroke-opacity="0.55"/>
-    <text x="872" y="382" font-size="9.5" fill="#1baf7a" text-anchor="middle">MIT</text>
+    <rect x="556" y="482" width="348" height="56" rx="8" fill="#ffffff" stroke="#d8d5cc"/>
+    <text x="576" y="504" font-size="12.5" font-weight="600" fill="#0b0b0b">Cloud API — OpenAI · Anthropic · OpenRouter</text>
+    <text x="576" y="524" font-size="10.5" fill="#52514e">bring your own key — set up in the browser, no config files</text>
 
-    <rect x="556" y="452" width="166" height="46" rx="10" fill="#242423" stroke="#3a3a38"/>
-    <text x="639" y="471" font-size="12" font-weight="600" fill="#ffffff" text-anchor="middle">Tax-law KB</text>
-    <text x="639" y="488" font-size="9.5" fill="#8f8e85" text-anchor="middle">114 sections · hybrid search</text>
+    <!-- fence crossing -->
+    <line x1="750" y1="538" x2="750" y2="610" stroke="#b45309" stroke-width="1.5" marker-end="url(#mAmber)"/>
+    <text x="762" y="582" font-size="10.5" font-weight="600" fill="#b45309">the only thing that can leave</text>
 
-    <rect x="738" y="452" width="166" height="46" rx="10" fill="#242423" stroke="#3a3a38"/>
-    <text x="821" y="471" font-size="12" font-weight="600" fill="#ffffff" text-anchor="middle">Doc parsers</text>
-    <text x="821" y="488" font-size="9.5" fill="#8f8e85" text-anchor="middle">Form 16 · AIS · 26AS — in-memory</text>
+    <!-- outside: the internet -->
+    <rect x="536" y="612" width="388" height="64" rx="10" fill="#eda100" fill-opacity="0.10" stroke="#eda100" stroke-opacity="0.5"/>
+    <text x="730" y="637" font-size="12.5" font-weight="600" fill="#0b0b0b" text-anchor="middle">The internet — only if you chose a cloud API</text>
+    <text x="730" y="657" font-size="10.5" fill="#7c5a08" text-anchor="middle">conversation text only · PANs masked first · never with Ollama</text>
 
-    <!-- the boundary -->
-    <line x1="490" y1="278" x2="490" y2="512" stroke="#c3c2b7" stroke-opacity="0.5" stroke-width="1.5" stroke-dasharray="5 6"/>
-
-    <!-- boundary caption -->
-    <rect x="176" y="528" width="628" height="30" rx="15" fill="#242423" stroke="#3a3a38"/>
-    <text x="490" y="547.5" font-size="12" fill="#ffffff" text-anchor="middle">The LLM never does arithmetic — every rupee figure crosses this line as an exact tool result</text>
-
-    <!-- postgres -->
-    <line x1="490" y1="558" x2="490" y2="572" stroke="#8f8e85" stroke-width="1.5" marker-end="url(#arrow)"/>
-    <rect x="330" y="576" width="320" height="44" rx="10" fill="#242423" stroke="#3a3a38"/>
-    <text x="490" y="595" font-size="13" font-weight="600" fill="#ffffff" text-anchor="middle">PostgreSQL</text>
-    <text x="490" y="612" font-size="10.5" fill="#c3c2b7" text-anchor="middle">sessions · PAN-masked profiles · pgvector</text>
+    <!-- outside: left caption -->
+    <text x="76" y="636" font-size="12" font-style="italic" fill="#52514e">Your Form 16, your PAN, your numbers, the tax math itself —</text>
+    <text x="76" y="656" font-size="12" font-style="italic" fill="#52514e">none of it ever crosses the fence.</text>
 
   </g>
 </svg>
