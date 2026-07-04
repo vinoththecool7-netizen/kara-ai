@@ -112,6 +112,16 @@ Contributors (or custom-domain deployments) build from source with
 
 ## Architecture
 
+<img src="docs/assets/architecture.svg" alt="Kara's architecture: the chat UI streams to a FastAPI agent loop; the LLM only talks, while a deterministic tax engine, tools, knowledge base and parsers do all computation; PostgreSQL stores sessions" width="100%">
+
+The language model decides *which* tool to call; the engine returns exact
+figures; the model explains them. Results stream back as SSE events
+(`content_delta`, `tool_result`, structured cards) and persist in
+PostgreSQL.
+
+<details>
+<summary>Repository layout</summary>
+
 ```
 apps/web              Next.js chat UI (SSE streaming, rich result cards)
 apps/api              FastAPI agent backend
@@ -123,12 +133,7 @@ packages/tax-engine   Deterministic rule engine (MIT-licensed, standalone)
   └─ rules/fy_2025_26 Slabs, deduction caps, capital gains, TDS — all YAML
 ```
 
-User message → agent loop streams LLM turns → tool calls hit the rule
-engine → results stream back as SSE events (`content_delta`, `tool_result`,
-structured cards) → everything persists in PostgreSQL.
-
-**The LLM never does arithmetic.** It decides *which* tool to call; the
-engine returns exact figures; the LLM explains them.
+</details>
 
 ## Use the tax engine without the chat
 
