@@ -437,7 +437,26 @@ export function useChat(): UseChatReturn {
       dispatch({ type: "ADD_USER_MESSAGE", message: processingMessage });
 
       try {
-        const result = await uploadDocument(currentSessionId, file, "auto");
+        let result;
+        try {
+          result = await uploadDocument(currentSessionId, file, "auto");
+        } catch (err) {
+          // Encrypted PDF (AIS/26AS are protected by default): ask for the
+          // password once and retry. The server detail includes the format
+          // hint (e.g. "PAN in lowercase + DOB"), so show it in the prompt.
+          if (
+            err instanceof HttpError &&
+            err.status === 422 &&
+            /password/i.test(err.message)
+          ) {
+            const detail = err.message.replace(/^\[[^\]]+\] HTTP \d+: /, "");
+            const password = window.prompt(`${file.name}\n\n${detail}`);
+            if (!password) throw err;
+            result = await uploadDocument(currentSessionId, file, "auto", password);
+          } else {
+            throw err;
+          }
+        }
 
         // Remove the placeholder message
         dispatch({ type: "REMOVE_MESSAGE", id: processingMessageId });
@@ -469,9 +488,10 @@ export function useChat(): UseChatReturn {
           // Map spec-prescribed HTTP error codes to user-friendly messages
           const status = (err as { status?: number }).status;
           if (status === 413) message = "File too large. Maximum is 10 MB.";
-          else if (status === 422) message = "PDF is password-protected. Remove the password and try again.";
           else if (status === 415) message = "Only PDF or JSON files are supported.";
-          else message = err.message;
+          // 422 carries the server's own explanation (wrong password, bad
+          // JSON, unrecognised document) — show it, minus the HTTP prefix.
+          else message = err.message.replace(/^\[[^\]]+\] HTTP \d+: /, "");
         }
         toast.error(message);
       }

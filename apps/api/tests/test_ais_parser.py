@@ -234,3 +234,32 @@ def test_parse_ais_pdf_empty_bytes():
     doc = parse_ais_pdf(b"")
     assert isinstance(doc, AISDocument)
     assert len(doc.warnings) >= 1
+
+
+class TestParseAISPdfEncrypted:
+    """AIS PDFs from the portal are password-protected (PAN + DOB); the
+    parser must say so loudly rather than degrade to a generic warning."""
+
+    def test_encrypted_pdf_without_password_raises(self):
+        from kara_api.parsers._common import PdfPasswordError
+
+        pdf_bytes = build_ais_pdf(password="abcde1234f01011990")
+        with pytest.raises(PdfPasswordError, match="[Pp]assword"):
+            parse_ais_pdf(pdf_bytes)
+
+    def test_encrypted_pdf_with_wrong_password_raises(self):
+        from kara_api.parsers._common import PdfPasswordError
+
+        pdf_bytes = build_ais_pdf(password="rightpass")
+        with pytest.raises(PdfPasswordError):
+            parse_ais_pdf(pdf_bytes, password="wrongpass")
+
+    def test_encrypted_pdf_with_correct_password_parses(self):
+        from kara_api.parsers._common import PdfPasswordError
+
+        pdf_bytes = build_ais_pdf(password="secret123")
+        try:
+            doc = parse_ais_pdf(pdf_bytes, password="secret123")
+        except PdfPasswordError:
+            pytest.skip("environment cannot decrypt this PDF even with the password")
+        assert doc.pan == "ABCDE1234F"

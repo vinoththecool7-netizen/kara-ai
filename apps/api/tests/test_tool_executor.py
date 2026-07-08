@@ -514,3 +514,48 @@ class TestParseToolPIIMasking:
         b64 = base64.b64encode(build_26as_pdf()).decode()
         result = await registry._handle_parse_26as({"content_b64": b64})
         assert result["pan"] == "XXXXXX234F"
+
+
+class TestParseToolsEncryptedPdf:
+    @pytest.mark.asyncio
+    async def test_parse_ais_encrypted_needs_password(self, registry):
+        import base64
+
+        from tests.fixtures.ais_factory import build_ais_pdf
+
+        b64 = base64.b64encode(build_ais_pdf(password="pw123")).decode()
+        tc = _make_tool_call("parse_ais", {"content_b64": b64, "content_type": "pdf"})
+        result = await registry.execute(tc)
+        assert result.is_error is True
+        assert "password" in result.content.lower()
+
+    @pytest.mark.asyncio
+    async def test_parse_ais_encrypted_with_password(self, registry):
+        import base64
+
+        from tests.fixtures.ais_factory import build_ais_pdf
+
+        b64 = base64.b64encode(build_ais_pdf(password="pw123")).decode()
+        tc = _make_tool_call(
+            "parse_ais",
+            {"content_b64": b64, "content_type": "pdf", "password": "pw123"},
+        )
+        result = await registry.execute(tc)
+        assert result.is_error is False
+        # Decryption actually worked: the fixture's PAN was found (and masked).
+        assert "XXXXXX234F" in result.content
+
+    @pytest.mark.asyncio
+    async def test_parse_26as_encrypted_with_password(self, registry):
+        import base64
+
+        from tests.fixtures.twenty_six_as_factory import build_26as_pdf
+
+        b64 = base64.b64encode(build_26as_pdf(password="01011990")).decode()
+        tc = _make_tool_call(
+            "parse_26as", {"content_b64": b64, "password": "01011990"}
+        )
+        result = await registry.execute(tc)
+        assert result.is_error is False
+        # Decryption actually worked: the fixture's PAN was found (and masked).
+        assert "XXXXXX234F" in result.content

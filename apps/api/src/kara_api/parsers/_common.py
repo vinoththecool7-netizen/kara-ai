@@ -22,6 +22,14 @@ from pydantic import BaseModel
 # ---------------------------------------------------------------------------
 
 
+class PdfPasswordError(ValueError):
+    """The PDF is encrypted and the password is missing or wrong.
+
+    Subclasses ValueError so generic tool/endpoint error mapping treats it
+    as a user-fixable input problem, not a server fault.
+    """
+
+
 class ParserWarning(BaseModel):
     """A non-fatal issue encountered during parsing."""
 
@@ -192,39 +200,76 @@ def parse_date_flexible(s: str) -> date | None:
 # ---------------------------------------------------------------------------
 
 
-def extract_text_pages(pdf_bytes: bytes) -> list[str]:
+def _raise_if_password_error(exc: Exception, password: str | None) -> None:
+    """Re-raise *exc* as PdfPasswordError when it looks like an encryption
+    failure; return normally otherwise so callers keep their old fallback.
+
+    pdfplumber may wrap pdfminer's PDFPasswordIncorrect in a generic
+    exception with an empty message, so the whole __cause__/__context__
+    chain is inspected, not just the outermost exception.
+    """
+    node: BaseException | None = exc
+    seen: set[int] = set()
+    while node is not None and id(node) not in seen:
+        seen.add(id(node))
+        exc_name = type(node).__name__.lower()
+        msg = str(node).lower()
+        if (
+            "password" in exc_name
+            or "password" in msg
+            or "encrypt" in msg
+            or "crypt" in msg
+        ):
+            if password is None:
+                raise PdfPasswordError(
+                    "This PDF is password-protected — provide its password."
+                ) from exc
+            raise PdfPasswordError(
+                "Could not decrypt the PDF — the password appears to be incorrect."
+            ) from exc
+        node = node.__cause__ or node.__context__
+
+
+def extract_text_pages(pdf_bytes: bytes, *, password: str | None = None) -> list[str]:
     """Open *pdf_bytes* with pdfplumber and return per-page text strings.
 
-    Returns an empty list if the PDF cannot be opened.
+    Raises :class:`PdfPasswordError` when the PDF is encrypted and the
+    password is missing or wrong. Returns an empty list on any other
+    open failure.
     """
     import pdfplumber
 
     try:
-        with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+        with pdfplumber.open(io.BytesIO(pdf_bytes), password=password) as pdf:
             return [page.extract_text() or "" for page in pdf.pages]
-    except Exception:
+    except Exception as exc:
+        _raise_if_password_error(exc, password)
         return []
 
 
 def extract_tables_pages(
     pdf_bytes: bytes,
+    *,
+    password: str | None = None,
 ) -> list[list[list[list[str | None]]]]:
     """Return pages → tables → rows → cells from a PDF.
 
     Shape: list[page] → list[table] → list[row] → list[cell]
     Each cell is str | None (as returned by pdfplumber).
-    Returns an empty list on failure.
+    Raises :class:`PdfPasswordError` when the PDF is encrypted and the
+    password is missing or wrong; returns an empty list on other failures.
     """
     import pdfplumber
 
     try:
-        with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
+        with pdfplumber.open(io.BytesIO(pdf_bytes), password=password) as pdf:
             result: list[list[list[list[str | None]]]] = []
             for page in pdf.pages:
                 tables = page.extract_tables() or []
                 result.append(tables)
             return result
-    except Exception:
+    except Exception as exc:
+        _raise_if_password_error(exc, password)
         return []
 
 

@@ -27,6 +27,7 @@ from kara_api.parsers import (
     parse_form16,
     parse_form_26as,
 )
+from kara_api.parsers._common import PdfPasswordError
 from kara_api.privacy import mask_pan, sanitize_text
 
 logger = logging.getLogger(__name__)
@@ -34,6 +35,17 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/documents", tags=["documents"])
 
 _MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
+
+# Appended to the 422 when an encrypted PDF arrives without (or with a
+# wrong) password — each document type has a standard password format.
+_PASSWORD_HINTS = {
+    "ais": "AIS PDFs are usually protected with your PAN in lowercase "
+    "followed by your date of birth (e.g. abcde1234f01011990).",
+    "26as": "Form 26AS PDFs from TRACES are usually protected with your "
+    "date of birth as DDMMYYYY.",
+    "form16": "Form 16 passwords vary by employer — commonly your PAN in "
+    "lowercase, sometimes followed by your date of birth (DDMMYYYY).",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -114,22 +126,28 @@ def _parse_document(
     content: bytes,
     doc_type: Literal["form16", "ais", "26as"],
     filename: str,
+    password: str | None = None,
 ) -> Form16Document | AISDocument | Form26ASDocument:
     """Parse *content* as the given document type."""
     try:
         if doc_type == "form16":
-            return parse_form16(content)
+            return parse_form16(content, password=password)
 
         if doc_type == "26as":
-            return parse_form_26as(content)
+            return parse_form_26as(content, password=password)
 
         # AIS: JSON or PDF
         if content[:1] in (b"{", b"["):
             blob = json.loads(content.decode("utf-8"))
             return parse_ais_json(blob)
         else:
-            return parse_ais_pdf(content)
+            return parse_ais_pdf(content, password=password)
 
+    except PdfPasswordError as exc:
+        hint = _PASSWORD_HINTS.get(doc_type, "")
+        raise HTTPException(
+            status_code=422, detail=f"{exc} {hint}".strip()
+        ) from exc
     except Form16ParseError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except (json.JSONDecodeError, UnicodeDecodeError) as exc:
@@ -249,6 +267,7 @@ async def upload_document(
     session_id: str = Form(...),
     document_type: Literal["form16", "ais", "26as", "auto"] = Form("auto"),
     file: UploadFile = File(...),
+    password: str | None = Form(None),
 ) -> DocumentUploadResponse:
     """Upload a tax document (Form 16, AIS, or 26AS) and auto-fill the session profile.
 
@@ -280,7 +299,7 @@ async def upload_document(
     actual_type = _sniff_document_type(content, filename, document_type)
 
     # --- Parse ---
-    doc = _parse_document(content, actual_type, filename)
+    doc = _parse_document(content, actual_type, filename, password)
 
     # --- Generate document ID ---
     document_id = str(uuid.uuid4())

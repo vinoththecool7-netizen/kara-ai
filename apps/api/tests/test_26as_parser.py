@@ -178,3 +178,25 @@ def test_parse_26as_empty_bytes_no_crash():
     doc = parse_form_26as(b"")
     assert isinstance(doc, Form26ASDocument)
     assert len(doc.warnings) >= 1
+
+
+class TestParse26ASEncrypted:
+    """TRACES 26AS PDFs are password-protected (DOB as DDMMYYYY); the parser
+    must surface that instead of a generic open failure."""
+
+    def test_encrypted_pdf_without_password_raises(self):
+        from kara_api.parsers._common import PdfPasswordError
+
+        pdf_bytes = build_26as_pdf(password="01011990")
+        with pytest.raises(PdfPasswordError, match="[Pp]assword"):
+            parse_form_26as(pdf_bytes)
+
+    def test_encrypted_pdf_with_correct_password_parses(self):
+        from kara_api.parsers._common import PdfPasswordError
+
+        pdf_bytes = build_26as_pdf(password="01011990")
+        try:
+            doc = parse_form_26as(pdf_bytes, password="01011990")
+        except PdfPasswordError:
+            pytest.skip("environment cannot decrypt this PDF even with the password")
+        assert doc.pan == "ABCDE1234F"

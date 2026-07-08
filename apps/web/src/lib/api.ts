@@ -241,11 +241,15 @@ const DOCUMENT_MAX_BYTES = 10 * 1024 * 1024; // 10 MB
  * Client-side guards: throws HttpError(413) if the file exceeds 10 MB.
  * Uses indeterminate-progress fetch (no XHR) — spinner in the UI is
  * sufficient given typical document sizes.
+ *
+ * `password` decrypts protected PDFs (AIS and 26AS downloads are
+ * password-protected by default).
  */
 export async function uploadDocument(
   sessionId: string,
   file: File,
   documentType: "form16" | "ais" | "26as" | "auto" = "auto",
+  password?: string,
   // onProgress is reserved for a future XHR-based implementation; ignored for now.
   _onProgress?: (percent: number) => void,
 ): Promise<DocumentUploadResponse> {
@@ -257,6 +261,9 @@ export async function uploadDocument(
   formData.append("session_id", sessionId);
   formData.append("document_type", documentType);
   formData.append("file", file);
+  if (password) {
+    formData.append("password", password);
+  }
 
   let response: Response;
   try {

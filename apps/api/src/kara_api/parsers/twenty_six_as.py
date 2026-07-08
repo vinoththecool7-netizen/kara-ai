@@ -468,18 +468,28 @@ _PART_HANDLERS = {
 # ---------------------------------------------------------------------------
 
 
-def parse_form_26as(pdf_bytes: bytes) -> Form26ASDocument:
+def parse_form_26as(
+    pdf_bytes: bytes, *, password: str | None = None
+) -> Form26ASDocument:
     """Parse a Form 26AS PDF and return a structured Form26ASDocument.
 
     Parameters
     ----------
     pdf_bytes:
         Raw PDF bytes of a TRACES Form 26AS download.
+    password:
+        Optional PDF password. TRACES downloads are protected by default
+        (date of birth as DDMMYYYY).
+
+    Raises
+    ------
+    PdfPasswordError
+        When the PDF is encrypted and *password* is missing or wrong.
     """
     doc = Form26ASDocument(source="pdf")
 
-    pages_text = extract_text_pages(pdf_bytes)
-    pages_tables = extract_tables_pages(pdf_bytes)
+    pages_text = extract_text_pages(pdf_bytes, password=password)
+    pages_tables = extract_tables_pages(pdf_bytes, password=password)
 
     if not pages_text:
         doc.warnings.append(

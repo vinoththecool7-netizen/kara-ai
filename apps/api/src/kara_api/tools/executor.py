@@ -355,7 +355,7 @@ class ToolRegistry:
             blob = json.loads(raw_bytes.decode("utf-8"))
             doc = parse_ais_json(blob)
         else:
-            doc = parse_ais_pdf(raw_bytes)
+            doc = parse_ais_pdf(raw_bytes, password=args.get("password"))
 
         return mask_document_pii(doc.model_dump(mode="json"))
 
@@ -366,7 +366,7 @@ class ToolRegistry:
         from kara_api.parsers.twenty_six_as import parse_form_26as
 
         pdf_bytes = base64.b64decode(args["content_b64"])
-        doc = parse_form_26as(pdf_bytes)
+        doc = parse_form_26as(pdf_bytes, password=args.get("password"))
         return mask_document_pii(doc.model_dump(mode="json"))
 
     # ------------------------------------------------------------------

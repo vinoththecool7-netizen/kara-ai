@@ -30,12 +30,13 @@ _H2 = _STYLES["Heading2"]
 # ---------------------------------------------------------------------------
 
 
-def _build_pdf(story: list) -> bytes:
+def _build_pdf(story: list, *, password: str | None = None) -> bytes:
     from reportlab.lib.pagesizes import landscape
     buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=landscape(A4), title="Form 26AS",
                             leftMargin=1.5*cm, rightMargin=1.5*cm,
-                            topMargin=1.5*cm, bottomMargin=1.5*cm)
+                            topMargin=1.5*cm, bottomMargin=1.5*cm,
+                            encrypt=password)
     doc.build(story)
     return buf.getvalue()
 
@@ -84,6 +85,7 @@ def build_26as_pdf(
     employer_tan: str = "MUMB12345A",
     tds_salary_amount: int = 1200000,   # rupees
     tds_salary_deducted: int = 185000,  # rupees
+    password: str | None = None,
 ) -> bytes:
     """Build a reportlab Form 26AS PDF with PART A (salary TDS) and PART D (refund).
 
@@ -174,4 +176,4 @@ def build_26as_pdf(
         _spacer(),
     ]
 
-    return _build_pdf(story)
+    return _build_pdf(story, password=password)

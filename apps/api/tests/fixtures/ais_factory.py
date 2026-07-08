@@ -29,9 +29,9 @@ _H2 = _STYLES["Heading2"]
 # ---------------------------------------------------------------------------
 
 
-def _build_pdf(story: list) -> bytes:
+def _build_pdf(story: list, *, password: str | None = None) -> bytes:
     buf = io.BytesIO()
-    doc = SimpleDocTemplate(buf, pagesize=A4, title="AIS")
+    doc = SimpleDocTemplate(buf, pagesize=A4, title="AIS", encrypt=password)
     doc.build(story)
     return buf.getvalue()
 
@@ -146,6 +146,7 @@ def build_ais_pdf(
     *,
     pan: str = "ABCDE1234F",
     ay: str = "2025-26",
+    password: str | None = None,
 ) -> bytes:
     """Build a reportlab AIS PDF with the same data as build_ais_json().
 
@@ -193,4 +194,4 @@ def build_ais_pdf(
         _spacer(),
     ]
 
-    return _build_pdf(story)
+    return _build_pdf(story, password=password)
