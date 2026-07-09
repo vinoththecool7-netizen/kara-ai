@@ -50,7 +50,7 @@ Kara:  Under the new regime for FY 2025-26, your tax is ₹97,500…
 > Verify with a qualified professional before filing.
 
 
-<img width="3164" height="2070" alt="Kara AI" src="https://github.com/user-attachments/assets/2fb18206-9ecb-40aa-a780-2fcb38908651" />
+<img width="800" height="523" alt="ezgif com-video-to-gif-converter" src="https://github.com/user-attachments/assets/4de01c85-41fa-4b4f-8d40-bc98d8972815" />
 
 ## Why Kara
 
