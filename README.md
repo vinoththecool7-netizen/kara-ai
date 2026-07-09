@@ -49,6 +49,8 @@ Kara:  Under the new regime for FY 2025-26, your tax is ₹97,500…
 > Kara provides general tax information, not professional tax advice.
 > Verify with a qualified professional before filing.
 
+https://github.com/user-attachments/assets/25b07443-7c4c-45be-970d-cb5e11a54dbc
+
 ## Why Kara
 
 **Your data stays yours.** ClearTax, Quicko, and every other filing portal
