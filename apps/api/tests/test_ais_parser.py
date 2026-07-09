@@ -263,3 +263,66 @@ class TestParseAISPdfEncrypted:
         except PdfPasswordError:
             pytest.skip("environment cannot decrypt this PDF even with the password")
         assert doc.pan == "ABCDE1234F"
+
+
+class TestParseAISPortalLayout:
+    """The real e-filing portal AIS has no 'Information Category:' lines —
+    each item is an INFORMATION CODE summary row followed by a
+    category-specific detail table. All amounts asserted in paise."""
+
+    @pytest.fixture(scope="class")
+    def doc(self) -> AISDocument:
+        from tests.fixtures.ais_factory import build_ais_portal_pdf
+
+        return parse_ais_pdf(build_ais_portal_pdf())
+
+    def test_pan_and_ay_extracted(self, doc: AISDocument):
+        assert doc.pan == "ABCDE1234F"
+        assert doc.assessment_year == "2025-26"
+
+    def test_savings_interest_from_detail_rows(self, doc: AISDocument):
+        assert len(doc.interest_savings) == 2
+        assert sum(e.amount for e in doc.interest_savings) == 480_00
+        assert all(e.account_type == "savings" for e in doc.interest_savings)
+        assert "HDFC" in doc.interest_savings[0].payer_name
+
+    def test_equity_mf_sales_from_detail_rows(self, doc: AISDocument):
+        assert len(doc.mutual_fund_redemptions) == 3
+        assert sum(e.amount for e in doc.mutual_fund_redemptions) == 45_000_00
+        first = doc.mutual_fund_redemptions[0]
+        assert "UTI Mid Cap" in first.scheme_name
+        assert first.txn_date is not None
+        assert first.units == 10_500  # 10.5 units * 1000
+
+    def test_other_unit_sale_from_detail_row(self, doc: AISDocument):
+        assert len(doc.security_sales) == 1
+        sale = doc.security_sales[0]
+        assert sale.txn_type == "sell"
+        assert sale.value == 12_000_00
+        assert "AXIS" in sale.scrip_name
+
+    def test_mf_purchases_quarterly_rows(self, doc: AISDocument):
+        assert len(doc.mutual_fund_purchases) == 4
+        assert sum(e.amount for e in doc.mutual_fund_purchases) == 120_000_00
+        assert all(e.txn_type == "purchase" for e in doc.mutual_fund_purchases)
+
+    def test_security_purchase_row(self, doc: AISDocument):
+        assert len(doc.security_purchases) == 1
+        assert doc.security_purchases[0].txn_type == "buy"
+        assert doc.security_purchases[0].value == 10_000_00
+
+    def test_dividend_summary_fallback_without_detail_table(self, doc: AISDocument):
+        assert len(doc.dividends) == 1
+        assert doc.dividends[0].amount == 2_500_00
+        assert "INFOSYS" in doc.dividends[0].payer_name
+
+    def test_totals_computed(self, doc: AISDocument):
+        assert doc.totals.total_interest == 480_00
+        assert doc.totals.total_dividends == 2_500_00
+        # 45,000 (EMF redemptions) + 12,000 (other unit sale)
+        assert doc.totals.total_capital_gains_value == 57_000_00
+
+    def test_no_transactions_present_rows_ignored(self, doc: AISDocument):
+        # Part B1 TDS says "No Transactions Present" — must not create entries
+        assert doc.salary_reported == []
+        assert doc.tds_collected == []
