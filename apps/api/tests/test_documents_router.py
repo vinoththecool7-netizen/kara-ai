@@ -431,3 +431,59 @@ class TestUploadPanMasked:
         if pan is not None:
             assert "X" in pan
             assert pan != fake_doc.part_a.employee_pan
+
+
+class TestUploadEncryptedPdf:
+    """Encrypted AIS/26AS uploads must return a clear 422 telling the user a
+    password is needed (with the standard password format hint), and succeed
+    when the password form field is supplied."""
+
+    async def test_encrypted_ais_without_password_422_with_hint(self, client):
+        from tests.fixtures.ais_factory import build_ais_pdf
+
+        pdf = build_ais_pdf(password="abcde1234f01011990")
+        resp = await client.post(
+            f"{BASE}/upload",
+            data={"session_id": str(uuid.uuid4()), "document_type": "ais"},
+            files={"file": ("ais.pdf", io.BytesIO(pdf), "application/pdf")},
+        )
+        assert resp.status_code == 422
+        detail = resp.json()["detail"]
+        assert "password" in detail.lower()
+        # AIS-specific hint: PAN (lowercase) + DOB
+        assert "PAN" in detail
+
+    async def test_encrypted_ais_with_password_parses(self, client):
+        from tests.fixtures.ais_factory import build_ais_pdf
+
+        pdf = build_ais_pdf(password="abcde1234f01011990")
+        sm = _mock_session_manager(session_found=True)
+        with patch(
+            "kara_api.routers.documents._create_session_manager", return_value=sm
+        ):
+            resp = await client.post(
+                f"{BASE}/upload",
+                data={
+                    "session_id": str(uuid.uuid4()),
+                    "document_type": "ais",
+                    "password": "abcde1234f01011990",
+                },
+                files={"file": ("ais.pdf", io.BytesIO(pdf), "application/pdf")},
+            )
+        assert resp.status_code == 200
+        assert resp.json()["document_type"] == "ais"
+
+    async def test_encrypted_26as_without_password_422_with_hint(self, client):
+        from tests.fixtures.twenty_six_as_factory import build_26as_pdf
+
+        pdf = build_26as_pdf(password="01011990")
+        resp = await client.post(
+            f"{BASE}/upload",
+            data={"session_id": str(uuid.uuid4()), "document_type": "26as"},
+            files={"file": ("26as.pdf", io.BytesIO(pdf), "application/pdf")},
+        )
+        assert resp.status_code == 422
+        detail = resp.json()["detail"]
+        assert "password" in detail.lower()
+        # 26AS-specific hint: date of birth
+        assert "birth" in detail.lower() or "DDMMYYYY" in detail

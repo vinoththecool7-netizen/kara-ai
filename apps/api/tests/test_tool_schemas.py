@@ -128,3 +128,19 @@ class TestIndividualTools:
             "vda_crypto",
         ]
         assert asset_enum == expected
+
+
+class TestParseToolPasswordSupport:
+    """All three PDF parse tools must accept an optional password — AIS and
+    26AS downloads are password-protected by default."""
+
+    def test_parse_tools_have_optional_password(self):
+        from kara_api.tools.schemas import ALL_TOOLS
+
+        for name in ("parse_form16", "parse_ais", "parse_26as"):
+            tool = next(t for t in ALL_TOOLS if t.name == name)
+            props = tool.parameters["properties"]
+            assert "password" in props, f"{name} schema missing password"
+            assert "password" not in tool.parameters.get("required", []), (
+                f"{name}: password must be optional"
+            )

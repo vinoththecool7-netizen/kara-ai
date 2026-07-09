@@ -178,6 +178,42 @@ void (async () => {
   }
 
   // -------------------------------------------------------------------------
+  // Test: uploadDocument includes password field only when provided
+  // -------------------------------------------------------------------------
+
+  {
+    let capturedBody: unknown = null;
+
+    mockFetch(async (_input, init) => {
+      capturedBody = init?.body;
+      return makeResponse({}, 200);
+    });
+
+    const file = new File(["PDF"], "ais.pdf", { type: "application/pdf" });
+
+    await uploadDocument("sess-pw", file, "ais", "abcde1234f01011990");
+    assert(capturedBody instanceof FormData, "body is FormData (with password)");
+    if (capturedBody instanceof FormData) {
+      assertEqual(
+        capturedBody.get("password"),
+        "abcde1234f01011990",
+        "FormData carries the password when provided",
+      );
+    }
+
+    await uploadDocument("sess-nopw", file, "ais");
+    if (capturedBody instanceof FormData) {
+      assertEqual(
+        capturedBody.get("password"),
+        null,
+        "FormData omits password when not provided",
+      );
+    }
+
+    restoreFetch();
+  }
+
+  // -------------------------------------------------------------------------
   // Test: non-2xx response throws HttpError with status code
   // -------------------------------------------------------------------------
 
@@ -459,7 +495,7 @@ void (async () => {
     const file = new File(["data"], "f.pdf", { type: "application/pdf" });
     let progressCalled = false;
     // onProgress is currently a no-op stub; just verify it can be passed without crashing
-    const result = await uploadDocument("s", file, "auto", () => { progressCalled = true; });
+    const result = await uploadDocument("s", file, "auto", undefined, () => { progressCalled = true; });
     assert(result.document_id === "prog-1", "uploadDocument accepts onProgress callback");
     assert(!progressCalled, "onProgress is not yet called (stub)");
     restoreFetch();

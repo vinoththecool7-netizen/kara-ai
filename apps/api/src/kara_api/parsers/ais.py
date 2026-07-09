@@ -581,7 +581,7 @@ _CATEGORY_LINE_RE = re.compile(
 )
 
 
-def parse_ais_pdf(pdf_bytes: bytes) -> AISDocument:
+def parse_ais_pdf(pdf_bytes: bytes, *, password: str | None = None) -> AISDocument:
     """Parse an AIS PDF and return a structured AISDocument.
 
     Uses a state-machine over text pages:
@@ -589,11 +589,17 @@ def parse_ais_pdf(pdf_bytes: bytes) -> AISDocument:
     2. Dispatch tables to the active category handler.
 
     If the PDF appears to be image-based (no text extracted), emits a warning.
+
+    Raises
+    ------
+    PdfPasswordError
+        When the PDF is encrypted and *password* is missing or wrong. AIS
+        downloads are protected by default (PAN in lowercase + DOB ddmmyyyy).
     """
     doc = AISDocument(source="pdf")
 
-    pages_text = extract_text_pages(pdf_bytes)
-    pages_tables = extract_tables_pages(pdf_bytes)
+    pages_text = extract_text_pages(pdf_bytes, password=password)
+    pages_tables = extract_tables_pages(pdf_bytes, password=password)
 
     if not pages_text:
         doc.warnings.append(

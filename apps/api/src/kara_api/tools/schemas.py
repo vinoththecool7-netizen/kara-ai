@@ -565,6 +565,14 @@ PARSE_AIS = ToolDefinition(
                 "enum": ["json", "pdf"],
                 "description": "Type of content.",
             },
+            "password": {
+                "type": "string",
+                "description": (
+                    "Optional PDF password. AIS PDFs are usually protected "
+                    "with the PAN in lowercase followed by the date of birth "
+                    "(ddmmyyyy)."
+                ),
+            },
         },
         "required": ["content_b64", "content_type"],
     },
@@ -585,6 +593,13 @@ PARSE_26AS = ToolDefinition(
             "content_b64": {
                 "type": "string",
                 "description": "Base64-encoded PDF bytes.",
+            },
+            "password": {
+                "type": "string",
+                "description": (
+                    "Optional PDF password. TRACES Form 26AS PDFs are usually "
+                    "protected with the date of birth as DDMMYYYY."
+                ),
             },
         },
         "required": ["content_b64"],
