@@ -576,6 +576,274 @@ def parse_ais_json(blob: dict) -> AISDocument:
 # PDF entry point
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Portal-layout PDF parsing (real e-filing AIS downloads)
+# ---------------------------------------------------------------------------
+#
+# The portal PDF has no "Information Category:" text markers. Every item is
+# a summary row under a header like:
+#     SR. NO. | INFORMATION CODE | INFORMATION DESCRIPTION |
+#     INFORMATION SOURCE | COUNT | AMOUNT
+# usually followed by a category-specific detail table (savings-interest
+# accounts, per-transaction security sales, quarterly MF purchases, ...).
+# Summary and detail rows may share one extracted table or span tables and
+# pages, so state carries across the whole row stream. Cells are mapped by
+# raw column index taken from the most recent header row — extracted tables
+# pad with empty columns, but data rows share their header's geometry.
+
+
+class _PortalItem:
+    """The active summary row's context while its detail rows stream in."""
+
+    def __init__(self, category: str, code: str, desc: str, source: str, amount: int):
+        self.category = category
+        self.code = code
+        self.desc = desc
+        self.source = source
+        self.amount = amount  # paise, from the summary row
+        self.had_details = False
+
+
+def _portal_category(code: str, desc: str) -> str:
+    c, d = code.upper(), desc.lower()
+    if "(SB)" in c or ("interest" in d and "saving" in d):
+        return "interest_savings"
+    if "interest" in d and ("deposit" in d or "term" in d or "(td)" in c.lower()):
+        return "interest_fd"
+    if "dividend" in d:
+        return "dividend"
+    if "-EMF" in c or "equity oriented mutual fund" in d:
+        return "sale_emf"
+    if "-OTU" in c or d.startswith("sale of"):
+        return "sale_otu"
+    if "purchase of mutual fund" in d:
+        return "purchase_mf"
+    if d.startswith("purchase of"):
+        return "purchase_sec"
+    if "salary" in d:
+        return "salary"
+    return "other"
+
+
+def _find_col(headers: list[str], *needles: str) -> int | None:
+    """Index of the first header cell containing every needle (case-blind)."""
+    for idx, cell in enumerate(headers):
+        up = cell.upper()
+        if all(n in up for n in needles):
+            return idx
+    return None
+
+
+def _cell(row: list[str], idx: int | None) -> str:
+    if idx is None or idx >= len(row):
+        return ""
+    return row[idx]
+
+
+def _flush_portal_item(item: _PortalItem | None, doc: AISDocument) -> None:
+    """Emit a summary-level entry for items whose detail rows never came."""
+    if item is None or item.had_details:
+        return
+    cat, src, amt = item.category, item.source, item.amount
+    if cat == "interest_savings":
+        doc.interest_savings.append(
+            InterestEntry(payer_name=src, account_type="savings", amount=amt)
+        )
+    elif cat == "interest_fd":
+        doc.interest_fd.append(
+            InterestEntry(payer_name=src, account_type="fd", amount=amt)
+        )
+    elif cat == "dividend":
+        doc.dividends.append(DividendEntry(payer_name=src, amount=amt))
+    elif cat == "sale_emf":
+        doc.mutual_fund_redemptions.append(
+            MutualFundTxn(txn_type="redemption", scheme_name=src, amount=amt)
+        )
+    elif cat == "sale_otu":
+        doc.security_sales.append(
+            SecurityTxn(txn_type="sell", broker_name=src, value=amt)
+        )
+    elif cat == "purchase_mf":
+        doc.mutual_fund_purchases.append(
+            MutualFundTxn(txn_type="purchase", scheme_name=src, amount=amt)
+        )
+    elif cat == "purchase_sec":
+        doc.security_purchases.append(
+            SecurityTxn(txn_type="buy", broker_name=src, value=amt)
+        )
+    elif cat == "salary":
+        doc.salary_reported.append(
+            SalaryReportedEntry(deductor_name=src, amount_paid=amt)
+        )
+    else:
+        doc.sft_transactions.append(
+            SFTEntry(
+                reporting_entity=src,
+                transaction_type=item.desc,
+                amount=amt,
+                info_code=item.code,
+            )
+        )
+
+
+def _portal_detail_entry(
+    item: _PortalItem, kind: str, cols: dict[str, int | None], row: list[str], doc: AISDocument
+) -> bool:
+    """Append one detail-row entry for the active item; True when added."""
+    if kind == "interest":
+        amount = to_paise(_cell(row, cols.get("amount")))
+        if amount == 0:
+            return False
+        acct = _cell(row, cols.get("acct_type")).lower()
+        acct_type = (
+            "savings" if "sav" in acct
+            else "fd" if ("term" in acct or "fixed" in acct)
+            else "fd" if item.category == "interest_fd"
+            else "savings" if item.category == "interest_savings"
+            else "other"
+        )
+        target = doc.interest_fd if acct_type == "fd" else doc.interest_savings
+        target.append(
+            InterestEntry(payer_name=item.source, account_type=acct_type, amount=amount)
+        )
+        return True
+
+    if kind == "sale":
+        amount = to_paise(_cell(row, cols.get("consideration")))
+        if amount == 0:
+            return False
+        txn_date = parse_date_flexible(_cell(row, cols.get("date")))
+        name = _cell(row, cols.get("name")) or item.source
+        qty_raw = _cell(row, cols.get("qty")).replace(",", "")
+        try:
+            qty = float(qty_raw)
+        except ValueError:
+            qty = 0.0
+        if item.category == "sale_emf":
+            doc.mutual_fund_redemptions.append(
+                MutualFundTxn(
+                    txn_type="redemption",
+                    scheme_name=name,
+                    units=int(round(qty * 1000)),
+                    amount=amount,
+                    txn_date=txn_date,
+                )
+            )
+        else:
+            doc.security_sales.append(
+                SecurityTxn(
+                    txn_type="sell",
+                    scrip_name=name,
+                    quantity=int(qty),
+                    value=amount,
+                    txn_date=txn_date,
+                    broker_name=item.source,
+                )
+            )
+        return True
+
+    if kind == "purchase":
+        amount = to_paise(_cell(row, cols.get("amount")))
+        if amount == 0:
+            return False
+        if item.category == "purchase_mf":
+            doc.mutual_fund_purchases.append(
+                MutualFundTxn(
+                    txn_type="purchase",
+                    scheme_name=_cell(row, cols.get("scheme")) or item.source,
+                    amount=amount,
+                )
+            )
+        else:
+            doc.security_purchases.append(
+                SecurityTxn(txn_type="buy", value=amount, broker_name=item.source)
+            )
+        return True
+
+    return False
+
+
+def _parse_portal_tables(
+    pages_tables: list[list[list[list[str | None]]]], doc: AISDocument
+) -> bool:
+    """Parse portal-layout tables into *doc*; True when any item was found."""
+    mode: str | None = None  # "summary" | detail kind
+    summary_cols: dict[str, int | None] = {}
+    detail_cols: dict[str, int | None] = {}
+    item: _PortalItem | None = None
+    found = False
+
+    for page_tables in pages_tables:
+        for table in page_tables:
+            for raw_row in table or []:
+                row = [normalize_cell(c) for c in raw_row]
+                joined = " ".join(row).upper()
+                if not joined.strip():
+                    continue
+
+                if "NO TRANSACTIONS PRESENT" in joined:
+                    continue
+
+                if "INFORMATION CODE" in joined and "AMOUNT" in joined:
+                    summary_cols = {
+                        "code": _find_col(row, "INFORMATION CODE"),
+                        "desc": _find_col(row, "INFORMATION DESCRIPTION"),
+                        "source": _find_col(row, "INFORMATION SOURCE"),
+                        "amount": _find_col(row, "AMOUNT"),
+                    }
+                    mode = "summary"
+                    continue
+
+                if "INTEREST AMOUNT" in joined and "ACCOUNT" in joined:
+                    detail_cols = {
+                        "amount": _find_col(row, "INTEREST AMOUNT"),
+                        "acct_type": _find_col(row, "ACCOUNT TYPE"),
+                    }
+                    mode = "interest"
+                    continue
+
+                if "SALES CONSIDERATION" in joined and "QUANTITY" in joined:
+                    detail_cols = {
+                        "date": _find_col(row, "DATE OF SALE"),
+                        "name": _find_col(row, "SECURITY NAME"),
+                        "qty": _find_col(row, "QUANTITY"),
+                        "consideration": _find_col(row, "SALES CONSIDERATION"),
+                    }
+                    mode = "sale"
+                    continue
+
+                if "QUARTER" in joined and "PURCHASE" in joined:
+                    detail_cols = {
+                        "amount": _find_col(row, "PURCHASE AMOUNT")
+                        if _find_col(row, "PURCHASE AMOUNT") is not None
+                        else _find_col(row, "MARKET PURCHASE"),
+                        "scheme": _find_col(row, "AMC NAME"),
+                    }
+                    mode = "purchase"
+                    continue
+
+                if mode == "summary":
+                    code = _cell(row, summary_cols.get("code"))
+                    desc = _cell(row, summary_cols.get("desc"))
+                    if not code and not desc:
+                        continue
+                    _flush_portal_item(item, doc)
+                    item = _PortalItem(
+                        category=_portal_category(code, desc),
+                        code=code,
+                        desc=desc,
+                        source=_cell(row, summary_cols.get("source")),
+                        amount=to_paise(_cell(row, summary_cols.get("amount"))),
+                    )
+                    found = True
+                elif mode in ("interest", "sale", "purchase") and item is not None:
+                    if _portal_detail_entry(item, mode, detail_cols, row, doc):
+                        item.had_details = True
+
+    _flush_portal_item(item, doc)
+    return found
+
+
 _CATEGORY_LINE_RE = re.compile(
     r"Information\s+Category[:\s]+(.+)", re.IGNORECASE
 )
@@ -631,9 +899,19 @@ def parse_ais_pdf(pdf_bytes: bytes, *, password: str | None = None) -> AISDocume
     if m:
         doc.name = m.group(1).strip()
 
+    any_tables_found = any(
+        table for page_tables in pages_tables for table in page_tables
+    )
+
+    # Real e-filing portal downloads: INFORMATION CODE summary rows with
+    # detail tables. When that layout is present it is authoritative —
+    # the legacy "Information Category:" pass below would find nothing.
+    if _parse_portal_tables(pages_tables, doc):
+        _compute_totals(doc)
+        return doc
+
     # State machine: track the active category as we iterate pages
     current_category: str | None = None
-    any_tables_found = False
 
     for page_idx, (page_text, page_tables) in enumerate(
         zip(pages_text, pages_tables, strict=False)
